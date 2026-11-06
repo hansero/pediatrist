@@ -1,0 +1,695 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  /* =========================================================================
+     HSL TABANLI KLİNİK RENK PALETİ (Medical Precision & Zero Eye Strain)
+     ========================================================================= */
+  --bg-canvas: hsl(210, 33%, 98%);
+  --bg-surface: hsl(0, 0%, 100%);
+  --bg-surface-subtle: hsl(210, 28%, 95%);
+  --bg-sidebar: hsl(214, 42%, 12%);
+  --bg-sidebar-hover: hsl(214, 36%, 18%);
+  --bg-sidebar-active: hsl(204, 86%, 36%);
+
+  --text-primary: hsl(215, 35%, 13%);
+  --text-secondary: hsl(215, 18%, 38%);
+  --text-muted: hsl(215, 14%, 54%);
+  --text-on-dark: hsl(210, 40%, 98%);
+  --text-on-dark-muted: hsl(214, 20%, 72%);
+
+  /* Birincil Klinik Vurgu (Tıbbi Kobalt & Okyanus Mavisi) */
+  --clinical-primary: hsl(204, 88%, 36%);
+  --clinical-primary-hover: hsl(204, 90%, 30%);
+  --clinical-primary-soft: hsl(204, 82%, 94%);
+  --clinical-teal: hsl(182, 72%, 31%);
+  --clinical-teal-soft: hsl(182, 65%, 93%);
+
+  /* Semantik Klinik Durum & Doz Sınırı Uyarıları */
+  --status-success: hsl(154, 70%, 28%);
+  --status-success-bg: hsl(154, 65%, 94%);
+  --status-warning: hsl(34, 92%, 36%);
+  --status-warning-bg: hsl(38, 95%, 93%);
+  --status-critical: hsl(354, 78%, 42%);
+  --status-critical-bg: hsl(354, 85%, 95%);
+
+  /* Sınırlar ve Yüzey Gölgeleri */
+  --border-subtle: hsl(214, 24%, 89%);
+  --border-strong: hsl(214, 22%, 78%);
+  --shadow-xs: 0 1px 2px rgba(15, 29, 46, 0.05);
+  --shadow-sm: 0 2px 6px rgba(15, 29, 46, 0.06), 0 1px 2px rgba(15, 29, 46, 0.04);
+  --shadow-md: 0 8px 24px rgba(15, 29, 46, 0.08), 0 2px 6px rgba(15, 29, 46, 0.04);
+  --shadow-lg: 0 20px 40px rgba(15, 29, 46, 0.14);
+
+  /* Tipografi */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Ölçek ve Yuvarlatma */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ===========================================================================
+   TEMEL SIFIRLAMA VE TİPOGRAFİ HİYERARŞİSİ
+   =========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+}
+
+h2 {
+  font-size: clamp(1.1rem, 1.5vw, 1.3rem);
+}
+
+h3 {
+  font-size: 1.02rem;
+}
+
+.mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================================================
+   ANA UYGULAMA İSKELETİ (Protected App Shell)
+   =========================================================================== */
+.app-shell {
+  display: grid;
+  grid-template-columns: 272px 1fr;
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  background-color: var(--bg-sidebar);
+  color: var(--text-on-dark);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.25rem 1rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.6rem 1.15rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1rem;
+}
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--clinical-primary);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.brand-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.brand-subtitle {
+  font-size: 0.74rem;
+  color: var(--text-on-dark-muted);
+  display: block;
+}
+
+.nav-section-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-on-dark-muted);
+  padding: 0.65rem 0.75rem 0.35rem;
+  font-weight: 600;
+}
+
+.nav-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.68rem 0.8rem;
+  border-radius: var(--radius-md);
+  color: var(--text-on-dark-muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.nav-link:hover {
+  background-color: var(--bg-sidebar-hover);
+  color: #fff;
+}
+
+.nav-link.active {
+  background-color: var(--bg-sidebar-active);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+
+.nav-link-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.nav-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.sidebar-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1rem;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.user-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 0.7rem 0.8rem;
+}
+
+.user-pill-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #fff;
+}
+
+.user-pill-meta {
+  font-size: 0.75rem;
+  color: var(--text-on-dark-muted);
+  margin-top: 0.15rem;
+}
+
+/* ===========================================================================
+   ÜST SİBER GÜVENLİK KALKANI BARI & ANA İÇERİK ALANI
+   =========================================================================== */
+.app-main-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.security-topbar {
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.75rem 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.security-indicators {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.sec-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+}
+
+.sec-chip.verified {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  border-color: hsla(154, 70%, 28%, 0.25);
+}
+
+.sec-chip.warn {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+  border-color: hsla(34, 92%, 36%, 0.25);
+}
+
+.sec-chip.critical {
+  background: var(--status-critical-bg);
+  color: var(--status-critical);
+  border-color: hsla(354, 78%, 42%, 0.25);
+}
+
+.sec-chip.primary {
+  background: var(--clinical-primary-soft);
+  color: var(--clinical-primary);
+  border-color: hsla(204, 88%, 36%, 0.25);
+}
+
+.app-content {
+  padding: 1.75rem;
+  max-width: 1380px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.page-header-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  margin-top: 0.25rem;
+}
+
+/* ===========================================================================
+   KLİNİK YÜZEY KARTLARI, TABLOLAR VE FORMLAR
+   =========================================================================== */
+.surface-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.35rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.15rem;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+}
+
+.metric-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.1rem 1.2rem;
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.metric-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-foot {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Butonlar ve Kontroller */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.58rem 1rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--clinical-primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background-color: var(--clinical-primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-surface-subtle);
+}
+
+.btn-danger {
+  background-color: var(--status-critical);
+  color: #fff;
+}
+
+.btn-sm {
+  padding: 0.36rem 0.72rem;
+  font-size: 0.78rem;
+}
+
+/* Form Elemanları */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+  margin-bottom: 0.9rem;
+}
+
+.form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 0.58rem 0.78rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--clinical-primary);
+  box-shadow: 0 0 0 3px var(--clinical-primary-soft);
+}
+
+/* Klinik Veri Tablosu */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.clinical-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  text-align: left;
+}
+
+.clinical-table th {
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.clinical-table td {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+
+.clinical-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Görüntüleme / Admin Yönetim Modu Sekme Seçici */
+.mode-switcher {
+  display: inline-flex;
+  background: var(--bg-surface-subtle);
+  padding: 0.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  gap: 0.25rem;
+}
+
+.mode-btn {
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.mode-btn.active {
+  background: var(--bg-surface);
+  color: var(--clinical-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ===========================================================================
+   KAPALI DEVRE GİRİŞ / 2FA / ONAY BEKLEME EKRANI (Auth Layout)
+   =========================================================================== */
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, hsl(212, 38%, 96%) 0%, hsl(210, 33%, 98%) 100%);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+}
+
+/* ===========================================================================
+   15 DAKİKA HAREKETSİZLİK KİLİT EKRANI VE MODAL SİSTEMİ
+   =========================================================================== */
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 23, 38, 0.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  z-index: 100;
+}
+
+.modal-dialog {
+  width: 100%;
+  max-width: 580px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  padding: 1.6rem;
+  box-shadow: var(--shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* ===========================================================================
+   RESPONSIVE KURALLAR (Mobil Nöbet / Poliklinik Uyumu)
+   =========================================================================== */
+@media (max-width: 960px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .app-sidebar {
+    position: static;
+    height: auto;
+  }
+
+  .app-content {
+    padding: 1.15rem;
+  }
+}
+
+/* ===========================================================================
+   KLİNİK PERSONA İYİLEŞTİRMELERİ (Eğitim Sorumlusu & Pediatri Asistanı UX)
+   =========================================================================== */
+.clinical-table tbody tr {
+  transition: background var(--transition-fast);
+}
+
+.clinical-table tbody tr:hover {
+  background: var(--bg-surface-subtle);
+}
+
+.clinical-alert {
+  padding: 0.9rem 1.05rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid transparent;
+}
+
+.clinical-alert.ok {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  border-color: hsla(152, 68%, 32%, 0.22);
+}
+
+.clinical-alert.warn {
+  background: var(--status-warn-bg);
+  color: var(--status-warn);
+  border-color: hsla(36, 92%, 38%, 0.25);
+}
+
+.clinical-alert.err {
+  background: var(--status-critical-bg);
+  color: var(--status-critical);
+  border-color: hsla(354, 78%, 46%, 0.25);
+}
+
+.question-nav-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.question-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  height: 2.1rem;
+  padding: 0 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.question-nav-pill.answered {
+  background: var(--clinical-primary-soft);
+  color: var(--clinical-primary);
+  border-color: var(--clinical-primary);
+}
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-surface-subtle);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--clinical-primary);
+  transition: width 220ms ease;
+}
+
