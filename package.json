@@ -1,0 +1,30 @@
+{
+  "name": "pediatrist",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pediatri Eğitim Kliniği Yönetim ve Eğitim Platformu (Firebase Zero-Trust Architecture)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node --test tests/",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage",
+    "deploy:functions": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase": "^11.3.0",
+    "firebase-admin": "^13.1.0",
+    "lucide-react": "^0.475.0",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.0",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}

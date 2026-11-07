@@ -1,0 +1,32 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isActiveMember() {
+      return request.auth != null
+             && request.auth.token.email_verified == true
+             && request.auth.token.status == 'active';
+    }
+
+    function isAdmin() {
+      return isActiveMember() && request.auth.token.role == 'admin';
+    }
+
+    // Modül 1: Eğitim Materyalleri (PDF, Video, Sunum)
+    match /materials/{allPaths=**} {
+      allow read: if isActiveMember();
+      allow write: if isAdmin()
+                   && request.resource.size < 150 * 1024 * 1024
+                   && (request.resource.contentType.matches('application/pdf')
+                       || request.resource.contentType.matches('video/.*')
+                       || request.resource.contentType.matches('image/.*'));
+    }
+
+    // Modül 4: Online Quiz Klinik, Radyoloji ve Laboratuvar Görselleri
+    match /quiz_media/{allPaths=**} {
+      allow read: if isActiveMember();
+      allow write: if isAdmin()
+                   && request.resource.size < 15 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
