@@ -43,13 +43,22 @@ export function getOrCreateClientDeviceSecret(): string {
  * Firebase yapılandırılmışsa ilgili Cloud Function'ı çağırır; çevrimdışı/lokal önizleme
  * ortamında ise hata fırlatmadan yerel geri dönüş (`fallbackFn`) değerini çalıştırır.
  */
-export async function invokeWithFallback<Res>(
-  thunkOrFn: (() => Promise<Res>) | ((data: unknown) => Promise<Res>),
-  fallbackOrData: (() => Res | Promise<Res>) | unknown,
-  maybeFallback?: () => Res | Promise<Res>
+export async function invokeWithFallback<Res, FallbackRes extends Res = Res>(
+  thunk: () => Promise<Res>,
+  fallbackFn: () => FallbackRes | Promise<FallbackRes>
+): Promise<{ data: Res; syncedWithCloud: boolean }>;
+export async function invokeWithFallback<Req, Res, FallbackRes extends Res = Res>(
+  fn: (data: Req) => Promise<Res>,
+  data: Req,
+  fallbackFn: () => FallbackRes | Promise<FallbackRes>
+): Promise<{ data: Res; syncedWithCloud: boolean }>;
+export async function invokeWithFallback<Req = never, Res = unknown, FallbackRes extends Res = Res>(
+  thunkOrFn: (() => Promise<Res>) | ((data: Req) => Promise<Res>),
+  fallbackOrData: (() => FallbackRes | Promise<FallbackRes>) | Req,
+  maybeFallback?: () => FallbackRes | Promise<FallbackRes>
 ): Promise<{ data: Res; syncedWithCloud: boolean }> {
   const isTwoArg = typeof maybeFallback === "undefined" && typeof fallbackOrData === "function";
-  const fallbackFn = (isTwoArg ? fallbackOrData : maybeFallback) as () => Res | Promise<Res>;
+  const fallbackFn = (isTwoArg ? fallbackOrData : maybeFallback) as () => FallbackRes | Promise<FallbackRes>;
 
   if (!isFirebaseConfigured()) {
     return { data: await fallbackFn(), syncedWithCloud: false };
@@ -57,7 +66,7 @@ export async function invokeWithFallback<Res>(
   try {
     const res = isTwoArg
       ? await (thunkOrFn as () => Promise<Res>)()
-      : await (thunkOrFn as (d: unknown) => Promise<Res>)(fallbackOrData);
+      : await (thunkOrFn as (d: Req) => Promise<Res>)(fallbackOrData as Req);
     return { data: res, syncedWithCloud: true };
   } catch {
     return { data: await fallbackFn(), syncedWithCloud: false };
@@ -108,7 +117,15 @@ export const verifyRealTimeAttendance = callable<
     deviceId?: string;
     webAuthnVerified: boolean;
   },
-  { ok?: boolean; verified?: boolean; alreadyRecorded?: boolean; status?: string; verifiedAt?: string }
+  {
+    ok?: boolean;
+    verified?: boolean;
+    alreadyRecorded?: boolean;
+    status?: string;
+    verifiedAt?: string;
+    fullName?: string;
+    residencyYear?: number;
+  }
 >("verifyRealTimeAttendance");
 
 export const markAttendanceExcused = callable<

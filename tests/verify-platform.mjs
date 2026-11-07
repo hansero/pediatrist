@@ -488,3 +488,71 @@ test("5. Persona UI/UX (Eğitim Sorumlusu Prof. Dr. & Pediatri Asistanı) ve Fir
     "Admin sayfası Firebase updateMemberAccess callable fonksiyonuna bağlı olmalı"
   );
 });
+
+// ============================================================================
+// TEST 6: NEXT.JS 15 & TYPESCRIPT DERLEME BÜTÜNLÜĞÜ DENETİMİ
+// ============================================================================
+test("6. Next.js 15 App Router & TypeScript Sıkı Tip Bütünlüğü Denetimi", () => {
+  const srcFiles = getAllFiles(path.join(ROOT, "src")).filter(
+    (f) => f.endsWith(".ts") || f.endsWith(".tsx")
+  );
+
+  for (const file of srcFiles) {
+    const content = fs.readFileSync(file, "utf8");
+
+    // 6.1 JSX içinde geçersiz HTML öznitelikleri bulunmamalı
+    if (file.endsWith(".tsx")) {
+      assert.equal(
+        /\sclass=/.test(content),
+        false,
+        `JSX HATASI: ${file} içinde 'class=' yerine 'className=' kullanılmalı`
+      );
+      assert.equal(
+        /\sfor=/.test(content),
+        false,
+        `JSX HATASI: ${file} içinde 'for=' yerine 'htmlFor=' kullanılmalı`
+      );
+    }
+
+    // 6.2 Tüm '@/...' içe aktarımları gerçek dosyalara çözümlenmeli
+    const importMatches = content.matchAll(/from\s+["']@\/([^"']+)["']/g);
+    for (const m of importMatches) {
+      const rel = m[1];
+      const candidates = [
+        path.join(ROOT, "src", rel),
+        path.join(ROOT, "src", `${rel}.ts`),
+        path.join(ROOT, "src", `${rel}.tsx`),
+        path.join(ROOT, "src", rel, "index.ts"),
+        path.join(ROOT, "src", rel, "index.tsx"),
+      ];
+      assert.ok(
+        candidates.some((c) => fs.existsSync(c)),
+        `ÇÖZÜMLENEMEYEN IMPORT: ${file} içindeki '@/${rel}' bulunamadı`
+      );
+    }
+  }
+
+  // 6.3 TrainingMaterialItem zorunlu alan kontrolü (fileType, storagePath, uploadedBy)
+  const materialsPage = fs.readFileSync(
+    path.join(ROOT, "src/app/(protected)/materials/page.tsx"),
+    "utf8"
+  );
+  assert.ok(materialsPage.includes("fileType:"), "INITIAL_MATERIALS fileType alanı içermeli");
+  assert.ok(materialsPage.includes("storagePath:"), "INITIAL_MATERIALS storagePath alanı içermeli");
+  assert.ok(materialsPage.includes("uploadedBy:"), "INITIAL_MATERIALS uploadedBy alanı içermeli");
+
+  // 6.4 invokeWithFallback generic overload ve 2-arg thunk uyumluluğu
+  const callables = fs.readFileSync(path.join(ROOT, "src/lib/firebase/callables.ts"), "utf8");
+  assert.ok(
+    callables.includes("FallbackRes extends Res = Res"),
+    "invokeWithFallback sıkı TypeScript tip çıkarımı için FallbackRes overload imzasına sahip olmalı"
+  );
+
+  // 6.5 tsconfig.json Next.js eklentisi kontrolü
+  const tsconfig = JSON.parse(fs.readFileSync(path.join(ROOT, "tsconfig.json"), "utf8"));
+  assert.ok(
+    tsconfig.include.includes(".next/types/**/*.ts"),
+    "tsconfig.json '.next/types/**/*.ts' içermeli"
+  );
+});
+

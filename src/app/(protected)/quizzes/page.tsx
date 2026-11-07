@@ -236,23 +236,21 @@ export default function OnlineQuizzesPage() {
               activeQuestions={activeQuestions}
               archivedQuestions={archivedQuestions}
               onPublishQuizFromCsv={async (newTitle, durationMins, newQuestions) => {
-                await invokeWithFallback(
-                  saveQuizDraft,
-                  {
-                    title: newTitle,
-                    durationMinutes: durationMins,
-                    closesAtMs: null,
-                    sourceFileName: "klinik_vaka_sinavi.csv",
-                    questions: newQuestions,
-                  },
+                const { data } = await invokeWithFallback(
+                  () =>
+                    saveQuizDraft({
+                      title: newTitle,
+                      durationMinutes: durationMins,
+                      closesAtMs: null,
+                      sourceFileName: "klinik_vaka_sinavi.csv",
+                      questions: newQuestions,
+                    }),
                   async () => ({ quizId: `quiz_${Date.now()}`, questionCount: newQuestions.length })
-                ).then(async ({ data }) => {
-                  await invokeWithFallback(
-                    publishQuiz,
-                    { quizId: data.quizId, durationMinutes: durationMins },
-                    () => ({ published: true, archivedPreviousCount: 1 })
-                  );
-                });
+                );
+                await invokeWithFallback(
+                  () => publishQuiz({ quizId: data.quizId, durationMinutes: durationMins }),
+                  () => ({ published: true, archivedPreviousCount: 1 })
+                );
 
                 const nowDate = new Date().toISOString().split("T")[0];
                 const movedToArchive = activeQuestions.map((q) => ({
@@ -277,8 +275,7 @@ export default function OnlineQuizzesPage() {
           onSubmitExam={async (responses, tabSwitchCount) => {
             const fallbackGraded = evaluateClinicalQuizAttempt(activeQuestions, responses);
             const { data: graded } = await invokeWithFallback(
-              submitQuizAttempt,
-              { quizId: "quiz_active_current", responses, tabSwitchCount },
+              () => submitQuizAttempt({ quizId: "quiz_active_current", responses, tabSwitchCount }),
               () => ({ ...fallbackGraded, lateSubmission: false })
             );
             const newAttempt: DoctorQuizAttemptLog = {
@@ -315,8 +312,7 @@ export default function OnlineQuizzesPage() {
           activeQuizDurationMinutes={activeQuizDurationMinutes}
           onStartActiveQuiz={async () => {
             await invokeWithFallback(
-              startQuizAttempt,
-              { quizId: "quiz_active_current" },
+              () => startQuizAttempt({ quizId: "quiz_active_current" }),
               () => ({ deadlineMs: Date.now() + activeQuizDurationMinutes * 60_000, resumed: false })
             );
             setUserStage("exam");

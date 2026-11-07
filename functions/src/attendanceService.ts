@@ -157,12 +157,24 @@ export const getProjectorCode = onCall({ enforceAppCheck: true, region: REGION }
 /** Hekim: 15 sn'lik kodu ve kişisel cihaz bağını doğrular, katılım kaydını yazar. */
 export const verifyRealTimeAttendance = onCall({ enforceAppCheck: true, region: REGION }, async (request) => {
   const auth = assertActiveMember(request);
-  const { sessionId, dynamicToken, deviceId, webAuthnVerified } = (request.data ?? {}) as {
+  const {
+    sessionId,
+    dynamicToken: rawToken,
+    dynamicCode,
+    deviceId: rawDeviceId,
+    clientDeviceSecret,
+    webAuthnVerified,
+  } = (request.data ?? {}) as {
     sessionId?: string;
     dynamicToken?: string;
+    dynamicCode?: string;
     deviceId?: string;
+    clientDeviceSecret?: string;
     webAuthnVerified?: boolean;
   };
+
+  const dynamicToken = rawToken || dynamicCode;
+  const deviceId = rawDeviceId || clientDeviceSecret;
 
   if (!sessionId || !dynamicToken || !deviceId) {
     throw new HttpsError("invalid-argument", "Oturum, dinamik kod ve kişisel cihaz kimliği zorunludur.");
