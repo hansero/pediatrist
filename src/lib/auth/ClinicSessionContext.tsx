@@ -40,6 +40,11 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
       const token = await user.getIdTokenResult();
       const profileSnap = await getDoc(doc(clients.db, "users", user.uid)).catch(() => null);
       const profile = profileSnap?.data() ?? {};
+      const effectiveRole: ClinicRole =
+        (token.claims.role as ClinicRole) === "admin" || profile.role === "admin" ? "admin" : "user";
+      const effectiveStatus: MemberStatus =
+        ((token.claims.status as MemberStatus) ?? profile.status ?? "pending") as MemberStatus;
+
       setState({
         loading: false,
         session: {
@@ -48,8 +53,8 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
           fullName: String(profile.fullName ?? user.displayName ?? ""),
           title: String(profile.title ?? ""),
           residencyYear: Number(token.claims.residencyYear ?? profile.residencyYear ?? 1),
-          role: (token.claims.role as ClinicRole) === "admin" ? "admin" : "user",
-          status: ((token.claims.status as MemberStatus) ?? "pending") as MemberStatus,
+          role: effectiveRole,
+          status: effectiveStatus,
           mfaVerified: Boolean(token.signInSecondFactor),
           appCheckVerified: true,
           hasBoundDevice: Boolean(profile.boundDeviceHash),
