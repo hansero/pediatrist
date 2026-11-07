@@ -16,7 +16,10 @@ const INITIAL_MATERIALS: TrainingMaterialItem[] = [
     category: "Çocuk Acil & Yoğun Bakım",
     targetYears: [1, 2, 3, 4],
     isMandatory: true,
+    fileType: "pdf",
     allowDownload: false,
+    storagePath: "materials/cocuk_acil/mat_pals_sepsis_2026.pdf",
+    uploadedBy: "Prof. Dr. Selim Kaya",
     description:
       "Çocuk acil serviste septik şok tanısı, 10–20 mL/kg dengeli kristalloid bolus ilkeleri, sıvıya dirençli şokta adrenalin/noradrenalin infüzyonu.",
     createdAt: "2026-11-01",
@@ -41,7 +44,10 @@ const INITIAL_MATERIALS: TrainingMaterialItem[] = [
     category: "Neonatoloji (Yenidoğan)",
     targetYears: [1, 2],
     isMandatory: true,
+    fileType: "pdf",
     allowDownload: false,
+    storagePath: "materials/neonatoloji/mat_nrp_preterm_2026.pdf",
+    uploadedBy: "Doç. Dr. Ayşe Aksoy",
     description:
       "Polietilen örtü ile termoregülasyon, T-parçalı resüsitatör ile PEEP/CPAP uygulaması, başlangıç FiO2 titrasyonu ve erken sürfaktan endikasyonları.",
     createdAt: "2026-11-03",
@@ -57,7 +63,10 @@ const INITIAL_MATERIALS: TrainingMaterialItem[] = [
     category: "Çocuk Enfeksiyon",
     targetYears: [2, 3, 4],
     isMandatory: false,
+    fileType: "slides",
     allowDownload: true,
+    storagePath: "materials/cocuk_enfeksiyon/mat_kawasaki_misc_2026.pdf",
+    uploadedBy: "Prof. Dr. Selim Kaya",
     description:
       "5 günden uzun süren ateşte tanı kriterleri, IVIG (2 g/kg) + ASA protokolü ve IVIG dirençli olgularda ikincil tedaviler.",
     createdAt: "2026-11-04",

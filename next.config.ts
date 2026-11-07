@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const securityHeaders = [
   {
@@ -31,6 +32,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  outputFileTracingRoot: path.join(__dirname),
   async headers() {
     return [
       {
@@ -42,3 +44,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+

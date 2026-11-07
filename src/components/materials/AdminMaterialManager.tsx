@@ -160,7 +160,7 @@ export function AdminMaterialManager({
           Klinik Materyal Okunma ve DRM Raporu
         </h2>
         <div className="table-wrap">
-          <table class="clinical-table">
+          <table className="clinical-table">
             <thead>
               <tr>
                 <th>Materyal</th>
