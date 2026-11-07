@@ -5,23 +5,37 @@ service cloud.firestore {
     // ZERO-TRUST YARDIMCI GÜVENLİK FONKSİYONLARI
     // =========================================================================
     function isAuthenticated() {
-      return request.auth != null && request.auth.token.email_verified == true;
+      return request.auth != null;
+    }
+
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDocData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isActiveMember() {
-      return isAuthenticated() && request.auth.token.status == 'active';
+      return isAuthenticated() && (
+        request.auth.token.status == 'active' ||
+        (userDocExists() && userDocData().status == 'active')
+      );
     }
 
     function isAdmin() {
-      return isActiveMember() && request.auth.token.role == 'admin';
+      return isActiveMember() && (
+        request.auth.token.role == 'admin' ||
+        (userDocExists() && userDocData().role == 'admin')
+      );
     }
 
     function isOwner(uid) {
-      return isActiveMember() && request.auth.uid == uid;
+      return isAuthenticated() && request.auth.uid == uid;
     }
 
     // =========================================================================
-    // KULLANICI PROFİLLERİ (/users/{uid})
+    // KULLANICI PROFİLLERİ (/users/{uid} ve /clinic_members/{uid})
     // =========================================================================
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
@@ -32,6 +46,11 @@ service cloud.firestore {
                     && request.resource.data.status == 'pending';
       // Rol, kıdem ve onay durumu güncellemeleri yalnızca Admin veya Cloud Functions tarafından yapılır
       allow update, delete: if isAdmin();
+    }
+
+    match /clinic_members/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
     }
 
     // =========================================================================

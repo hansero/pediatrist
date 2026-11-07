@@ -38,12 +38,24 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
         return;
       }
       const token = await user.getIdTokenResult();
-      const profileSnap = await getDoc(doc(clients.db, "users", user.uid)).catch(() => null);
-      const profile = profileSnap?.data() ?? {};
+      const userSnap = await getDoc(doc(clients.db, "users", user.uid)).catch(() => null);
+      const legacySnap =
+        userSnap && userSnap.exists()
+          ? null
+          : await getDoc(doc(clients.db, "clinic_members", user.uid)).catch(() => null);
+      const profile = userSnap?.data() ?? legacySnap?.data() ?? {};
+
       const effectiveRole: ClinicRole =
-        (token.claims.role as ClinicRole) === "admin" || profile.role === "admin" ? "admin" : "user";
+        profile.role === "admin" || (token.claims.role as ClinicRole) === "admin"
+          ? "admin"
+          : "user";
+
       const effectiveStatus: MemberStatus =
-        ((token.claims.status as MemberStatus) ?? profile.status ?? "pending") as MemberStatus;
+        profile.status === "active" || (token.claims.status as MemberStatus) === "active"
+          ? "active"
+          : profile.status === "suspended" || (token.claims.status as MemberStatus) === "suspended"
+          ? "suspended"
+          : "pending";
 
       setState({
         loading: false,
@@ -52,7 +64,7 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
           email: user.email ?? "",
           fullName: String(profile.fullName ?? user.displayName ?? ""),
           title: String(profile.title ?? ""),
-          residencyYear: Number(token.claims.residencyYear ?? profile.residencyYear ?? 1),
+          residencyYear: Number(profile.residencyYear ?? token.claims.residencyYear ?? 1),
           role: effectiveRole,
           status: effectiveStatus,
           mfaVerified: Boolean(token.signInSecondFactor),

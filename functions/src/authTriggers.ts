@@ -1,35 +1,54 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { writeAuditLog } from "./auditLogger";
 
 /**
- * Yeni kayıt olan hekim `/users/{uid}` dokümanını oluşturduğunda tetiklenir:
- * - Varsayılan Custom Claims (`role: "user"`, `status: "pending"`) atanır.
- * - Değiştirilemez `audit_logs` koleksiyonuna yeni üyelik başvurusu kaydedilir.
+ * `/users/{uid}` dokümanı oluşturulduğunda veya Firebase Console üzerinden güncellendiğinde tetiklenir:
+ * - Dokümandaki `role`, `status` ve `residencyYear` değerlerini Firebase Auth Custom Claims'e otomatik senkronize eder.
+ * - Böylece konsoldan yapılan ilk Admin ataması da hiçbir terminal komutuna gerek kalmadan anında Custom Claims'e işlenir.
  */
-export const onClinicMemberCreated = onDocumentCreated(
+export const onClinicMemberCreated = onDocumentWritten(
   { document: "users/{uid}", region: "europe-west1" },
   async (event) => {
     const uid = event.params.uid;
-    const data = event.data?.data() || {};
-    const residencyYear = Number(data.residencyYear ?? 1);
+    const afterData = event.data?.after.data();
+    if (!afterData) return;
+
+    const beforeData = event.data?.before.data();
+    const role = afterData.role === "admin" ? "admin" : "user";
+    const status =
+      afterData.status === "active" || afterData.status === "suspended"
+        ? afterData.status
+        : "pending";
+    const residencyYear = Number(afterData.residencyYear ?? 1);
+
+    if (
+      beforeData &&
+      beforeData.role === role &&
+      beforeData.status === status &&
+      Number(beforeData.residencyYear ?? 1) === residencyYear
+    ) {
+      return;
+    }
 
     await admin.auth().setCustomUserClaims(uid, {
-      role: "user",
-      status: "pending",
+      role,
+      status,
       residencyYear,
     });
 
-    await writeAuditLog({
-      actorUid: uid,
-      actorEmail: String(data.email ?? "unknown"),
-      action: "NEW_MEMBER_REGISTERED_WITH_PENDING_STATUS",
-      resourceType: "auth",
-      resourceId: uid,
-      severity: "INFO",
-      metadata: { residencyYear },
-    });
+    if (!beforeData) {
+      await writeAuditLog({
+        actorUid: uid,
+        actorEmail: String(afterData.email ?? "unknown"),
+        action: "NEW_MEMBER_REGISTERED_WITH_PENDING_STATUS",
+        resourceType: "auth",
+        resourceId: uid,
+        severity: "INFO",
+        metadata: { residencyYear, role, status },
+      });
+    }
   }
 );
 
@@ -41,7 +60,17 @@ export const onClinicMemberCreated = onDocumentCreated(
 export const updateMemberAccess = onCall(
   { enforceAppCheck: true, region: "europe-west1" },
   async (request) => {
-    if (!request.auth || request.auth.token.role !== "admin" || request.auth.token.status !== "active") {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Oturum açmanız gerekiyor.");
+    }
+    let isCallerAdmin =
+      request.auth.token.role === "admin" && request.auth.token.status === "active";
+    if (!isCallerAdmin) {
+      const callerSnap = await admin.firestore().collection("users").doc(request.auth.uid).get();
+      const callerData = callerSnap.data() || {};
+      isCallerAdmin = callerData.role === "admin" && callerData.status === "active";
+    }
+    if (!isCallerAdmin) {
       throw new HttpsError("permission-denied", "Bu işlem yalnızca aktif Eğitim Sorumlusu (Admin) yetkisiyle yapılabilir.");
     }
 

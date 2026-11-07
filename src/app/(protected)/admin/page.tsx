@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { isFirebaseConfigured } from "@/lib/firebase/client";
+import React, { useEffect, useState } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { initPediatristFirebase, isFirebaseConfigured } from "@/lib/firebase/client";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 import { updateMemberAccess, invokeWithFallback } from "@/lib/firebase/callables";
 
@@ -113,6 +114,35 @@ export default function AdminSecurityPage() {
   ]);
 
   const [selectedSeverity, setSelectedSeverity] = useState<string>("ALL");
+
+  useEffect(() => {
+    const clients = initPediatristFirebase();
+    if (!clients) return;
+    return onSnapshot(
+      collection(clients.db, "users"),
+      (snap) => {
+        if (snap.empty) return;
+        const liveUsers: ClinicMemberRecord[] = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            uid: d.id,
+            fullName: String(data.fullName ?? d.id),
+            title: String(data.title ?? "Asistan Dr."),
+            email: String(data.email ?? ""),
+            residencyYear: Number(data.residencyYear ?? 1),
+            role: data.role === "admin" ? "admin" : "user",
+            status:
+              data.status === "active" || data.status === "suspended"
+                ? data.status
+                : "pending",
+            hasBoundDevice: Boolean(data.boundDeviceHash),
+          };
+        });
+        setMembers(liveUsers);
+      },
+      () => {}
+    );
+  }, []);
 
   if (session && session.role !== "admin") {
     return (
