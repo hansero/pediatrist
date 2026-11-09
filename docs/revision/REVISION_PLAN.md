@@ -37,7 +37,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F0** | **Zemin: araçlar, emülatör, test iskeleti** | | | |
 | F0.1 | Bağımlılıklar, lockfile'lar, kullanılmayan paketler | S | ✅ | S14, §7 |
 | F0.2 | Lint / typecheck / test script'leri + CI workflow | S | ✅ | §8 |
-| F0.3 | İstemcinin emülatöre bağlanması + App Check debug + `.env` | S | ⬜ | §7 |
+| F0.3 | İstemcinin emülatöre bağlanması + App Check debug + `.env` | S | ✅ | §7 |
 | F0.4 | Emülatör seed script'i (test verisi YALNIZCA burada) | M | ⬜ | (mock'ların yerine) |
 | F0.5 | Eski sahte testleri kaldır, test iskeletleri + "no-mock" bekçisi | M | ⬜ | §8 |
 | **F1** | **Ortak domain ve API sözleşmeleri** | | | |
@@ -101,10 +101,12 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-09
-- **Son tamamlanan adım:** F0.2 (ESLint flat config, Prettier + biçimlendirme commit'i, script'ler, vitest `unit` projesi + ilk gerçek test, CI workflow).
+- **Son tamamlanan adım:** F0.3 (emülatör bağlantısı, env dosyaları, functions parametreleri, Firebase CLI sarmalayıcısı, geliştirme CSP'si, N1 ve N2 düzeltmeleri). CI run #1 (F0.2) başarılı.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F0.3: `src/lib/firebase/client.ts` emülatör bağlantısı (`NEXT_PUBLIC_USE_EMULATORS`), App Check debug token, modül seviyesinde memoize, `.env.example` güncellemesi (MEASUREMENT_ID kaldır; USE_EMULATORS / REQUIRE_MFA / WEBAUTHN_RP_ID ekle), functions `defineBoolean` parametreleri (`ENFORCE_APP_CHECK`, `REQUIRE_MFA`, `REQUIRE_EMAIL_VERIFIED`) + `functions/.env.local` (gitignore'da) ve `npm run emulators` ile emülatörlerin ilk kez ayağa kaldırılması (`--project demo-pediatrist`).
-- **Engeller / notlar:** Emülatör jar indirmesi ilk kez F0.3'te denenecek; engellenirse ⛔ + ağ izni. CI workflow'unun GitHub'da ilk çalışması kontrol edilmeli (push token'ının `workflow` yetkisi yoksa push reddedilebilir).
+- **Sıradaki iş:** F0.4: `scripts/seed-emulator.ts` (`tsx`, Admin SDK; `FIRESTORE_EMULATOR_HOST` / `FIREBASE_AUTH_EMULATOR_HOST` yoksa reddet; proje kimliği `demo-` önekli değilse reddet), `scripts/fixtures/` (küçük gerçek PDF ve PNG), `"seed"` script'i. Klinik örnek içerik (Kawasaki/krup vb.) buraya taşınır ama **uygulama kodundan silinmesi ilgili modül fazlarında** yapılır (F4–F7).
+- **F0.4 için açık soru:** Sınavların seed'de callable'lar üzerinden oluşturulması planlandı, fakat callable'lar şu an `enforceAppCheck: true` ve Admin SDK'dan doğrudan çağrılamaz. Seçenekler: (a) seed, kimliği doğrulanmış istemci SDK'sı + Functions emülatörü ile callable çağırır (emülatörün App Check'i nasıl ele aldığı denenmeli); (b) quiz seed'i F1.3'e (guards) ertelenir; (c) seed yalnızca Admin SDK ile kullanıcı/davet/materyal yazar, sınav seed'i F5'te eklenir. Önerilen: önce (a)'yı dene, olmazsa (c).
+- **Emülatörleri çalıştırma:** `npm run emulators` (arka planda), ardından `npm run dev` (`.env.development` otomatik). Sarmalayıcı jar'ları önbellekten kullanır.
+- **Engeller / notlar:** N3 ve N4 açık (bkz. §7).
 
 ---
 
@@ -196,6 +198,15 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `.env.example`'a `NEXT_PUBLIC_USE_EMULATORS`, `NEXT_PUBLIC_REQUIRE_MFA` ve `NEXT_PUBLIC_WEBAUTHN_RP_ID` eklenir. `MEASUREMENT_ID` kaldırılır (S15).
   - Functions parametreleri (`defineBoolean`): `ENFORCE_APP_CHECK`, `REQUIRE_MFA`, `REQUIRE_EMAIL_VERIFIED`. Emülatör değerleri `functions/.env.local` içinde verilir (gitignore'da).
 - **Doğrulama:** `npm run emulators` ayağa kalkar; `npm run dev` ile emülatöre bağlanılır (Auth emülatör UI'da kullanıcı oluşur). **Risk:** jar indirme engellenirse ⛔ işaretle ve ağ izni iste.
+- **✅ Uygulanan (2026-11-09) — plandan sapmalar:**
+  - **Emülatör env dosyaları git'te:** `.env.development` (`next dev` otomatik yükler; `demo-pediatrist`, gizli değer yok) ve `functions/.env.demo-pediatrist` (CLI yalnızca bu proje kimliğinde yükler). Plandaki `functions/.env.local` yerine bunlar seçildi; böylece CI ve yeni oturumlar ek ayar olmadan çalışır. `.gitignore`'a istisna eklendi. Gerçek proje için `.env.example` → `.env.local`.
+  - `client.ts`: modül seviyesinde tekil başlatma; `NEXT_PUBLIC_USE_EMULATORS=true` iken `demo-` öneki yoksa hata fırlatır; portlar tek kaynaktan, `firebase.json`'dan okunur; App Check emülatörde başlatılmaz; `NEXT_PUBLIC_APPCHECK_DEBUG_TOKEN` yalnızca localhost→staging için. `MEASUREMENT_ID` kaldırıldı (S15).
+  - `functions/src/config.ts`: `ENFORCE_APP_CHECK`, `REQUIRE_MFA`, `REQUIRE_EMAIL_VERIFIED` (`defineBoolean`, varsayılan `true`). **`onCall({enforceAppCheck})` yalnızca sabit boolean kabul ettiği için** App Check zorunluluğu **F1.3'te `guards.ts` içinde** `ENFORCE_APP_CHECK.value()` ile uygulanacak. Callable'lardaki `enforceAppCheck: true` o zamana kadar yerinde kalıyor. Parametreler henüz hiçbir yerde import edilmiyor; F1.3'te bağlanacak.
+  - `firebase.json`: bütün emülatörler `127.0.0.1`'e bağlandı (ortamda IPv6 yok). Eventarc/tasks dahil.
+  - **`scripts/firebase.mjs` sarmalayıcısı:** (a) `hosting.source` için `webframeworks` deneysel özelliğini her çağrıda açar (Windows uyumlu); (b) proxy arkasındaki ortamlarda `firebase-tools` `NO_PROXY`'yi yok saydığı için (`lib/apiv2.js`) jar'ları proxy açıkken indirir, emülatörleri proxy değişkenleri temizlenmiş olarak çalıştırır. `emulators`, `deploy:rules`, `deploy:functions` script'leri bunu kullanır. `emulators` artık `--only auth,firestore,storage,functions` (hosting emülatörü Next'i derlemesin diye).
+  - **CSP'nin geliştirme/emülatör kısmı F2.5'ten öne alındı:** `next dev` için `'unsafe-eval'`, emülatör modunda `127.0.0.1:*` / `localhost:*` (connect, img). **Üretim CSP'si değişmedi** (`next start` başlığıyla doğrulandı). F2.5 üretim düzeltmeleri aynen geçerli.
+  - **Doğrulandı (gerçek tarayıcı, Playwright):** `/register` → Auth emülatöründe kullanıcı → Firestore `users/{uid}` (pending) → `onClinicMemberCreated` tetikleyicisi → custom claims `{role:user,status:pending}` → `audit_logs` kaydı (sunucu zaman damgasıyla). Konsolda hata yok. Ayrıca lint, format, typecheck, unit 8/8, prod build yeşil.
+  - Yeni bulgular N1–N3 (bkz. §7).
 
 #### F0.4 Emülatör seed script'i (M)
 - **Dosyalar:** `scripts/seed-emulator.ts`, `scripts/fixtures/*.json`, `scripts/fixtures/quiz_media/*.png`, `scripts/fixtures/materials/*.pdf`
@@ -754,3 +765,17 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 | Performans / mimari | F0.3, F2.5, F8.2 |
 | Test / CI | F0.2, F0.5, her fazın test adımı, F10.1 |
 | KVKK | F3.5, F9.1 |
+
+---
+
+## 7. Revizyon Sırasında Bulunan Yeni Bulgular (N-kayıtları)
+
+Denetimde (AUDIT.md) olmayan, uygulama çalıştırılınca ortaya çıkan sorunlar. Her biri ya bulunduğu adımda düzeltilir ya da ilgili adıma bağlanır.
+
+| ID | Bulgu | Etki | Durum |
+|---|---|---|---|
+| N1 | `next.config.ts` CSP'si `'unsafe-eval'`'e izin vermediği için **uygulama `next dev` altında hiç hydrate olmuyordu**: hiçbir buton/form çalışmıyordu. | Uygulama yerelde hiç çalıştırılıp test edilmemiş. | ✅ F0.3'te düzeltildi (yalnızca geliştirme/emülatör ekleri) |
+| N2 | Cloud Functions, `firebase-admin` namespace API'sini (`admin.firestore.FieldValue/Timestamp`) kullanıyordu. Functions emülatöründe bunlar `undefined` geliyor, bu yüzden **her yazma işlemi `TypeError` ile çöküyordu** (denetim kaydı, sayaçlar, zaman damgaları). Düz Node'da çalışıyor; sorun emülatörün admin SDK sarmalayıcısında. | Bütün backend emülatörde test edilemezdi. | ✅ F0.3'te düzeltildi: modüler import'lar (`firebase-admin/app`, `/auth`, `/firestore`; firebase-admin v12+ için önerilen API), davranış değişikliği yok |
+| N3 | Formlar hydration tamamlanmadan gönderilirse tarayıcının varsayılan GET gönderimiyle sayfa yenileniyor (`/register?`). Input'larda `name` olmadığı için veri sızmıyor, ama kullanıcı "hiçbir şey olmadı" deneyimi yaşıyor. | UX; yavaş bağlantıda kafa karıştırıcı. | ⬜ F3.1 `Button`/form primitifleri: gönder butonu hydration'a kadar `disabled`, form `method="post"` + `action` yok + `noValidate` kararı; F3.4/F3.5'te uygulanır |
+| N4 | Storage emülatörü başlarken "Unexpected rules runtime error" uyarısı veriyor; içerik yalnızca ortamın `JAVA_TOOL_OPTIONS` satırı. Büyük olasılıkla zararsız. | Belirsiz | ⬜ F2.2 Storage kural testleriyle doğrulanacak |
+

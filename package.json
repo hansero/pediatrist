@@ -13,9 +13,9 @@
     "typecheck": "tsc --noEmit && npm --prefix functions run typecheck",
     "test": "npm run test:unit",
     "test:unit": "vitest run --project unit",
-    "emulators": "firebase emulators:start --project demo-pediatrist",
-    "deploy:rules": "firebase deploy --only firestore:rules,storage",
-    "deploy:functions": "firebase deploy --only functions"
+    "emulators": "node scripts/firebase.mjs emulators:start --only auth,firestore,storage,functions --project demo-pediatrist",
+    "deploy:rules": "node scripts/firebase.mjs deploy --only firestore:rules,firestore:indexes,storage",
+    "deploy:functions": "node scripts/firebase.mjs deploy --only functions"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^14.0.0",

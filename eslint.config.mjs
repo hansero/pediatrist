@@ -11,6 +11,7 @@ const config = [
       "functions/lib/**",
       "functions/node_modules/**",
       "next-env.d.ts",
+      ".firebase/**",
       "test-results/**",
       "playwright-report/**",
       "coverage/**",

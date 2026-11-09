@@ -10,6 +10,9 @@ ui-debug.log
 .env
 .env.*
 !.env.example
+# Yalnızca emülatör değerleri, gizli değer yok (D18)
+!.env.development
+!functions/.env.demo-pediatrist
 .firebaserc
 service-account*.json
 *-firebase-adminsdk-*.json

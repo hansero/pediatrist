@@ -10,3 +10,4 @@ functions/package-lock.json
 next-env.d.ts
 # Dokümanlar elle biçimlendirilir (tablolar, Türkçe metin)
 *.md
+.firebase/
