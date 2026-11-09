@@ -36,7 +36,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 |---|---|---|---|---|
 | **F0** | **Zemin: araçlar, emülatör, test iskeleti** | | | |
 | F0.1 | Bağımlılıklar, lockfile'lar, kullanılmayan paketler | S | ✅ | S14, §7 |
-| F0.2 | Lint / typecheck / test script'leri + CI workflow | S | ⬜ | §8 |
+| F0.2 | Lint / typecheck / test script'leri + CI workflow | S | ✅ | §8 |
 | F0.3 | İstemcinin emülatöre bağlanması + App Check debug + `.env` | S | ⬜ | §7 |
 | F0.4 | Emülatör seed script'i (test verisi YALNIZCA burada) | M | ⬜ | (mock'ların yerine) |
 | F0.5 | Eski sahte testleri kaldır, test iskeletleri + "no-mock" bekçisi | M | ⬜ | §8 |
@@ -101,10 +101,10 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-09
-- **Son tamamlanan adım:** F0.1 (bağımlılıklar, lockfile'lar, audit overrides).
+- **Son tamamlanan adım:** F0.2 (ESLint flat config, Prettier + biçimlendirme commit'i, script'ler, vitest `unit` projesi + ilk gerçek test, CI workflow).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F0.2: `package.json` script'leri (lint, typecheck, test:*, emulators, seed, check:no-mock), ESLint flat config (`eslint.config.mjs`, `next/core-web-vitals` + `jsx-a11y`, FlatCompat ile), `.prettierrc`, `functions` için `typecheck` script'i, `.github/workflows/ci.yml`. Not: Henüz ESLint config yok; `next build` lint adımını atlıyor. Config eklenince mevcut kodda çıkan hatalar ya düzeltilir ya da ilgili faza not edilir.
-- **Engeller / notlar:** Emülatör jar indirmesi henüz denenmedi (F0.3). Java mevcut. Playwright 1.63.0 + `/opt/pw-browsers` Chromium başlatması doğrulandı.
+- **Sıradaki iş:** F0.3: `src/lib/firebase/client.ts` emülatör bağlantısı (`NEXT_PUBLIC_USE_EMULATORS`), App Check debug token, modül seviyesinde memoize, `.env.example` güncellemesi (MEASUREMENT_ID kaldır; USE_EMULATORS / REQUIRE_MFA / WEBAUTHN_RP_ID ekle), functions `defineBoolean` parametreleri (`ENFORCE_APP_CHECK`, `REQUIRE_MFA`, `REQUIRE_EMAIL_VERIFIED`) + `functions/.env.local` (gitignore'da) ve `npm run emulators` ile emülatörlerin ilk kez ayağa kaldırılması (`--project demo-pediatrist`).
+- **Engeller / notlar:** Emülatör jar indirmesi ilk kez F0.3'te denenecek; engellenirse ⛔ + ağ izni. CI workflow'unun GitHub'da ilk çalışması kontrol edilmeli (push token'ının `workflow` yetkisi yoksa push reddedilebilir).
 
 ---
 
@@ -131,6 +131,7 @@ Bu kararlar bütün adımlar için geçerlidir. Değiştirmek için kullanıcı 
 | D15 | **Kabul edilmiş risk:** `uuid <11.1.1` (GHSA-w5hq-g745-h8pq, orta). Firebase-admin/functions zincirinden geliyor. Açık yalnızca v3/v5/v6 fonksiyonları `buf` parametresiyle çağrıldığında oluşuyor; zincir bunları kullanmıyor. Çözümü major geçiş gerektiriyor (firebase-admin 14 + firebase-functions 7). Bu geçiş F10.2 öncesinde yeniden değerlendirilir. | Major yükseltme riski > istismar edilebilirlik | Evet |
 | D16 | Major sürümler bu revizyonda sabit: Next 15, React 19, Firebase JS 11, firebase-admin 13, firebase-functions 6. Yükseltme (Next 16, Firebase 12+) revizyon sonrasında ayrı bir iştir. | Revizyonun kapsamını bağımlılık geçişiyle karıştırmamak | Evet |
 | D17 | Functions testleri `firebase-functions-test` olmadan yazılır: kök vitest + v2 callable'ın `.run()` kancası + emülatör. | `firebase-functions-test` jest'i zorunlu bağımlılık olarak getiriyor | Evet |
+| D18 | Emülatör ve testler `demo-pediatrist` proje kimliğiyle çalışır. `demo-` önekli projeler gerçek bir Firebase projesine bağlanamaz, yani yanlışlıkla prod'a yazma riski yoktur ve emülatörler çevrimdışı çalışabilir. | Güvenli test izolasyonu | Hayır |
 
 ---
 
@@ -177,6 +178,14 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `test:rules`, `test:functions` ve `test:e2e`, `firebase emulators:exec --only auth,firestore,storage,functions "<komut>"` ile sarmalanır.
 - **CI:** Node 22 → `npm ci` (iki paket) → lint → typecheck → unit → `emulators:exec` içinde rules, functions ve e2e → build.
 - **Doğrulama:** `npm run lint && npm run typecheck` (mevcut kodda çıkan lint hataları ya düzeltilir ya da ilgili faza not edilir; kural kapatılmaz).
+- **✅ Uygulanan (2026-11-09) — plandan sapmalar:**
+  - `next lint` Next 15.5'te kullanımdan kaldırıldığı için `lint` = `eslint .` (flat config `eslint.config.mjs`: `next/core-web-vitals` + `next/typescript` + `jsx-a11y` recommended). a11y kurallarının devrede olduğu deneme dosyasıyla doğrulandı. Etiketsiz `<select>` statik analizle yakalanmıyor; F8.1'de axe ile denetlenecek.
+  - **Lint kapısı şimdilik "0 hata".** Mevcut 2 uyarı yeniden yazılacak dosyalarda: `SessionGuard.tsx` `remainingSeconds` (F3.3'te kullanılacak) ve `AdminMaterialManager.tsx` `setFileType` (F6.2'de dosya türü seçimi). **F8.1'de `--max-warnings=0`'a geçilir.**
+  - Prettier (`.prettierrc.json`: 120 kolon, çift tırnak) kod tabanının tamamına **ayrı bir commit'te** uygulandı (`rev(F0.2): format…`, yalnızca biçimlendirme). `*.md` hariç.
+  - Bu adımda eklenen script'ler: `lint`, `format`, `format:check`, `typecheck` (Next + functions), `test` → `test:unit`, `test:unit` (vitest `unit` projesi), `emulators` (`--project demo-pediatrist`, D18). `seed` F0.4'te, `test:rules` / `test:functions` / `test:e2e` / `check:no-mock` ve CI emülatör işleri F0.5'te eklenir (hedef dosyaları o adımlarda oluşuyor).
+  - `vitest.config.mts` (projects: `unit`) + gerçek modülü import eden ilk birim testi `tests/unit/quizParser.test.ts` (8 test).
+  - CI: `.github/workflows/ci.yml` → npm ci (iki paket) → lint → format:check → typecheck → unit → functions build → next build.
+  - **Bulgu:** Eski `npm test` (`node --test tests/`) Node 22'de hiç çalışmıyordu (klasör argümanı desteklenmiyor). Yani repodaki test paketi daha önce hiç koşmamış. Dosya doğrudan çalıştırılınca 6/6 geçiyor; F0.5'te silinecek.
 
 #### F0.3 İstemcinin emülatöre bağlanması (S)
 - **Dosyalar:** `src/lib/firebase/client.ts`, `.env.example`, `firebase.json` (emulators bölümü)
@@ -198,6 +207,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - 1 taslak ve 1 kapanmış sınav (callable'lar üzerinden oluşturulur, böylece sunucu doğrulaması da test edilir).
   - 1 kapanmış yoklama oturumu ve kayıtları.
 - Mevcut klinik örnek içerik (Kawasaki/krup soruları vb.) **buraya taşınır** ve uygulama kodundan silinir.
+- **Script:** `"seed": "tsx scripts/seed-emulator.ts"` (emülatör ortam değişkenleri `demo-pediatrist` için ayarlanmış olmalı).
 - **Doğrulama:** `npm run emulators` + ayrı terminalde `npm run seed` → Emülatör UI'da dokümanlar görünür.
 
 #### F0.5 Test iskeleti ve "no-mock" bekçisi (M)
@@ -207,6 +217,8 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - **No-mock bekçisi:** `src/` ve `functions/src/` içinde şu desenleri arar: `INITIAL_`, `FALLBACK_`, `invokeWithFallback`, `Selim Kaya`, `Elif Demir`, `Burak Şahin`, `Mert Yılmaz`, `Ayşe Aksoy`, `uid_user_`, `uid_admin_`, `att_session_`, `quiz_active_current`, `Math.random(` (attendance), `hmacSlotCode`, `sampleGraded`, `76 / 100`.
   - Mevcut ihlaller `scripts/no-mock-allowlist.json` dosyasına **dosya bazında** yazılır.
   - Her modül fazı kendi dosyalarını listeden çıkarır. F7.5'te liste **boş** olur ve dosya silinir.
+- **Script'ler:** `test:rules`, `test:functions` (`firebase emulators:exec --only auth,firestore,storage --project demo-pediatrist "vitest run --project <ad>"`), `test:e2e` (`… --only auth,firestore,storage,functions … "playwright test"`), `check:no-mock`. vitest.config.mts'e `rules` ve `functions` projeleri eklenir.
+- **CI:** `.github/workflows/ci.yml`'e `actions/setup-java` + emülatör işleri (rules, functions, e2e) eklenir.
 - **Doğrulama:** `npm run test:unit` (en az parser testleri), `npm run check:no-mock` (yalnızca allowlist dışında ihlal varsa kırmızı).
 
 ---
