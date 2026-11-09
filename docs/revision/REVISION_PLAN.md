@@ -38,7 +38,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F0.1 | Bağımlılıklar, lockfile'lar, kullanılmayan paketler | S | ✅ | S14, §7 |
 | F0.2 | Lint / typecheck / test script'leri + CI workflow | S | ✅ | §8 |
 | F0.3 | İstemcinin emülatöre bağlanması + App Check debug + `.env` | S | ✅ | §7 |
-| F0.4 | Emülatör seed script'i (test verisi YALNIZCA burada) | M | ⬜ | (mock'ların yerine) |
+| F0.4 | Emülatör seed script'i (test verisi YALNIZCA burada) | M | ✅ | (mock'ların yerine) |
 | F0.5 | Eski sahte testleri kaldır, test iskeletleri + "no-mock" bekçisi | M | ⬜ | §8 |
 | **F1** | **Ortak domain ve API sözleşmeleri** | | | |
 | F1.1 | `functions/src/shared`: sabitler, tipler, zod şemaları, `@shared` alias | M | ⬜ | Tutarlılık tablosu |
@@ -101,12 +101,18 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-09
-- **Son tamamlanan adım:** F0.3 (emülatör bağlantısı, env dosyaları, functions parametreleri, Firebase CLI sarmalayıcısı, geliştirme CSP'si, N1 ve N2 düzeltmeleri). CI run #1 (F0.2) başarılı.
+- **Son tamamlanan adım:** F0.4 (emülatör seed'i, fixture'lar, CSV fixture'ı; sınav seed'i F5.1'e taşındı). N4 kapandı.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F0.4: `scripts/seed-emulator.ts` (`tsx`, Admin SDK; `FIRESTORE_EMULATOR_HOST` / `FIREBASE_AUTH_EMULATOR_HOST` yoksa reddet; proje kimliği `demo-` önekli değilse reddet), `scripts/fixtures/` (küçük gerçek PDF ve PNG), `"seed"` script'i. Klinik örnek içerik (Kawasaki/krup vb.) buraya taşınır ama **uygulama kodundan silinmesi ilgili modül fazlarında** yapılır (F4–F7).
-- **F0.4 için açık soru:** Sınavların seed'de callable'lar üzerinden oluşturulması planlandı, fakat callable'lar şu an `enforceAppCheck: true` ve Admin SDK'dan doğrudan çağrılamaz. Seçenekler: (a) seed, kimliği doğrulanmış istemci SDK'sı + Functions emülatörü ile callable çağırır (emülatörün App Check'i nasıl ele aldığı denenmeli); (b) quiz seed'i F1.3'e (guards) ertelenir; (c) seed yalnızca Admin SDK ile kullanıcı/davet/materyal yazar, sınav seed'i F5'te eklenir. Önerilen: önce (a)'yı dene, olmazsa (c).
-- **Emülatörleri çalıştırma:** `npm run emulators` (arka planda), ardından `npm run dev` (`.env.development` otomatik). Sarmalayıcı jar'ları önbellekten kullanır.
-- **Engeller / notlar:** N3 ve N4 açık (bkz. §7).
+- **Sıradaki iş:** F0.5:
+  1. `tests/verify-platform.mjs`'i sil.
+  2. `vitest.config.mts`'e `rules` (`tests/rules/**`) ve `functions` (`functions/test/**`) projelerini ekle. İlk birer gerçek testi yaz: rules için örn. "bekleyen kullanıcı `materials` okuyamaz", functions için örn. `onClinicMemberCreated`'in claim yazması veya bir callable'ın `.run()` ile yetkisiz çağrıda reddi.
+  3. `playwright.config.ts`: `e2e/`, Chromium, projeler 1280 ve 390 (iPhone), `webServer: next dev`.
+  4. `e2e/fixtures/auth.ts`: seed hesaplarıyla giriş yardımcısı. İlk smoke testi: seed admin girişi → dashboard H1. Not: sayfa `networkidle` beklenmeden form doldurulursa N3 yüzünden gönderim kaybolur.
+  5. `scripts/check-no-mock.mjs` + `scripts/no-mock-allowlist.json` (dosya bazında; mevcut ihlaller).
+  6. Script'ler: `test:rules`, `test:functions`, `test:e2e`, `check:no-mock`. Hepsi `node scripts/firebase.mjs emulators:exec --only … --project demo-pediatrist "<komut>"` ile; e2e için seed de çalıştırılır.
+  7. CI'a `actions/setup-java` (17+) + emülatör işleri.
+- **Ortamı çalıştırma:** `npm run emulators` (arka planda) → `npm run seed` → `npm run dev`.
+- **Engeller / notlar:** N3 açık (§7). Arka planda kalan süreçleri kapatmak için: `pkill -f "next dev"; pkill -f firebase.js; pkill -f cloud-firestore-emulator`.
 
 ---
 
@@ -220,6 +226,14 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - Mevcut klinik örnek içerik (Kawasaki/krup soruları vb.) **buraya taşınır** ve uygulama kodundan silinir.
 - **Script:** `"seed": "tsx scripts/seed-emulator.ts"` (emülatör ortam değişkenleri `demo-pediatrist` için ayarlanmış olmalı).
 - **Doğrulama:** `npm run emulators` + ayrı terminalde `npm run seed` → Emülatör UI'da dokümanlar görünür.
+- **✅ Uygulanan (2026-11-09) — plandan sapmalar:**
+  - **Sınavlar bu adımda seed edilmedi.** Mevcut callable'lar `enforceAppCheck: true` ve Functions emülatörü App Check token'ı olmayan çağrıyı reddediyor (`firebase-functions/lib/common/providers/https.js`: `tokenStatus.app === "MISSING" && enforceAppCheck` → `unauthenticated`). Sınav şeması da F5.1'de değişeceği için **sınav seed'i F5.1'e taşındı** (callable'lar üzerinden; ayrıntı F5.1'de).
+  - Mevcut sınav sayfasındaki 3 klinik örnek soru `scripts/fixtures/quiz-ornek.csv`'ye taşındı. Üreteç `build-quiz-csv.ts`, gerçek ayrıştırıcıdan 0 hata şartı arıyor. **Uygulama kodundan silinmeleri F5'te.**
+  - Script emülatör adreslerini `firebase.json`'dan **kendisi ayarlıyor** (ortam değişkeni gerekmez). Çalışmayı reddettiği durumlar: emülatöre ulaşılamıyor, ortamda yerel olmayan bir emülatör adresi var, `GCLOUD_PROJECT`/`GOOGLE_CLOUD_PROJECT` `demo-` önekli değil. Üçü de denendi. `GOOGLE_APPLICATION_CREDENTIALS` yok sayılıyor; `METADATA_SERVER_DETECTION=none`.
+  - Varsayılan davranış sıfırla + yükle (deterministik); `--no-reset` ile yalnızca ekler. Sabit uid'ler (`seed-admin`, `seed-asistan-1..4`, `seed-bekleyen`, `seed-askida`).
+  - İçerik: 7 kullanıcı (Auth + claims + `users`, e-postalar doğrulanmış), 1 davet, 2 gerçek PDF + `materials` dokümanı, `quiz_media/steeple_sign.png`, 1 kapanmış yoklama (2 katıldı, 1 mazeretli, 1 katılmadı). Hesaplar ve şifre `scripts/fixtures/README.md`'de.
+  - **Doğrulandı (istemci SDK + gerçek kurallar):** aktif asistan PDF indirir, materyal listeler, yalnızca kendi yoklama logunu okur; başkasının logu `permission-denied`; bekleyen kullanıcı Storage'da `storage/unauthorized`, Firestore'da `permission-denied`; admin 7 kullanıcıyı listeler. Seed admin gerçek arayüzde giriş yaptı (Playwright).
+  - Canlı doğrulanan denetim bulguları: **C9** (asistan `invitations`'ı okuyabiliyor) ve **C4** (2FA adımı `123456` ile geçiyor).
 
 #### F0.5 Test iskeleti ve "no-mock" bekçisi (M)
 - **Dosyalar:**
@@ -526,6 +540,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `getAttemptReport(attemptId)`: sahibi veya admin çağırır. `immediate` ya da sınav `closed` ise doğru cevaplar ve feedback döner.
   - `closeExpiredQuizzes` zamanlayıcısı `closesAt` geçen sınavları kapatır.
   - Kapatılan sınavın devam eden attempt'leri: deadline'a kadar teslim edebilir (sorular attempt'ten geldiği için erişim sürer).
+- **Seed (F0.4'ten devredildi):** `scripts/seed-emulator.ts`'e sınav bölümü eklenir. Admin istemci SDK'sıyla giriş yapılır → `quiz-ornek.csv` ayrıştırılır → `saveQuizDraft` → `publishQuiz` → asistan 1–3 `startQuizAttempt` + `submitQuizAttempt` (farklı doğruluklarla) → `closeQuiz`; ayrıca bir taslak sınav. Böylece analitik ekranları gerçek sunucu puanlamasıyla dolar.
 - **Testler:** soruları attempt başlatmadan alamama (kural testi); deadline + 30 sn tolerans; çift teslim; `after_close` politikasında cevap anahtarının sızmaması; resume'da kaydedilmiş yanıtlar; zamanlayıcı mantığı.
 
 #### F5.2 Admin sınav stüdyosu (L)
@@ -595,7 +610,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 #### F6.3 Görüntüleyici (L)
 - **Dosyalar:** `src/components/materials/viewer/*` (eski `WatermarkedMaterialViewer.tsx`)
 - **Yapılacaklar:**
-  - **PDF:** `pdfjs-dist` ile canvas'a sayfa sayfa çizim (worker `blob:`), üstte filigran katmanı (ad, e-posta, zaman damgası).
+  - **PDF:** `pdfjs-dist` ile canvas'a sayfa sayfa çizim (worker `blob:`), üstte filigran katmanı (ad, e-posta, zaman damgası). Not (F0.4): pdf.js standart fontlar için `standardFontDataUrl` ister. Fontlar `public/` altına kopyalanıp bu parametre verilmeli, aksi halde Helvetica gibi standart fontlu PDF'lerde uyarı ve yanlış render oluşur.
   - **Video:** `<video controls controlsList="nodownload">`.
   - **Görsel:** `<img>`.
   - Hekim listesinde kendi kıdemi varsayılan filtredir.
@@ -777,5 +792,5 @@ Denetimde (AUDIT.md) olmayan, uygulama çalıştırılınca ortaya çıkan sorun
 | N1 | `next.config.ts` CSP'si `'unsafe-eval'`'e izin vermediği için **uygulama `next dev` altında hiç hydrate olmuyordu**: hiçbir buton/form çalışmıyordu. | Uygulama yerelde hiç çalıştırılıp test edilmemiş. | ✅ F0.3'te düzeltildi (yalnızca geliştirme/emülatör ekleri) |
 | N2 | Cloud Functions, `firebase-admin` namespace API'sini (`admin.firestore.FieldValue/Timestamp`) kullanıyordu. Functions emülatöründe bunlar `undefined` geliyor, bu yüzden **her yazma işlemi `TypeError` ile çöküyordu** (denetim kaydı, sayaçlar, zaman damgaları). Düz Node'da çalışıyor; sorun emülatörün admin SDK sarmalayıcısında. | Bütün backend emülatörde test edilemezdi. | ✅ F0.3'te düzeltildi: modüler import'lar (`firebase-admin/app`, `/auth`, `/firestore`; firebase-admin v12+ için önerilen API), davranış değişikliği yok |
 | N3 | Formlar hydration tamamlanmadan gönderilirse tarayıcının varsayılan GET gönderimiyle sayfa yenileniyor (`/register?`). Input'larda `name` olmadığı için veri sızmıyor, ama kullanıcı "hiçbir şey olmadı" deneyimi yaşıyor. | UX; yavaş bağlantıda kafa karıştırıcı. | ⬜ F3.1 `Button`/form primitifleri: gönder butonu hydration'a kadar `disabled`, form `method="post"` + `action` yok + `noValidate` kararı; F3.4/F3.5'te uygulanır |
-| N4 | Storage emülatörü başlarken "Unexpected rules runtime error" uyarısı veriyor; içerik yalnızca ortamın `JAVA_TOOL_OPTIONS` satırı. Büyük olasılıkla zararsız. | Belirsiz | ⬜ F2.2 Storage kural testleriyle doğrulanacak |
+| N4 | Storage emülatörü başlarken "Unexpected rules runtime error" uyarısı veriyor; içerik yalnızca ortamın `JAVA_TOOL_OPTIONS` satırı. | Yok | ✅ F0.4'te doğrulandı: Storage kuralları doğru değerlendiriliyor (aktif kullanıcıya izin, bekleyene `storage/unauthorized`). Uyarı zararsız. |
 
