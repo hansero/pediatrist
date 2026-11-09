@@ -1,5 +1,5 @@
 import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
+import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import * as crypto from "crypto";
 import { writeAuditLog } from "./auditLogger";
 
@@ -62,15 +62,15 @@ export const startLectureSession = onCall({ enforceAppCheck: true, region: REGIO
     throw new HttpsError("invalid-argument", "Ders başlığı, eğitici ve 1–240 dk arası yoklama süresi zorunludur.");
   }
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const live = await db.collection("attendance_sessions").where("status", "==", "live").limit(1).get();
   if (!live.empty) {
     throw new HttpsError("failed-precondition", "Zaten devam eden bir ders yoklaması var. Önce onu bitirin.");
   }
 
   const sessionRef = db.collection("attendance_sessions").doc();
-  const now = admin.firestore.Timestamp.now();
-  const endsAt = admin.firestore.Timestamp.fromMillis(now.toMillis() + duration * 60_000);
+  const now = Timestamp.now();
+  const endsAt = Timestamp.fromMillis(now.toMillis() + duration * 60_000);
 
   const batch = db.batch();
   batch.set(sessionRef, {
@@ -109,11 +109,11 @@ export const endLectureSession = onCall({ enforceAppCheck: true, region: REGION 
   const { sessionId } = (request.data ?? {}) as { sessionId?: string };
   if (!sessionId) throw new HttpsError("invalid-argument", "Oturum kimliği zorunludur.");
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const batch = db.batch();
   batch.update(db.collection("attendance_sessions").doc(sessionId), {
     status: "closed",
-    closedAt: admin.firestore.FieldValue.serverTimestamp(),
+    closedAt: FieldValue.serverTimestamp(),
     closedBy: auth.uid,
   });
   batch.delete(db.collection("attendance_secrets").doc(sessionId));
@@ -135,7 +135,7 @@ export const getProjectorCode = onCall({ enforceAppCheck: true, region: REGION }
   const { sessionId } = (request.data ?? {}) as { sessionId?: string };
   if (!sessionId) throw new HttpsError("invalid-argument", "Oturum kimliği zorunludur.");
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const [sessionSnap, secretSnap] = await Promise.all([
     db.collection("attendance_sessions").doc(sessionId).get(),
     db.collection("attendance_secrets").doc(sessionId).get(),
@@ -150,7 +150,7 @@ export const getProjectorCode = onCall({ enforceAppCheck: true, region: REGION }
   return {
     code: computeSlotCode(String(secretSnap.data()!.hmacSecret), sessionId, slot),
     msUntilRotation: SLOT_MS - (nowMs % SLOT_MS),
-    endsAtMs: (session.endsAt as admin.firestore.Timestamp).toMillis(),
+    endsAtMs: (session.endsAt as Timestamp).toMillis(),
   };
 });
 
@@ -180,7 +180,7 @@ export const verifyRealTimeAttendance = onCall({ enforceAppCheck: true, region: 
     throw new HttpsError("invalid-argument", "Oturum, dinamik kod ve kişisel cihaz kimliği zorunludur.");
   }
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const uid = auth.uid;
   const actorEmail = auth.token.email ?? "unknown";
   const deviceHash = hashDeviceId(deviceId);
@@ -189,7 +189,7 @@ export const verifyRealTimeAttendance = onCall({ enforceAppCheck: true, region: 
   const sessionRef = db.collection("attendance_sessions").doc(sessionId);
   const sessionSnap = await sessionRef.get();
   const session = sessionSnap.data();
-  if (!session || session.status !== "live" || (session.endsAt as admin.firestore.Timestamp).toMillis() < Date.now()) {
+  if (!session || session.status !== "live" || (session.endsAt as Timestamp).toMillis() < Date.now()) {
     throw new HttpsError("failed-precondition", "Bu ders için aktif yoklama bulunmuyor.");
   }
 
@@ -263,7 +263,7 @@ export const verifyRealTimeAttendance = onCall({ enforceAppCheck: true, region: 
     fullName: userData.fullName ?? actorEmail,
     title: userData.title ?? "",
     residencyYear: userData.residencyYear ?? 1,
-    verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    verifiedAt: FieldValue.serverTimestamp(),
     method: webAuthnVerified ? "qr+webauthn" : "qr+device_bound",
     deviceHash,
     status: "present",
@@ -280,7 +280,7 @@ export const verifyRealTimeAttendance = onCall({ enforceAppCheck: true, region: 
     category: session.category,
     sessionStartedAt: session.startedAt,
   });
-  batch.update(sessionRef, { presentCount: admin.firestore.FieldValue.increment(1) });
+  batch.update(sessionRef, { presentCount: FieldValue.increment(1) });
   await batch.commit();
 
   await writeAuditLog({
@@ -304,7 +304,7 @@ export const markAttendanceExcused = onCall({ enforceAppCheck: true, region: REG
   };
   if (!sessionId || !targetUid) throw new HttpsError("invalid-argument", "Oturum ve hekim zorunludur.");
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const [sessionSnap, userSnap] = await Promise.all([
     db.collection("attendance_sessions").doc(sessionId).get(),
     db.collection("users").doc(targetUid).get(),
@@ -318,7 +318,7 @@ export const markAttendanceExcused = onCall({ enforceAppCheck: true, region: REG
     fullName: user.fullName ?? "",
     title: user.title ?? "",
     residencyYear: user.residencyYear ?? 1,
-    verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    verifiedAt: FieldValue.serverTimestamp(),
     method: "admin_excused",
     status: "excused",
     excuseNote: (excuseNote ?? "").slice(0, 200),
@@ -334,7 +334,7 @@ export const markAttendanceExcused = onCall({ enforceAppCheck: true, region: REG
     category: session.category,
     sessionStartedAt: session.startedAt,
   });
-  batch.update(sessionSnap.ref, { excusedCount: admin.firestore.FieldValue.increment(1) });
+  batch.update(sessionSnap.ref, { excusedCount: FieldValue.increment(1) });
   await batch.commit();
 
   await writeAuditLog({

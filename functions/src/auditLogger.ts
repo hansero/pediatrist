@@ -1,4 +1,4 @@
-import * as admin from "firebase-admin";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
 export interface AuditLogInput {
   actorUid: string;
@@ -17,10 +17,10 @@ export interface AuditLogInput {
  * İstemciler firestore.rules gereği bu koleksiyona yazamaz veya silemez.
  */
 export async function writeAuditLog(input: AuditLogInput): Promise<void> {
-  const db = admin.firestore();
+  const db = getFirestore();
   await db.collection("audit_logs").add({
     ...input,
     severity: input.severity ?? "INFO",
-    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    timestamp: FieldValue.serverTimestamp(),
   });
 }

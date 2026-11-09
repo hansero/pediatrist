@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
-import * as admin from "firebase-admin";
+import { getAuth } from "firebase-admin/auth";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { writeAuditLog } from "./auditLogger";
 
 /**
@@ -29,7 +30,7 @@ export const onClinicMemberCreated = onDocumentWritten(
       return;
     }
 
-    await admin.auth().setCustomUserClaims(uid, {
+    await getAuth().setCustomUserClaims(uid, {
       role,
       status,
       residencyYear,
@@ -60,7 +61,7 @@ export const updateMemberAccess = onCall({ enforceAppCheck: true, region: "europ
   }
   let isCallerAdmin = request.auth.token.role === "admin" && request.auth.token.status === "active";
   if (!isCallerAdmin) {
-    const callerSnap = await admin.firestore().collection("users").doc(request.auth.uid).get();
+    const callerSnap = await getFirestore().collection("users").doc(request.auth.uid).get();
     const callerData = callerSnap.data() || {};
     isCallerAdmin = callerData.role === "admin" && callerData.status === "active";
   }
@@ -91,7 +92,7 @@ export const updateMemberAccess = onCall({ enforceAppCheck: true, region: "europ
     throw new HttpsError("invalid-argument", "Hedef kullanıcı kimliği (targetUid) zorunludur.");
   }
 
-  const userRef = admin.firestore().collection("users").doc(targetUid);
+  const userRef = getFirestore().collection("users").doc(targetUid);
   const existingSnap = await userRef.get();
   const existingData = existingSnap.data() || {};
 
@@ -107,7 +108,7 @@ export const updateMemberAccess = onCall({ enforceAppCheck: true, region: "europ
   }
 
   // 1. Firebase Auth Custom Claims Güncellemesi
-  await admin.auth().setCustomUserClaims(targetUid, {
+  await getAuth().setCustomUserClaims(targetUid, {
     role,
     status,
     residencyYear,
@@ -115,7 +116,7 @@ export const updateMemberAccess = onCall({ enforceAppCheck: true, region: "europ
 
   // 2. Askıya alma veya cihaz sıfırlamada aktif oturumları anında düşür (Zero-Trust)
   if (status !== "active" || shouldResetDevice) {
-    await admin.auth().revokeRefreshTokens(targetUid);
+    await getAuth().revokeRefreshTokens(targetUid);
   }
 
   // 3. Firestore Kullanıcı Dokümanı Güncellemesi
@@ -123,7 +124,7 @@ export const updateMemberAccess = onCall({ enforceAppCheck: true, region: "europ
     role,
     status,
     residencyYear,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
     approvedBy: request.auth.uid,
   };
 

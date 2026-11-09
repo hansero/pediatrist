@@ -1,5 +1,12 @@
 import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
+import {
+  FieldValue,
+  Timestamp,
+  getFirestore,
+  type Firestore,
+  type WriteBatch,
+  type DocumentSnapshot,
+} from "firebase-admin/firestore";
 import { writeAuditLog } from "./auditLogger";
 
 /**
@@ -123,17 +130,17 @@ export const saveQuizDraft = onCall({ enforceAppCheck: true, region: REGION }, a
 
   const sanitized = questions.map((q, i) => sanitizeQuestion(q, i + 2)); // +2: CSV başlık satırı
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const quizRef = db.collection("quizzes").doc();
   const batch = db.batch();
   batch.set(quizRef, {
     title: clip(title, 200).trim(),
     status: "draft",
     durationMinutes: duration,
-    closesAt: closesAtMs ? admin.firestore.Timestamp.fromMillis(Number(closesAtMs)) : null,
+    closesAt: closesAtMs ? Timestamp.fromMillis(Number(closesAtMs)) : null,
     questionCount: sanitized.length,
     sourceFileName: clip(sourceFileName, 200),
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
     createdBy: auth.uid,
     attemptCount: 0,
   });
@@ -157,12 +164,7 @@ export const saveQuizDraft = onCall({ enforceAppCheck: true, region: REGION }, a
 });
 
 /** Bir sınavı kapatır ve 9 alanlı sorularını kayıp önleyici arşive taşır (batch'e ekler). */
-async function closeAndArchive(
-  db: admin.firestore.Firestore,
-  batch: admin.firestore.WriteBatch,
-  quizDoc: admin.firestore.DocumentSnapshot,
-  actorUid: string
-) {
+async function closeAndArchive(db: Firestore, batch: WriteBatch, quizDoc: DocumentSnapshot, actorUid: string) {
   const [pubSnap, keySnap] = await Promise.all([
     quizDoc.ref.collection("questions_public").get(),
     db.collection("quiz_answer_keys").doc(quizDoc.id).collection("items").get(),
@@ -174,14 +176,14 @@ async function closeAndArchive(
     batch.set(db.collection("quiz_question_archive").doc(), {
       sourceQuizId: quizDoc.id,
       sourceQuizTitle: quizDoc.data()?.title ?? "",
-      archivedAt: admin.firestore.FieldValue.serverTimestamp(),
+      archivedAt: FieldValue.serverTimestamp(),
       archivedBy: actorUid,
       ...pub,
       correctAnswers: priv.correctAnswers,
       feedbackText: priv.feedbackText,
     });
   });
-  batch.update(quizDoc.ref, { status: "closed", closedAt: admin.firestore.FieldValue.serverTimestamp() });
+  batch.update(quizDoc.ref, { status: "closed", closedAt: FieldValue.serverTimestamp() });
 }
 
 /** Admin: taslağı yayına alır. Süreyi son kez burada belirleyebilir. */
@@ -194,7 +196,7 @@ export const publishQuiz = onCall({ enforceAppCheck: true, region: REGION }, asy
   };
   if (!quizId) throw new HttpsError("invalid-argument", "Sınav kimliği zorunludur.");
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const quizRef = db.collection("quizzes").doc(quizId);
   const quizSnap = await quizRef.get();
   if (!quizSnap.exists || quizSnap.data()?.status !== "draft") {
@@ -214,10 +216,8 @@ export const publishQuiz = onCall({ enforceAppCheck: true, region: REGION }, asy
   batch.update(quizRef, {
     status: "published",
     durationMinutes: duration,
-    closesAt: closesAtMs
-      ? admin.firestore.Timestamp.fromMillis(Number(closesAtMs))
-      : (quizSnap.data()?.closesAt ?? null),
-    publishedAt: admin.firestore.FieldValue.serverTimestamp(),
+    closesAt: closesAtMs ? Timestamp.fromMillis(Number(closesAtMs)) : (quizSnap.data()?.closesAt ?? null),
+    publishedAt: FieldValue.serverTimestamp(),
     publishedBy: auth.uid,
   });
   await batch.commit();
@@ -240,7 +240,7 @@ export const closeQuiz = onCall({ enforceAppCheck: true, region: REGION }, async
   const { quizId } = (request.data ?? {}) as { quizId?: string };
   if (!quizId) throw new HttpsError("invalid-argument", "Sınav kimliği zorunludur.");
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const quizSnap = await db.collection("quizzes").doc(quizId).get();
   if (!quizSnap.exists || quizSnap.data()?.status !== "published") {
     throw new HttpsError("failed-precondition", "Yalnızca yayındaki sınav kapatılabilir.");
@@ -265,14 +265,14 @@ export const startQuizAttempt = onCall({ enforceAppCheck: true, region: REGION }
   const { quizId } = (request.data ?? {}) as { quizId?: string };
   if (!quizId) throw new HttpsError("invalid-argument", "Sınav kimliği zorunludur.");
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const quizSnap = await db.collection("quizzes").doc(quizId).get();
   const quiz = quizSnap.data();
   if (!quiz || quiz.status !== "published")
     throw new HttpsError("failed-precondition", "Bu sınav şu anda aktif değil.");
 
   const nowMs = Date.now();
-  const closesAtMs = quiz.closesAt ? (quiz.closesAt as admin.firestore.Timestamp).toMillis() : null;
+  const closesAtMs = quiz.closesAt ? (quiz.closesAt as Timestamp).toMillis() : null;
   if (closesAtMs && closesAtMs <= nowMs) throw new HttpsError("failed-precondition", "Sınavın kapanış zamanı geçti.");
 
   const attemptRef = db.collection("quiz_attempts").doc(`${quizId}_${auth.uid}`);
@@ -281,7 +281,7 @@ export const startQuizAttempt = onCall({ enforceAppCheck: true, region: REGION }
     if (existing.exists) {
       const data = existing.data()!;
       if (data.status === "submitted") throw new HttpsError("already-exists", "Bu sınavı zaten tamamladınız.");
-      return { deadlineMs: (data.deadline as admin.firestore.Timestamp).toMillis(), resumed: true };
+      return { deadlineMs: (data.deadline as Timestamp).toMillis(), resumed: true };
     }
     const userSnap = await tx.get(db.collection("users").doc(auth.uid));
     const user = userSnap.data() ?? {};
@@ -295,11 +295,11 @@ export const startQuizAttempt = onCall({ enforceAppCheck: true, region: REGION }
       doctorName: `${user.title ?? ""} ${user.fullName ?? ""}`.trim() || (auth.token.email ?? ""),
       residencyYear: user.residencyYear ?? 1,
       status: "in_progress",
-      startedAt: admin.firestore.Timestamp.fromMillis(nowMs),
-      deadline: admin.firestore.Timestamp.fromMillis(deadlineMs),
+      startedAt: Timestamp.fromMillis(nowMs),
+      deadline: Timestamp.fromMillis(deadlineMs),
       durationMinutes: quiz.durationMinutes,
     });
-    tx.update(quizSnap.ref, { attemptCount: admin.firestore.FieldValue.increment(1) });
+    tx.update(quizSnap.ref, { attemptCount: FieldValue.increment(1) });
     return { deadlineMs, resumed: false };
   });
 
@@ -327,7 +327,7 @@ export const submitQuizAttempt = onCall({ enforceAppCheck: true, region: REGION 
     throw new HttpsError("invalid-argument", "Sınav kimliği ve yanıtlar zorunludur.");
   }
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const attemptRef = db.collection("quiz_attempts").doc(`${quizId}_${auth.uid}`);
   const attemptSnap = await attemptRef.get();
   const attempt = attemptSnap.data();
@@ -336,7 +336,7 @@ export const submitQuizAttempt = onCall({ enforceAppCheck: true, region: REGION 
   }
 
   const nowMs = Date.now();
-  const deadlineMs = (attempt.deadline as admin.firestore.Timestamp).toMillis();
+  const deadlineMs = (attempt.deadline as Timestamp).toMillis();
   const lateSubmission = nowMs > deadlineMs + SUBMIT_GRACE_MS;
 
   const [pubSnap, keySnap] = await Promise.all([
@@ -381,11 +381,11 @@ export const submitQuizAttempt = onCall({ enforceAppCheck: true, region: REGION 
 
   const totalQuestions = pubSnap.size || 1;
   const score = Math.round((correctCount / totalQuestions) * 100);
-  const startedMs = (attempt.startedAt as admin.firestore.Timestamp).toMillis();
+  const startedMs = (attempt.startedAt as Timestamp).toMillis();
 
   await attemptRef.update({
     status: "submitted",
-    submittedAt: admin.firestore.Timestamp.fromMillis(nowMs),
+    submittedAt: Timestamp.fromMillis(nowMs),
     durationSeconds: Math.round((Math.min(nowMs, deadlineMs) - startedMs) / 1000),
     lateSubmission,
     score,
