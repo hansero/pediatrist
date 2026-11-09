@@ -35,7 +35,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | Adım | Başlık | Boyut | Durum | Kapattığı bulgular |
 |---|---|---|---|---|
 | **F0** | **Zemin: araçlar, emülatör, test iskeleti** | | | |
-| F0.1 | Bağımlılıklar, lockfile'lar, kullanılmayan paketler | S | ⬜ | S14, §7 |
+| F0.1 | Bağımlılıklar, lockfile'lar, kullanılmayan paketler | S | ✅ | S14, §7 |
 | F0.2 | Lint / typecheck / test script'leri + CI workflow | S | ⬜ | §8 |
 | F0.3 | İstemcinin emülatöre bağlanması + App Check debug + `.env` | S | ⬜ | §7 |
 | F0.4 | Emülatör seed script'i (test verisi YALNIZCA burada) | M | ⬜ | (mock'ların yerine) |
@@ -101,10 +101,10 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-09
-- **Son tamamlanan adım:** — (plan oluşturuldu; henüz kod değişikliği yok)
+- **Son tamamlanan adım:** F0.1 (bağımlılıklar, lockfile'lar, audit overrides).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F0.1'e başla.
-- **Engeller / notlar:** Firebase emülatör jar'larının indirilmesi ağ politikası tarafından engellenirse F0.3'te not et ve ortam ağ izni iste.
+- **Sıradaki iş:** F0.2: `package.json` script'leri (lint, typecheck, test:*, emulators, seed, check:no-mock), ESLint flat config (`eslint.config.mjs`, `next/core-web-vitals` + `jsx-a11y`, FlatCompat ile), `.prettierrc`, `functions` için `typecheck` script'i, `.github/workflows/ci.yml`. Not: Henüz ESLint config yok; `next build` lint adımını atlıyor. Config eklenince mevcut kodda çıkan hatalar ya düzeltilir ya da ilgili faza not edilir.
+- **Engeller / notlar:** Emülatör jar indirmesi henüz denenmedi (F0.3). Java mevcut. Playwright 1.63.0 + `/opt/pw-browsers` Chromium başlatması doğrulandı.
 
 ---
 
@@ -128,6 +128,9 @@ Bu kararlar bütün adımlar için geçerlidir. Değiştirmek için kullanıcı 
 | D12 | Callable hataları kullanıcıya her zaman gösterilir. Bir mutasyonun sonucu sunucudan onay gelmeden "başarılı" olarak gösterilmez (iyimser UI yok). | AUDIT C1 | Hayır |
 | D13 | App Check zorunluluğu `ENFORCE_APP_CHECK` parametresiyle yönetilir: prod'da `true`, emülatörde `false`. İstemci emülatörde debug sağlayıcıyı kullanır. | Emülatörde test edilebilirlik | Hayır |
 | D14 | Commit formatı `rev(Fx.y): <özet>`. Her adım en az bir commit'tir ve her commit'ten sonra push yapılır. | Oturumlar arası devamlılık | Hayır |
+| D15 | **Kabul edilmiş risk:** `uuid <11.1.1` (GHSA-w5hq-g745-h8pq, orta). Firebase-admin/functions zincirinden geliyor. Açık yalnızca v3/v5/v6 fonksiyonları `buf` parametresiyle çağrıldığında oluşuyor; zincir bunları kullanmıyor. Çözümü major geçiş gerektiriyor (firebase-admin 14 + firebase-functions 7). Bu geçiş F10.2 öncesinde yeniden değerlendirilir. | Major yükseltme riski > istismar edilebilirlik | Evet |
+| D16 | Major sürümler bu revizyonda sabit: Next 15, React 19, Firebase JS 11, firebase-admin 13, firebase-functions 6. Yükseltme (Next 16, Firebase 12+) revizyon sonrasında ayrı bir iştir. | Revizyonun kapsamını bağımlılık geçişiyle karıştırmamak | Evet |
+| D17 | Functions testleri `firebase-functions-test` olmadan yazılır: kök vitest + v2 callable'ın `.run()` kancası + emülatör. | `firebase-functions-test` jest'i zorunlu bağımlılık olarak getiriyor | Evet |
 
 ---
 
@@ -151,11 +154,21 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - **Yapılacaklar:**
   - Kök devDependencies: `firebase-tools`, `vitest`, `@firebase/rules-unit-testing`, `zod`, `tsx`, `eslint`, `eslint-config-next`, `eslint-plugin-jsx-a11y`, `@playwright/test`, `@axe-core/playwright`, `prettier`.
   - Kök dependencies: `qrcode`, `pdfjs-dist`, `@simplewebauthn/browser`. `recharts` ve `lucide-react` kullanılmıyor: kaldır (F5.4'te grafik gerekirse geri eklenir).
-  - Functions dependencies: `zod`, `@simplewebauthn/server`. Functions devDependencies: `firebase-functions-test`, `vitest`.
+  - Functions dependencies: `zod`, `@simplewebauthn/server`. (Functions test araçları için bkz. D17.)
   - `next` ve `react`'i en güncel yamalı 15.x / 19.x sürümüne sabitle, ardından `npm audit` çalıştır.
   - `engines.node: "22"` ekle (kök).
   - Playwright notu: ortamdaki önceden kurulu Chromium kullanılacak. `@playwright/test` sürümü ortamdakiyle uyuşmazsa config'te `executablePath: '/opt/pw-browsers/chromium'` kullan. `playwright install` **çalıştırma**.
 - **Doğrulama:** `npm ci && npm --prefix functions ci && npm audit --omit=dev`
+- **✅ Uygulanan (2026-11-09) — plandan sapmalar:**
+  - `zod`, istemci çalışma zamanında da kullanılacağı için kökte **dependency** oldu (devDependency değil).
+  - `firebase-functions-test` **eklenmedi**: jest'i zorunlu bağımlılık olarak getiriyor. Functions testleri kök `vitest` ile, v2 `onCall` fonksiyonlarının `.run(request)` test kancası ve emülatöre bağlı Admin SDK kullanılarak yazılır (D17). Functions paketine `vitest` eklenmedi.
+  - `@firebase/rules-unit-testing` **4.0.1**'de sabit: 5.x/6.x, Firebase JS 12/13 ve Node 24 istiyor (D16).
+  - `@playwright/test` **1.63.0**'a sabitlendi (ortamdaki Chromium 1243 ile eşleşiyor; başlatma doğrulandı).
+  - `eslint` 9.x: `eslint-config-next@15` en fazla 9'u destekliyor (9 upstream'de "desteklenmiyor" uyarısı veriyor; Next 16 geçişinde ele alınacak).
+  - `overrides`: `@grpc/grpc-js ^1.14.7`, `postcss ^8.5.32` → **yüksek seviyeli bütün audit bulguları kapandı**. Kalan 8 orta seviye bulgunun tamamı `uuid <11.1.1` zinciri (firebase-admin → google-gax/gaxios/teeny-request) → kabul edilmiş risk (D15).
+  - Çözülen sürümler: next 15.5.29, react/react-dom 19.3.1, firebase 11.10.0, firebase-admin 13.10.0, firebase-functions 6.6.0, typescript 5.9.3, vitest 5.1.0, firebase-tools 15.35.0, zod 4.6.7.
+  - `.gitignore`'a eklendi: `functions/lib/`, `next-env.d.ts`, `*.tsbuildinfo`, test çıktıları.
+  - Doğrulandı: `npm ci` (iki paket), `tsc --noEmit`, `functions build`, `next build` yeşil.
 
 #### F0.2 Script'ler ve CI (S)
 - **Dosyalar:** `package.json` scripts, `.eslintrc.json` (veya `eslint.config.mjs`), `.prettierrc`, `.github/workflows/ci.yml`, `functions/package.json` scripts
@@ -190,7 +203,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 #### F0.5 Test iskeleti ve "no-mock" bekçisi (M)
 - **Dosyalar:**
   - Silinecek: `tests/verify-platform.mjs` (kaynak kodu string-grep'leyen, mantığı kopyalayan ve başka bir makineye ait mutlak yol içeren test).
-  - Yeni: `vitest.config.ts`, `tests/unit/`, `tests/rules/` (`@firebase/rules-unit-testing`), `functions/test/` (`firebase-functions-test`, gerçek modülleri import eder), `e2e/` (`playwright.config.ts`, `fixtures/auth.ts` ile emülatörde kullanıcı girişi), `scripts/check-no-mock.mjs`.
+  - Yeni: `vitest.config.ts`, `tests/unit/`, `tests/rules/` (`@firebase/rules-unit-testing`), `functions/test/` (kök vitest ile çalışır, gerçek modülleri import eder; callable'lar `.run({data, auth, rawRequest})` ile çağrılır, Firestore/Auth emülatörüne bağlıdır — D17), `e2e/` (`playwright.config.ts`, `fixtures/auth.ts` ile emülatörde kullanıcı girişi), `scripts/check-no-mock.mjs`.
 - **No-mock bekçisi:** `src/` ve `functions/src/` içinde şu desenleri arar: `INITIAL_`, `FALLBACK_`, `invokeWithFallback`, `Selim Kaya`, `Elif Demir`, `Burak Şahin`, `Mert Yılmaz`, `Ayşe Aksoy`, `uid_user_`, `uid_admin_`, `att_session_`, `quiz_active_current`, `Math.random(` (attendance), `hmacSlotCode`, `sampleGraded`, `76 / 100`.
   - Mevcut ihlaller `scripts/no-mock-allowlist.json` dosyasına **dosya bazında** yazılır.
   - Her modül fazı kendi dosyalarını listeden çıkarır. F7.5'te liste **boş** olur ve dosya silinir.

@@ -13,3 +13,13 @@ ui-debug.log
 .firebaserc
 service-account*.json
 *-firebase-adminsdk-*.json
+
+# Build çıktıları
+functions/lib/
+next-env.d.ts
+*.tsbuildinfo
+
+# Test çıktıları
+test-results/
+playwright-report/
+coverage/
