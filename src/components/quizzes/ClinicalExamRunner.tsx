@@ -118,7 +118,15 @@ export function ClinicalExamRunner({
           zIndex: 15,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "1rem",
+          }}
+        >
           <div>
             <span className="sec-chip primary">Aktif Klinik Vaka Sınavı</span>
             <h2 id="exam-runner-heading" style={{ marginTop: "0.35rem" }}>
@@ -131,7 +139,10 @@ export function ClinicalExamRunner({
               Ekran Değişimi: {tabSwitchCount}
             </span>
             <span className="sec-chip critical mono-num" style={{ fontSize: "0.94rem" }}>
-              Kalan Süre: <strong>{mins}:{secs}</strong>
+              Kalan Süre:{" "}
+              <strong>
+                {mins}:{secs}
+              </strong>
             </span>
             <button id="exam-cancel-btn" type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>
               Sınavdan Ayrıl
@@ -141,9 +152,14 @@ export function ClinicalExamRunner({
 
         {/* İlerleme Çubuğu ve Hızlı Soru Gezgini */}
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: "0.35rem" }}>
+          <div
+            style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: "0.35rem" }}
+          >
             <span>
-              Yanıtlanan Vaka: <strong className="mono-num">{answeredCount} / {questions.length}</strong>
+              Yanıtlanan Vaka:{" "}
+              <strong className="mono-num">
+                {answeredCount} / {questions.length}
+              </strong>
             </span>
             <span className="mono-num">%{progressPct} Tamamlandı</span>
           </div>
@@ -178,11 +194,20 @@ export function ClinicalExamRunner({
         const typedText = selectedList[0] || "";
         return (
           <article key={q.id} id={`question-card-${q.id}`} className="surface-card" aria-labelledby={`q-stem-${q.id}`}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.65rem" }}>
-              <span className="sec-chip primary mono-num">Vaka {idx + 1} / {questions.length}</span>
-              <span className="sec-chip">
-                {formatQuestionTypeLabel(q.questionType)}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "0.5rem",
+                marginBottom: "0.65rem",
+              }}
+            >
+              <span className="sec-chip primary mono-num">
+                Vaka {idx + 1} / {questions.length}
               </span>
+              <span className="sec-chip">{formatQuestionTypeLabel(q.questionType)}</span>
             </div>
 
             {/* 1. Alan: Klinik Vaka Sunumu */}
@@ -297,7 +322,15 @@ export function ClinicalExamRunner({
                   value={typedText}
                   onChange={(e) => handleTextInput(q.id, e.target.value, q.maxLength || 150)}
                 />
-                <div className="mono-num" style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.3rem", textAlign: "right" }}>
+                <div
+                  className="mono-num"
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--text-secondary)",
+                    marginTop: "0.3rem",
+                    textAlign: "right",
+                  }}
+                >
                   Karakter Sayısı: {typedText.length} / {q.maxLength || 150}
                 </div>
               </div>
@@ -308,7 +341,8 @@ export function ClinicalExamRunner({
 
       {confirmUnansweredWarning && (
         <div role="alert" className="clinical-alert warn">
-          Henüz yanıtlamadığınız {questions.length - answeredCount} vaka sorusu bulunuyor. Yine de sınavı teslim etmek istiyorsanız aşağıdaki butona tekrar tıklayın.
+          Henüz yanıtlamadığınız {questions.length - answeredCount} vaka sorusu bulunuyor. Yine de sınavı teslim etmek
+          istiyorsanız aşağıdaki butona tekrar tıklayın.
         </div>
       )}
 

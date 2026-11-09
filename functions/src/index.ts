@@ -10,10 +10,4 @@ export {
   verifyRealTimeAttendance,
   markAttendanceExcused,
 } from "./attendanceService";
-export {
-  saveQuizDraft,
-  publishQuiz,
-  closeQuiz,
-  startQuizAttempt,
-  submitQuizAttempt,
-} from "./quizService";
+export { saveQuizDraft, publishQuiz, closeQuiz, startQuizAttempt, submitQuizAttempt } from "./quizService";

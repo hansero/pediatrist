@@ -17,10 +17,7 @@ export const onClinicMemberCreated = onDocumentWritten(
 
     const beforeData = event.data?.before.data();
     const role = afterData.role === "admin" ? "admin" : "user";
-    const status =
-      afterData.status === "active" || afterData.status === "suspended"
-        ? afterData.status
-        : "pending";
+    const status = afterData.status === "active" || afterData.status === "suspended" ? afterData.status : "pending";
     const residencyYear = Number(afterData.residencyYear ?? 1);
 
     if (
@@ -57,100 +54,97 @@ export const onClinicMemberCreated = onDocumentWritten(
  * durum ('active' | 'pending' | 'suspended') atama ve telefon/cihaz eşleşmesini sıfırlama servisi.
  * Firebase Custom Claims güncellenir ve gerekirse mevcut oturum tokenları iptal edilir.
  */
-export const updateMemberAccess = onCall(
-  { enforceAppCheck: true, region: "europe-west1" },
-  async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "Oturum açmanız gerekiyor.");
-    }
-    let isCallerAdmin =
-      request.auth.token.role === "admin" && request.auth.token.status === "active";
-    if (!isCallerAdmin) {
-      const callerSnap = await admin.firestore().collection("users").doc(request.auth.uid).get();
-      const callerData = callerSnap.data() || {};
-      isCallerAdmin = callerData.role === "admin" && callerData.status === "active";
-    }
-    if (!isCallerAdmin) {
-      throw new HttpsError("permission-denied", "Bu işlem yalnızca aktif Eğitim Sorumlusu (Admin) yetkisiyle yapılabilir.");
-    }
-
-    const {
-      targetUid,
-      role: reqRole,
-      status: reqStatus,
-      residencyYear: reqYear,
-      resetBoundDevice,
-      resetDeviceBinding,
-    } = request.data as {
-      targetUid: string;
-      role?: "admin" | "user";
-      status?: "active" | "pending" | "suspended";
-      residencyYear?: number;
-      resetBoundDevice?: boolean;
-      resetDeviceBinding?: boolean;
-    };
-
-    if (!targetUid) {
-      throw new HttpsError("invalid-argument", "Hedef kullanıcı kimliği (targetUid) zorunludur.");
-    }
-
-    const userRef = admin.firestore().collection("users").doc(targetUid);
-    const existingSnap = await userRef.get();
-    const existingData = existingSnap.data() || {};
-
-    const role: "admin" | "user" = reqRole ?? (existingData.role === "admin" ? "admin" : "user");
-    const status: "active" | "pending" | "suspended" =
-      reqStatus ??
-      (existingData.status === "active" || existingData.status === "suspended"
-        ? existingData.status
-        : "pending");
-    const residencyYear = Number(reqYear ?? existingData.residencyYear ?? 1);
-    const shouldResetDevice = Boolean(resetBoundDevice || resetDeviceBinding);
-
-    if (!["admin", "user"].includes(role) || !["active", "pending", "suspended"].includes(status)) {
-      throw new HttpsError("invalid-argument", "Geçersiz kullanıcı veya yetki parametreleri.");
-    }
-
-    // 1. Firebase Auth Custom Claims Güncellemesi
-    await admin.auth().setCustomUserClaims(targetUid, {
-      role,
-      status,
-      residencyYear,
-    });
-
-    // 2. Askıya alma veya cihaz sıfırlamada aktif oturumları anında düşür (Zero-Trust)
-    if (status !== "active" || shouldResetDevice) {
-      await admin.auth().revokeRefreshTokens(targetUid);
-    }
-
-    // 3. Firestore Kullanıcı Dokümanı Güncellemesi
-    const updatePayload: Record<string, unknown> = {
-      role,
-      status,
-      residencyYear,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      approvedBy: request.auth.uid,
-    };
-
-    if (shouldResetDevice) {
-      updatePayload.boundDeviceHash = null;
-      updatePayload.hasBoundDevice = false;
-      updatePayload.webAuthnCredentialId = null;
-    }
-
-    await userRef.set(updatePayload, { merge: true });
-
-    // 4. Denetim Kaydı (Audit Log)
-    await writeAuditLog({
-      actorUid: request.auth.uid,
-      actorEmail: request.auth.token.email ?? "unknown",
-      action: shouldResetDevice ? "MEMBER_DEVICE_RESET" : "MEMBER_ACCESS_UPDATED",
-      resourceType: "admin",
-      resourceId: targetUid,
-      severity: status === "suspended" || shouldResetDevice ? "WARN" : "INFO",
-      metadata: { role, status, residencyYear, resetBoundDevice: shouldResetDevice },
-    });
-
-    return { ok: true, targetUid, role, status, residencyYear };
+export const updateMemberAccess = onCall({ enforceAppCheck: true, region: "europe-west1" }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Oturum açmanız gerekiyor.");
   }
-);
+  let isCallerAdmin = request.auth.token.role === "admin" && request.auth.token.status === "active";
+  if (!isCallerAdmin) {
+    const callerSnap = await admin.firestore().collection("users").doc(request.auth.uid).get();
+    const callerData = callerSnap.data() || {};
+    isCallerAdmin = callerData.role === "admin" && callerData.status === "active";
+  }
+  if (!isCallerAdmin) {
+    throw new HttpsError(
+      "permission-denied",
+      "Bu işlem yalnızca aktif Eğitim Sorumlusu (Admin) yetkisiyle yapılabilir."
+    );
+  }
+
+  const {
+    targetUid,
+    role: reqRole,
+    status: reqStatus,
+    residencyYear: reqYear,
+    resetBoundDevice,
+    resetDeviceBinding,
+  } = request.data as {
+    targetUid: string;
+    role?: "admin" | "user";
+    status?: "active" | "pending" | "suspended";
+    residencyYear?: number;
+    resetBoundDevice?: boolean;
+    resetDeviceBinding?: boolean;
+  };
+
+  if (!targetUid) {
+    throw new HttpsError("invalid-argument", "Hedef kullanıcı kimliği (targetUid) zorunludur.");
+  }
+
+  const userRef = admin.firestore().collection("users").doc(targetUid);
+  const existingSnap = await userRef.get();
+  const existingData = existingSnap.data() || {};
+
+  const role: "admin" | "user" = reqRole ?? (existingData.role === "admin" ? "admin" : "user");
+  const status: "active" | "pending" | "suspended" =
+    reqStatus ??
+    (existingData.status === "active" || existingData.status === "suspended" ? existingData.status : "pending");
+  const residencyYear = Number(reqYear ?? existingData.residencyYear ?? 1);
+  const shouldResetDevice = Boolean(resetBoundDevice || resetDeviceBinding);
+
+  if (!["admin", "user"].includes(role) || !["active", "pending", "suspended"].includes(status)) {
+    throw new HttpsError("invalid-argument", "Geçersiz kullanıcı veya yetki parametreleri.");
+  }
+
+  // 1. Firebase Auth Custom Claims Güncellemesi
+  await admin.auth().setCustomUserClaims(targetUid, {
+    role,
+    status,
+    residencyYear,
+  });
+
+  // 2. Askıya alma veya cihaz sıfırlamada aktif oturumları anında düşür (Zero-Trust)
+  if (status !== "active" || shouldResetDevice) {
+    await admin.auth().revokeRefreshTokens(targetUid);
+  }
+
+  // 3. Firestore Kullanıcı Dokümanı Güncellemesi
+  const updatePayload: Record<string, unknown> = {
+    role,
+    status,
+    residencyYear,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    approvedBy: request.auth.uid,
+  };
+
+  if (shouldResetDevice) {
+    updatePayload.boundDeviceHash = null;
+    updatePayload.hasBoundDevice = false;
+    updatePayload.webAuthnCredentialId = null;
+  }
+
+  await userRef.set(updatePayload, { merge: true });
+
+  // 4. Denetim Kaydı (Audit Log)
+  await writeAuditLog({
+    actorUid: request.auth.uid,
+    actorEmail: request.auth.token.email ?? "unknown",
+    action: shouldResetDevice ? "MEMBER_DEVICE_RESET" : "MEMBER_ACCESS_UPDATED",
+    resourceType: "admin",
+    resourceId: targetUid,
+    severity: status === "suspended" || shouldResetDevice ? "WARN" : "INFO",
+    metadata: { role, status, residencyYear, resetBoundDevice: shouldResetDevice },
+  });
+
+  return { ok: true, targetUid, role, status, residencyYear };
+});

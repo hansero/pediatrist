@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  PEDIATRIC_CALCULATORS_CATALOG,
-  PediatricCalculatorPlaceholderConfig,
-} from "@/lib/pediatrics";
+import { PEDIATRIC_CALCULATORS_CATALOG, PediatricCalculatorPlaceholderConfig } from "@/lib/pediatrics";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 
 export default function PediatricCalculatorsPage() {
@@ -12,9 +9,7 @@ export default function PediatricCalculatorsPage() {
   const isAdmin = session?.role === "admin";
   const [adminEditMode, setAdminEditMode] = useState<boolean>(false);
   const [selectedId, setSelectedId] = useState<string>(PEDIATRIC_CALCULATORS_CATALOG[0].id);
-  const [catalog, setCatalog] = useState<PediatricCalculatorPlaceholderConfig[]>(
-    PEDIATRIC_CALCULATORS_CATALOG
-  );
+  const [catalog, setCatalog] = useState<PediatricCalculatorPlaceholderConfig[]>(PEDIATRIC_CALCULATORS_CATALOG);
 
   const activeCalc = catalog.find((c) => c.id === selectedId) || catalog[0];
 
@@ -27,7 +22,8 @@ export default function PediatricCalculatorsPage() {
             Pediatri Hesaplama Uygulamaları
           </h1>
           <p className="page-header-subtitle">
-            5 ana pediatrik hesaplama grubu için sayfa yapısı ve girdi/çıktı yer tutucuları hazırlandı. Detaylı formül motoru bir sonraki aşamada kodlanacaktır.
+            5 ana pediatrik hesaplama grubu için sayfa yapısı ve girdi/çıktı yer tutucuları hazırlandı. Detaylı formül
+            motoru bir sonraki aşamada kodlanacaktır.
           </p>
         </div>
 
@@ -68,11 +64,8 @@ export default function PediatricCalculatorsPage() {
                   padding: "0.85rem",
                   borderRadius: "var(--radius-md)",
                   border:
-                    selectedId === item.id
-                      ? "2px solid var(--clinical-primary)"
-                      : "1px solid var(--border-subtle)",
-                  background:
-                    selectedId === item.id ? "var(--clinical-primary-soft)" : "var(--bg-surface)",
+                    selectedId === item.id ? "2px solid var(--clinical-primary)" : "1px solid var(--border-subtle)",
+                  background: selectedId === item.id ? "var(--clinical-primary-soft)" : "var(--bg-surface)",
                   cursor: "pointer",
                 }}
               >
@@ -89,7 +82,9 @@ export default function PediatricCalculatorsPage() {
         </aside>
 
         <article className="surface-card" aria-labelledby="active-calc-heading">
-          <span className="sec-chip primary">{activeCalc.code} • {activeCalc.formulaVersion}</span>
+          <span className="sec-chip primary">
+            {activeCalc.code} • {activeCalc.formulaVersion}
+          </span>
           <h2 id="active-calc-heading" style={{ marginTop: "0.5rem" }}>
             {activeCalc.title}
           </h2>

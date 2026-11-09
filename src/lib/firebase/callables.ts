@@ -95,7 +95,14 @@ export const updateMemberAccess = callable<
 // --- Modül 3: Ders Katılım ---
 export const startLectureSession = callable<
   { title: string; lecturer: string; category: string; durationMinutes: number },
-  { ok?: boolean; sessionId: string; status?: string; durationMinutes?: number; expiresAtMs?: number; endsAtMs?: number }
+  {
+    ok?: boolean;
+    sessionId: string;
+    status?: string;
+    durationMinutes?: number;
+    expiresAtMs?: number;
+    endsAtMs?: number;
+  }
 >("startLectureSession");
 
 export const endLectureSession = callable<
@@ -155,7 +162,15 @@ export const closeQuiz = callable<{ quizId: string }, { ok?: boolean; closed?: b
 
 export const startQuizAttempt = callable<
   { quizId: string },
-  { ok?: boolean; attemptId?: string; quizId?: string; durationMinutes?: number; expiresAtMs?: number; deadlineMs?: number; resumed?: boolean }
+  {
+    ok?: boolean;
+    attemptId?: string;
+    quizId?: string;
+    durationMinutes?: number;
+    expiresAtMs?: number;
+    deadlineMs?: number;
+    resumed?: boolean;
+  }
 >("startQuizAttempt");
 
 export const submitQuizAttempt = callable<

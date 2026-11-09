@@ -41,9 +41,7 @@ export function WatermarkedMaterialViewer({
   onClose,
 }: WatermarkedMaterialViewerProps) {
   const [pageIndex, setPageIndex] = useState<number>(0);
-  const [secondsSpent, setSecondsSpent] = useState<number>(
-    material.readerStats[session.uid]?.durationSeconds || 0
-  );
+  const [secondsSpent, setSecondsSpent] = useState<number>(material.readerStats[session.uid]?.durationSeconds || 0);
   const [timestampStr, setTimestampStr] = useState<string>(new Date().toLocaleString("tr-TR"));
 
   useEffect(() => {
@@ -144,9 +142,7 @@ export function WatermarkedMaterialViewer({
           >
             Firebase Cloud Storage: <code>{material.storagePath}</code> • Sayfa {pageIndex + 1} / {pages.length}
           </div>
-          <div style={{ fontSize: "0.96rem", lineHeight: 1.7, whiteSpace: "pre-line" }}>
-            {pages[pageIndex]}
-          </div>
+          <div style={{ fontSize: "0.96rem", lineHeight: 1.7, whiteSpace: "pre-line" }}>{pages[pageIndex]}</div>
         </div>
       </div>
 

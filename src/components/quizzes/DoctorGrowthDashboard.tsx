@@ -29,9 +29,7 @@ export function DoctorGrowthDashboard({
   onInspectAttemptReport,
 }: DoctorGrowthDashboardProps) {
   const ordered = [...personalAttempts].reverse();
-  const avgScore = ordered.length
-    ? Math.round(ordered.reduce((acc, a) => acc + a.score, 0) / ordered.length)
-    : 0;
+  const avgScore = ordered.length ? Math.round(ordered.reduce((acc, a) => acc + a.score, 0) / ordered.length) : 0;
   const bestScore = ordered.length ? Math.max(...ordered.map((a) => a.score)) : 0;
   const latestScore = personalAttempts[0]?.score ?? 0;
 
@@ -40,7 +38,15 @@ export function DoctorGrowthDashboard({
       {/* Üst: Aktif Sınav Kartı & Kişisel Başarı Eğrisi */}
       <div className="grid-2">
         <article className="surface-card" aria-labelledby="active-quiz-card-heading">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "0.5rem",
+            }}
+          >
             <span className="sec-chip verified">Yayındaki Haftalık Klinik Sınav</span>
             <span className="sec-chip mono-num">
               {activeQuizQuestionCount} Klinik Vaka • {activeQuizDurationMinutes} Dakika
@@ -50,7 +56,8 @@ export function DoctorGrowthDashboard({
             {activeQuizTitle}
           </h2>
           <p className="page-header-subtitle" style={{ margin: "0.45rem 0 1.1rem" }}>
-            Tek seçmeli, çoklu seçmeli ve açık uçlu klinik vaka sorularından oluşur. Sınavı teslim ettiğiniz anda her vakanın doğru yanıtı ve <strong>Klinik Öğrenme Noktası</strong> karnenizde açılır.
+            Tek seçmeli, çoklu seçmeli ve açık uçlu klinik vaka sorularından oluşur. Sınavı teslim ettiğiniz anda her
+            vakanın doğru yanıtı ve <strong>Klinik Öğrenme Noktası</strong> karnenizde açılır.
           </p>
           <button
             id="start-active-quiz-btn"
@@ -64,7 +71,15 @@ export function DoctorGrowthDashboard({
         </article>
 
         <article className="surface-card" aria-labelledby="personal-curve-heading">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "0.5rem",
+            }}
+          >
             <h2 id="personal-curve-heading">
               Kişisel Gelişim Özeti ({session.title} {session.fullName})
             </h2>
@@ -72,17 +87,44 @@ export function DoctorGrowthDashboard({
           </div>
 
           <div className="grid-3" style={{ marginTop: "0.75rem", marginBottom: "0.85rem" }}>
-            <div style={{ padding: "0.65rem", borderRadius: "var(--radius-sm)", background: "var(--bg-surface-subtle)", border: "1px solid var(--border-subtle)" }}>
+            <div
+              style={{
+                padding: "0.65rem",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--bg-surface-subtle)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
               <div className="metric-label">Katıldığım Sınav</div>
-              <div className="mono-num" style={{ fontSize: "1.15rem", fontWeight: 800 }}>{personalAttempts.length}</div>
+              <div className="mono-num" style={{ fontSize: "1.15rem", fontWeight: 800 }}>
+                {personalAttempts.length}
+              </div>
             </div>
-            <div style={{ padding: "0.65rem", borderRadius: "var(--radius-sm)", background: "var(--bg-surface-subtle)", border: "1px solid var(--border-subtle)" }}>
+            <div
+              style={{
+                padding: "0.65rem",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--bg-surface-subtle)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
               <div className="metric-label">Son Sınav Puanım</div>
-              <div className="mono-num" style={{ fontSize: "1.15rem", fontWeight: 800 }}>{latestScore}</div>
+              <div className="mono-num" style={{ fontSize: "1.15rem", fontWeight: 800 }}>
+                {latestScore}
+              </div>
             </div>
-            <div style={{ padding: "0.65rem", borderRadius: "var(--radius-sm)", background: "var(--bg-surface-subtle)", border: "1px solid var(--border-subtle)" }}>
+            <div
+              style={{
+                padding: "0.65rem",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--bg-surface-subtle)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
               <div className="metric-label">En Yüksek Puanım</div>
-              <div className="mono-num" style={{ fontSize: "1.15rem", fontWeight: 800 }}>{bestScore}</div>
+              <div className="mono-num" style={{ fontSize: "1.15rem", fontWeight: 800 }}>
+                {bestScore}
+              </div>
             </div>
           </div>
 
@@ -133,13 +175,21 @@ export function DoctorGrowthDashboard({
 
       {/* Alt: Eski ve Şimdiki Sınav Loglarım Dashboard'u */}
       <article className="surface-card" aria-labelledby="past-exams-heading">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.75rem" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "0.5rem",
+            marginBottom: "0.75rem",
+          }}
+        >
           <div>
-            <h2 id="past-exams-heading">
-              Eski ve Güncel Sınav Sonuçlarım (Kişisel Sınav Loglarım)
-            </h2>
+            <h2 id="past-exams-heading">Eski ve Güncel Sınav Sonuçlarım (Kişisel Sınav Loglarım)</h2>
             <p className="page-header-subtitle">
-              Tamamladığınız tüm sınavların tarih, doğru sayısı, puan ve vaka bazlı öğrenme karnelerine buradan ulaşabilirsiniz.
+              Tamamladığınız tüm sınavların tarih, doğru sayısı, puan ve vaka bazlı öğrenme karnelerine buradan
+              ulaşabilirsiniz.
             </p>
           </div>
         </div>
@@ -158,7 +208,9 @@ export function DoctorGrowthDashboard({
               {personalAttempts.map((att) => (
                 <tr key={att.attemptId}>
                   <td className="mono-num">{att.submittedAt}</td>
-                  <td><strong>{att.quizTitle}</strong></td>
+                  <td>
+                    <strong>{att.quizTitle}</strong>
+                  </td>
                   <td className="mono-num">
                     {att.correctCount} / {att.totalQuestions}
                   </td>

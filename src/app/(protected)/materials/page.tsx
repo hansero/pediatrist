@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  WatermarkedMaterialViewer,
-  TrainingMaterialItem,
-} from "@/components/materials/WatermarkedMaterialViewer";
+import { WatermarkedMaterialViewer, TrainingMaterialItem } from "@/components/materials/WatermarkedMaterialViewer";
 import { AdminMaterialManager } from "@/components/materials/AdminMaterialManager";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 import { ClinicMemberSession } from "@/components/security/SessionGuard";
@@ -141,7 +138,8 @@ export default function TrainingMaterialsPage() {
             Eğitim Materyalleri Paylaşma ve Görüntüleme
           </h1>
           <p className="page-header-subtitle">
-            Bilim dalı ve asistan kıdem yılına göre filtreleme, sızıntı önleyici dinamik filigranlı belge görüntüleyici ve okunma takibi.
+            Bilim dalı ve asistan kıdem yılına göre filtreleme, sızıntı önleyici dinamik filigranlı belge görüntüleyici
+            ve okunma takibi.
           </p>
         </div>
 
@@ -183,9 +181,7 @@ export default function TrainingMaterialsPage() {
             setAdminTab("browse");
           }}
           onToggleAllowDownload={(id) =>
-            setMaterials((prev) =>
-              prev.map((m) => (m.id === id ? { ...m, allowDownload: !m.allowDownload } : m))
-            )
+            setMaterials((prev) => prev.map((m) => (m.id === id ? { ...m, allowDownload: !m.allowDownload } : m)))
           }
         />
       ) : activeMaterial ? (
@@ -197,7 +193,10 @@ export default function TrainingMaterialsPage() {
         />
       ) : (
         <>
-          <div className="surface-card" style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}>
+          <div
+            className="surface-card"
+            style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}
+          >
             <div>
               <label htmlFor="filter-category-select" className="form-label">
                 Bilim Dalı Filtresi
@@ -239,7 +238,11 @@ export default function TrainingMaterialsPage() {
             {filteredMaterials.map((mat) => {
               const userStat = mat.readerStats[session.uid];
               return (
-                <article key={mat.id} className="surface-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <article
+                  key={mat.id}
+                  className="surface-card"
+                  style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}
+                >
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: "0.4rem", flexWrap: "wrap" }}>
                       <span className="sec-chip primary">{mat.category}</span>
@@ -251,8 +254,17 @@ export default function TrainingMaterialsPage() {
                     </p>
                   </div>
 
-                  <div style={{ marginTop: "1rem", paddingTop: "0.85rem", borderTop: "1px solid var(--border-subtle)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.76rem", marginBottom: "0.65rem" }}>
+                  <div
+                    style={{ marginTop: "1rem", paddingTop: "0.85rem", borderTop: "1px solid var(--border-subtle)" }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: "0.76rem",
+                        marginBottom: "0.65rem",
+                      }}
+                    >
                       <span className="mono-num">Hedef: {mat.targetYears.join(", ")}. Yıl</span>
                       <span className={userStat?.completed ? "sec-chip verified" : "sec-chip"}>
                         {userStat?.completed ? "Tamamlandı ✓" : "Henüz Okunmadı"}

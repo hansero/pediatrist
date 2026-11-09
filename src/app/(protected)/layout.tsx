@@ -83,7 +83,9 @@ function ClinicShell({ children }: { children: React.ReactNode }) {
               <div className="user-pill-name">
                 {session.title} {session.fullName}
               </div>
-              <div className="user-pill-meta">{session.role === "admin" ? "Eğitim Sorumlusu" : `Asistan • ${session.residencyYear}. yıl`}</div>
+              <div className="user-pill-meta">
+                {session.role === "admin" ? "Eğitim Sorumlusu" : `Asistan • ${session.residencyYear}. yıl`}
+              </div>
             </div>
             <button id="sidebar-signout-btn" type="button" className="btn btn-secondary btn-sm" onClick={signOutUser}>
               Güvenli Çıkış

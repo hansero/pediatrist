@@ -42,7 +42,9 @@ export default function RegisterPage() {
       }
       window.location.href = "/pending";
     } catch {
-      setErrorMessage("Başvuru kaydedilirken bir sorun oluştu. E-posta adresinizi ve şifre uzunluğunu (en az 8 karakter) kontrol edin.");
+      setErrorMessage(
+        "Başvuru kaydedilirken bir sorun oluştu. E-posta adresinizi ve şifre uzunluğunu (en az 8 karakter) kontrol edin."
+      );
     } finally {
       setSubmitting(false);
     }

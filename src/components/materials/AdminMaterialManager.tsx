@@ -28,9 +28,7 @@ export function AdminMaterialManager({
   const [contentSlide1, setContentSlide1] = useState("");
 
   const toggleYear = (yr: number) => {
-    setTargetYears((prev) =>
-      prev.includes(yr) ? prev.filter((y) => y !== yr) : [...prev, yr].sort()
-    );
+    setTargetYears((prev) => (prev.includes(yr) ? prev.filter((y) => y !== yr) : [...prev, yr].sort()));
   };
 
   return (
@@ -53,9 +51,7 @@ export function AdminMaterialManager({
               allowDownload,
               storagePath: `materials/${category.toLowerCase().replace(/\s+/g, "_")}/${Date.now()}.${fileType}`,
               uploadedBy: "Prof. Dr. Selim Kaya",
-              clinicalSummaryPages: [
-                contentSlide1 || "Klinik kılavuz özeti ve tanı/tedavi algoritması.",
-              ],
+              clinicalSummaryPages: [contentSlide1 || "Klinik kılavuz özeti ve tanı/tedavi algoritması."],
             });
             setTitle("");
             setDescription("");

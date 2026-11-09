@@ -7,11 +7,7 @@ export const metadata: Metadata = {
   description: "Pediatri Eğitim Kliniği Yönetim ve Eğitim Platformu",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr">
       <body>{children}</body>

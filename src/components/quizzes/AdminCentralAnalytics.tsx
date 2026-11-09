@@ -16,10 +16,7 @@ interface AdminCentralAnalyticsProps {
  * - Sekme 3: Sınav Bazlı Katılım & Ortalama Özeti
  * - Tek tıkla CSV / Excel dışa aktarım
  */
-export function AdminCentralAnalytics({
-  allAttempts,
-  onInspectAttempt,
-}: AdminCentralAnalyticsProps) {
+export function AdminCentralAnalytics({ allAttempts, onInspectAttempt }: AdminCentralAnalyticsProps) {
   const [activeTab, setActiveTab] = useState<"all_logs" | "by_doctor" | "by_quiz">("all_logs");
   const [selectedQuizFilter, setSelectedQuizFilter] = useState<string>("ALL");
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState<string>("ALL");
@@ -82,8 +79,8 @@ export function AdminCentralAnalytics({
           </h2>
           <p className="page-header-subtitle">
             Toplam Sınav: <strong>{uniqueQuizzes.length}</strong> • Kayıtlı Girişim Logu:{" "}
-            <strong>{filteredAttempts.length}</strong> • Ortalama Puan: <strong>{overallAvg} / 100</strong> • Sekme Uyarısı:{" "}
-            <strong>{totalTabWarnings}</strong>
+            <strong>{filteredAttempts.length}</strong> • Ortalama Puan: <strong>{overallAvg} / 100</strong> • Sekme
+            Uyarısı: <strong>{totalTabWarnings}</strong>
           </p>
         </div>
         <button
@@ -97,7 +94,16 @@ export function AdminCentralAnalytics({
       </div>
 
       {/* Sekmeler & Filtreler */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1rem" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "0.75rem",
+          marginBottom: "1rem",
+        }}
+      >
         <div className="mode-switcher" role="tablist" aria-label="Sınav Log Görünümü">
           <button
             id="quiz-admin-log-tab-all"
@@ -178,7 +184,9 @@ export function AdminCentralAnalytics({
             <tbody>
               {filteredAttempts.map((att) => (
                 <tr key={att.attemptId}>
-                  <td><strong>{att.doctorName}</strong></td>
+                  <td>
+                    <strong>{att.doctorName}</strong>
+                  </td>
                   <td className="mono-num">{att.residencyYear}. Yıl</td>
                   <td>{att.quizTitle}</td>
                   <td className="mono-num">{att.submittedAt}</td>
@@ -186,16 +194,10 @@ export function AdminCentralAnalytics({
                     {att.correctCount} / {att.totalQuestions}
                   </td>
                   <td>
-                    <span className={`sec-chip mono-num ${att.score >= 70 ? "verified" : "warn"}`}>
-                      {att.score}
-                    </span>
+                    <span className={`sec-chip mono-num ${att.score >= 70 ? "verified" : "warn"}`}>{att.score}</span>
                   </td>
                   <td className="mono-num">
-                    {att.tabSwitchCount > 0 ? (
-                      <span className="sec-chip warn">{att.tabSwitchCount} Uyarı</span>
-                    ) : (
-                      "0"
-                    )}
+                    {att.tabSwitchCount > 0 ? <span className="sec-chip warn">{att.tabSwitchCount} Uyarı</span> : "0"}
                   </td>
                   <td>
                     {onInspectAttempt && (
@@ -232,13 +234,13 @@ export function AdminCentralAnalytics({
             <tbody>
               {doctorSummaries.map((d) => (
                 <tr key={d.doctorName}>
-                  <td><strong>{d.doctorName}</strong></td>
+                  <td>
+                    <strong>{d.doctorName}</strong>
+                  </td>
                   <td className="mono-num">{d.residencyYear}. Yıl</td>
                   <td className="mono-num">{d.attemptCount}</td>
                   <td>
-                    <span className={`sec-chip mono-num ${d.avgScore >= 70 ? "verified" : "warn"}`}>
-                      {d.avgScore}
-                    </span>
+                    <span className={`sec-chip mono-num ${d.avgScore >= 70 ? "verified" : "warn"}`}>{d.avgScore}</span>
                   </td>
                   <td className="mono-num">{d.bestScore}</td>
                   <td>
@@ -266,12 +268,12 @@ export function AdminCentralAnalytics({
             <tbody>
               {quizSummaries.map((q) => (
                 <tr key={q.quizTitle}>
-                  <td><strong>{q.quizTitle}</strong></td>
+                  <td>
+                    <strong>{q.quizTitle}</strong>
+                  </td>
                   <td className="mono-num">{q.participantCount} Hekim</td>
                   <td>
-                    <span className={`sec-chip mono-num ${q.avgScore >= 70 ? "verified" : "warn"}`}>
-                      {q.avgScore}
-                    </span>
+                    <span className={`sec-chip mono-num ${q.avgScore >= 70 ? "verified" : "warn"}`}>{q.avgScore}</span>
                   </td>
                   <td className="mono-num">
                     {q.minScore} / {q.maxScore}

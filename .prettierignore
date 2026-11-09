@@ -1,0 +1,12 @@
+.next/
+node_modules/
+functions/lib/
+functions/node_modules/
+coverage/
+test-results/
+playwright-report/
+package-lock.json
+functions/package-lock.json
+next-env.d.ts
+# Dokümanlar elle biçimlendirilir (tablolar, Türkçe metin)
+*.md

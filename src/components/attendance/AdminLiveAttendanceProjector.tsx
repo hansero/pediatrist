@@ -74,14 +74,10 @@ export function AdminLiveAttendanceProjector({
 
   // Genel KPI hesaplamaları
   const overallPresentAndExcused = allSessions.reduce((acc, s) => {
-    const cnt = Object.values(s.records).filter(
-      (r) => r.status === "present" || r.status === "excused"
-    ).length;
+    const cnt = Object.values(s.records).filter((r) => r.status === "present" || r.status === "excused").length;
     return acc + cnt;
   }, 0);
-  const averageAttendanceRate = Math.round(
-    (overallPresentAndExcused / (totalSessionsCount * totalDoctors)) * 100
-  );
+  const averageAttendanceRate = Math.round((overallPresentAndExcused / (totalSessionsCount * totalDoctors)) * 100);
 
   // Katılımcı bazlı özet
   const participantSummaries = clinicRoster.map((member) => {
@@ -163,7 +159,16 @@ export function AdminLiveAttendanceProjector({
       </div>
 
       {/* Sekme Seçici */}
-      <div className="surface-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
+      <div
+        className="surface-card"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "0.75rem",
+        }}
+      >
         <div className="mode-switcher" role="tablist" aria-label="Admin Yoklama Yönetim Sekmeleri">
           <button
             id="att-admin-tab-projector"
@@ -201,7 +206,8 @@ export function AdminLiveAttendanceProjector({
               Yoklama Alınacak Dersi Başlat
             </h2>
             <p className="page-header-subtitle" style={{ marginBottom: "1rem" }}>
-              Hekimler yalnızca Eğitim Sorumlusu (Admin) tarafından başlatılan aktif bir ders oturumu varken yoklama verebilir.
+              Hekimler yalnızca Eğitim Sorumlusu (Admin) tarafından başlatılan aktif bir ders oturumu varken yoklama
+              verebilir.
             </p>
 
             <form
@@ -284,7 +290,15 @@ export function AdminLiveAttendanceProjector({
           <article className="surface-card" aria-labelledby="projector-heading">
             {liveSession ? (
               <>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: "0.5rem",
+                  }}
+                >
                   <span className="sec-chip verified">Canlı Yoklama Açık • 15 sn Kriptografik Kod</span>
                   <button
                     id="end-attendance-session-btn"
@@ -350,7 +364,10 @@ export function AdminLiveAttendanceProjector({
                         return (
                           <tr key={member.uid}>
                             <td>
-                              <strong>{member.title} {member.fullName}</strong> ({member.residencyYear}. Yıl)
+                              <strong>
+                                {member.title} {member.fullName}
+                              </strong>{" "}
+                              ({member.residencyYear}. Yıl)
                             </td>
                             <td>
                               {rec?.status === "present" ? (
@@ -408,7 +425,8 @@ export function AdminLiveAttendanceProjector({
                   Yoklama Bekleniyor
                 </h2>
                 <p className="page-header-subtitle">
-                  Soldaki formdan yeni bir ders başlattığınızda 15 saniyelik dinamik doğrulama kodu burada açılır ve hekimlerin ekranında yoklama girişi aktifleşir.
+                  Soldaki formdan yeni bir ders başlattığınızda 15 saniyelik dinamik doğrulama kodu burada açılır ve
+                  hekimlerin ekranında yoklama girişi aktifleşir.
                 </p>
               </div>
             )}
@@ -420,11 +438,21 @@ export function AdminLiveAttendanceProjector({
       {dashboardTab === "by_lecture" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
           <article className="surface-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.85rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "0.75rem",
+                marginBottom: "0.85rem",
+              }}
+            >
               <div>
                 <h2>Ders Bazlı Katılım Özeti ve Logları</h2>
                 <p className="page-header-subtitle">
-                  Bir derse tıklayarak o dersteki katılımcı bazlı yoklama loglarını inceleyebilir veya CSV olarak indirebilirsiniz.
+                  Bir derse tıklayarak o dersteki katılımcı bazlı yoklama loglarını inceleyebilir veya CSV olarak
+                  indirebilirsiniz.
                 </p>
               </div>
               <button
@@ -434,7 +462,18 @@ export function AdminLiveAttendanceProjector({
                 onClick={() =>
                   downloadCsv(
                     "pediatrist_ders_bazli_yoklama_ozeti.csv",
-                    ["DersID", "Tarih", "DersBasligi", "Egitici", "Kategori", "Durum", "Katilan", "Mazeretli", "Katilmayan", "KatilimYuzdesi"],
+                    [
+                      "DersID",
+                      "Tarih",
+                      "DersBasligi",
+                      "Egitici",
+                      "Kategori",
+                      "Durum",
+                      "Katilan",
+                      "Mazeretli",
+                      "Katilmayan",
+                      "KatilimYuzdesi",
+                    ],
                     allSessions.map((s) => {
                       const vals = Object.values(s.records);
                       const pres = vals.filter((v) => v.status === "present").length;
@@ -473,7 +512,9 @@ export function AdminLiveAttendanceProjector({
                     return (
                       <tr key={sess.id}>
                         <td className="mono-num">{sess.dateStr}</td>
-                        <td><strong>{sess.title}</strong></td>
+                        <td>
+                          <strong>{sess.title}</strong>
+                        </td>
                         <td>{sess.lecturer}</td>
                         <td>{sess.category}</td>
                         <td>
@@ -484,7 +525,9 @@ export function AdminLiveAttendanceProjector({
                         <td className="mono-num">
                           {pres} Katıldı • {exc} Mazeretli / {totalDoctors}
                         </td>
-                        <td className="mono-num"><strong>%{pct}</strong></td>
+                        <td className="mono-num">
+                          <strong>%{pct}</strong>
+                        </td>
                         <td>
                           <button
                             id={`inspect-lecture-btn-${sess.id}`}
@@ -505,10 +548,21 @@ export function AdminLiveAttendanceProjector({
 
           {inspectedLecture && (
             <article className="surface-card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.85rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "0.75rem",
+                  marginBottom: "0.85rem",
+                }}
+              >
                 <div>
                   <span className="sec-chip primary">Seçili Dersin Katılımcı Logları</span>
-                  <h3 style={{ marginTop: "0.35rem" }}>{inspectedLecture.title} ({inspectedLecture.dateStr})</h3>
+                  <h3 style={{ marginTop: "0.35rem" }}>
+                    {inspectedLecture.title} ({inspectedLecture.dateStr})
+                  </h3>
                 </div>
                 <button
                   id="export-single-lecture-csv-btn"
@@ -552,7 +606,11 @@ export function AdminLiveAttendanceProjector({
                       const r = inspectedLecture.records[m.uid];
                       return (
                         <tr key={m.uid}>
-                          <td><strong>{m.title} {m.fullName}</strong></td>
+                          <td>
+                            <strong>
+                              {m.title} {m.fullName}
+                            </strong>
+                          </td>
                           <td className="mono-num">{m.residencyYear}. Yıl</td>
                           <td>
                             {r?.status === "present" ? (
@@ -580,11 +638,21 @@ export function AdminLiveAttendanceProjector({
       {dashboardTab === "by_participant" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
           <article className="surface-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.85rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "0.75rem",
+                marginBottom: "0.85rem",
+              }}
+            >
               <div>
                 <h2>Asistan Hekim Bazlı Katılım Takip Karnesi</h2>
                 <p className="page-header-subtitle">
-                  Her asistan hekimin tüm eğitim oturumlarındaki katılım istatistiklerini ve bireysel yoklama geçmişini takip edin.
+                  Her asistan hekimin tüm eğitim oturumlarındaki katılım istatistiklerini ve bireysel yoklama geçmişini
+                  takip edin.
                 </p>
               </div>
               <button
@@ -594,7 +662,16 @@ export function AdminLiveAttendanceProjector({
                 onClick={() =>
                   downloadCsv(
                     "pediatrist_katilimci_bazli_yoklama_ozeti.csv",
-                    ["Hekim", "KidemYili", "KatildigiDers", "MazeretliDers", "KatilmadigiDers", "ToplamDers", "KatilimYuzdesi", "SonKatilim"],
+                    [
+                      "Hekim",
+                      "KidemYili",
+                      "KatildigiDers",
+                      "MazeretliDers",
+                      "KatilmadigiDers",
+                      "ToplamDers",
+                      "KatilimYuzdesi",
+                      "SonKatilim",
+                    ],
                     participantSummaries.map((p) => [
                       `${p.member.title} ${p.member.fullName}`,
                       p.member.residencyYear,
@@ -629,15 +706,19 @@ export function AdminLiveAttendanceProjector({
                 <tbody>
                   {participantSummaries.map((p) => (
                     <tr key={p.member.uid}>
-                      <td><strong>{p.member.title} {p.member.fullName}</strong></td>
+                      <td>
+                        <strong>
+                          {p.member.title} {p.member.fullName}
+                        </strong>
+                      </td>
                       <td className="mono-num">{p.member.residencyYear}. Yıl</td>
-                      <td className="mono-num">{p.presentCount} / {allSessions.length}</td>
+                      <td className="mono-num">
+                        {p.presentCount} / {allSessions.length}
+                      </td>
                       <td className="mono-num">{p.excusedCount}</td>
                       <td className="mono-num">{p.absentCount}</td>
                       <td>
-                        <span className={`sec-chip mono-num ${p.rate >= 70 ? "verified" : "critical"}`}>
-                          %{p.rate}
-                        </span>
+                        <span className={`sec-chip mono-num ${p.rate >= 70 ? "verified" : "critical"}`}>%{p.rate}</span>
                       </td>
                       <td className="mono-num">{p.lastAttendedDate}</td>
                       <td>
@@ -680,7 +761,9 @@ export function AdminLiveAttendanceProjector({
                     {inspectedParticipant.logs.map((log) => (
                       <tr key={log.sessionId}>
                         <td className="mono-num">{log.dateStr}</td>
-                        <td><strong>{log.sessionTitle}</strong></td>
+                        <td>
+                          <strong>{log.sessionTitle}</strong>
+                        </td>
                         <td>{log.lecturer}</td>
                         <td>{log.category}</td>
                         <td>

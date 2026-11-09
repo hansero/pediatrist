@@ -131,10 +131,7 @@ export default function AdminSecurityPage() {
             email: String(data.email ?? ""),
             residencyYear: Number(data.residencyYear ?? 1),
             role: data.role === "admin" ? "admin" : "user",
-            status:
-              data.status === "active" || data.status === "suspended"
-                ? data.status
-                : "pending",
+            status: data.status === "active" || data.status === "suspended" ? data.status : "pending",
             hasBoundDevice: Boolean(data.boundDeviceHash),
           };
         });
@@ -153,11 +150,7 @@ export default function AdminSecurityPage() {
     );
   }
 
-  const recordAudit = (
-    action: string,
-    resourceId: string,
-    severity: "INFO" | "WARN" | "CRITICAL" = "INFO"
-  ) => {
+  const recordAudit = (action: string, resourceId: string, severity: "INFO" | "WARN" | "CRITICAL" = "INFO") => {
     setAuditLogs((prev) => [
       {
         id: `log_${Date.now()}`,
@@ -172,9 +165,7 @@ export default function AdminSecurityPage() {
     ]);
   };
 
-  const filteredLogs = auditLogs.filter(
-    (l) => selectedSeverity === "ALL" || l.severity === selectedSeverity
-  );
+  const filteredLogs = auditLogs.filter((l) => selectedSeverity === "ALL" || l.severity === selectedSeverity);
 
   return (
     <section aria-labelledby="admin-security-page-heading">
@@ -185,18 +176,28 @@ export default function AdminSecurityPage() {
             Kapalı Devre Üyelik, RBAC ve Siber Güvenlik Denetim Paneli
           </h1>
           <p className="page-header-subtitle">
-            Bekleyen üyelik onayları, rol ve kıdem ataması, kişisel yoklama cihazı sıfırlama ve değiştirilemez güvenlik denetim kayıtları.
+            Bekleyen üyelik onayları, rol ve kıdem ataması, kişisel yoklama cihazı sıfırlama ve değiştirilemez güvenlik
+            denetim kayıtları.
           </p>
         </div>
       </div>
 
       {/* Sunucu Bağlantı Durumu — Hiçbir proje kimliği veya anahtar ekrana basılmaz */}
       <article className="surface-card" style={{ marginTop: "1.2rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "0.75rem",
+          }}
+        >
           <div>
             <h2>Bulut Altyapı ve Güvenlik Katmanı Durumu</h2>
             <p className="page-header-subtitle">
-              Kimlik bilgileri ve proje tanımlayıcıları istemci arayüzünde paylaşılmaz; yalnızca sunucu ortam değişkenleri üzerinden yönetilir.
+              Kimlik bilgileri ve proje tanımlayıcıları istemci arayüzünde paylaşılmaz; yalnızca sunucu ortam
+              değişkenleri üzerinden yönetilir.
             </p>
           </div>
           <span className={`sec-chip ${configured ? "verified" : "warn"}`}>
@@ -207,9 +208,7 @@ export default function AdminSecurityPage() {
 
       {/* Üye Onayı, Kıdem/Rol Atama ve Cihaz Sıfırlama */}
       <article className="surface-card" style={{ marginTop: "1.25rem" }}>
-        <h2 style={{ marginBottom: "0.85rem" }}>
-          Klinik Üye Matrisi, Rol Yönetimi ve Yoklama Cihaz Kilidi
-        </h2>
+        <h2 style={{ marginBottom: "0.85rem" }}>Klinik Üye Matrisi, Rol Yönetimi ve Yoklama Cihaz Kilidi</h2>
         <div className="table-wrap">
           <table className="clinical-table">
             <thead>
@@ -226,7 +225,11 @@ export default function AdminSecurityPage() {
             <tbody>
               {members.map((m) => (
                 <tr key={m.uid}>
-                  <td><strong>{m.title} {m.fullName}</strong></td>
+                  <td>
+                    <strong>
+                      {m.title} {m.fullName}
+                    </strong>
+                  </td>
                   <td>{m.email}</td>
                   <td>
                     <select
@@ -240,9 +243,7 @@ export default function AdminSecurityPage() {
                           () => updateMemberAccess({ targetUid: m.uid, residencyYear: yr }),
                           () => ({ ok: true, targetUid: m.uid, role: m.role, status: m.status, residencyYear: yr })
                         );
-                        setMembers((prev) =>
-                          prev.map((x) => (x.uid === m.uid ? { ...x, residencyYear: yr } : x))
-                        );
+                        setMembers((prev) => prev.map((x) => (x.uid === m.uid ? { ...x, residencyYear: yr } : x)));
                         recordAudit(`MEMBER_RESIDENCY_YEAR_SET_${yr}`, m.uid, "INFO");
                       }}
                     >
@@ -260,18 +261,10 @@ export default function AdminSecurityPage() {
                   <td>
                     <span
                       className={`sec-chip ${
-                        m.status === "active"
-                          ? "verified"
-                          : m.status === "pending"
-                          ? "warn"
-                          : "critical"
+                        m.status === "active" ? "verified" : m.status === "pending" ? "warn" : "critical"
                       }`}
                     >
-                      {m.status === "active"
-                        ? "AKTİF"
-                        : m.status === "pending"
-                        ? "ONAY BEKLİYOR"
-                        : "ASKIDA"}
+                      {m.status === "active" ? "AKTİF" : m.status === "pending" ? "ONAY BEKLİYOR" : "ASKIDA"}
                     </span>
                   </td>
                   <td>
@@ -289,11 +282,15 @@ export default function AdminSecurityPage() {
                           onClick={() => {
                             void invokeWithFallback(
                               () => updateMemberAccess({ targetUid: m.uid, status: "active" }),
-                              () => ({ ok: true, targetUid: m.uid, role: m.role, status: "active" as const, residencyYear: m.residencyYear })
+                              () => ({
+                                ok: true,
+                                targetUid: m.uid,
+                                role: m.role,
+                                status: "active" as const,
+                                residencyYear: m.residencyYear,
+                              })
                             );
-                            setMembers((prev) =>
-                              prev.map((x) => (x.uid === m.uid ? { ...x, status: "active" } : x))
-                            );
+                            setMembers((prev) => prev.map((x) => (x.uid === m.uid ? { ...x, status: "active" } : x)));
                             recordAudit(`MEMBER_APPROVED_ACTIVE`, m.uid, "INFO");
                           }}
                         >
@@ -307,12 +304,16 @@ export default function AdminSecurityPage() {
                           onClick={() => {
                             void invokeWithFallback(
                               () => updateMemberAccess({ targetUid: m.uid, status: "suspended" }),
-                              () => ({ ok: true, targetUid: m.uid, role: m.role, status: "suspended" as const, residencyYear: m.residencyYear })
+                              () => ({
+                                ok: true,
+                                targetUid: m.uid,
+                                role: m.role,
+                                status: "suspended" as const,
+                                residencyYear: m.residencyYear,
+                              })
                             );
                             setMembers((prev) =>
-                              prev.map((x) =>
-                                x.uid === m.uid ? { ...x, status: "suspended" } : x
-                              )
+                              prev.map((x) => (x.uid === m.uid ? { ...x, status: "suspended" } : x))
                             );
                             recordAudit(`MEMBER_SUSPENDED`, m.uid, "WARN");
                           }}
@@ -328,11 +329,15 @@ export default function AdminSecurityPage() {
                           const nextRole = m.role === "admin" ? "user" : "admin";
                           void invokeWithFallback(
                             () => updateMemberAccess({ targetUid: m.uid, role: nextRole }),
-                            () => ({ ok: true, targetUid: m.uid, role: nextRole, status: m.status, residencyYear: m.residencyYear })
+                            () => ({
+                              ok: true,
+                              targetUid: m.uid,
+                              role: nextRole,
+                              status: m.status,
+                              residencyYear: m.residencyYear,
+                            })
                           );
-                          setMembers((prev) =>
-                            prev.map((x) => (x.uid === m.uid ? { ...x, role: nextRole } : x))
-                          );
+                          setMembers((prev) => prev.map((x) => (x.uid === m.uid ? { ...x, role: nextRole } : x)));
                           recordAudit(`MEMBER_ROLE_CHANGED_TO_${nextRole.toUpperCase()}`, m.uid, "INFO");
                         }}
                       >
@@ -345,7 +350,13 @@ export default function AdminSecurityPage() {
                         onClick={() => {
                           void invokeWithFallback(
                             () => updateMemberAccess({ targetUid: m.uid, resetBoundDevice: true }),
-                            () => ({ ok: true, targetUid: m.uid, role: m.role, status: m.status, residencyYear: m.residencyYear })
+                            () => ({
+                              ok: true,
+                              targetUid: m.uid,
+                              role: m.role,
+                              status: m.status,
+                              residencyYear: m.residencyYear,
+                            })
                           );
                           setMembers((prev) =>
                             prev.map((x) => (x.uid === m.uid ? { ...x, hasBoundDevice: false } : x))
@@ -415,19 +426,19 @@ export default function AdminSecurityPage() {
                   <td>
                     <span
                       className={`sec-chip ${
-                        log.severity === "CRITICAL"
-                          ? "critical"
-                          : log.severity === "WARN"
-                          ? "warn"
-                          : "verified"
+                        log.severity === "CRITICAL" ? "critical" : log.severity === "WARN" ? "warn" : "verified"
                       }`}
                     >
                       {log.severity}
                     </span>
                   </td>
                   <td>{log.actorEmail}</td>
-                  <td className="mono-num" style={{ fontWeight: 600 }}>{log.action}</td>
-                  <td><code>{log.resourceType}</code></td>
+                  <td className="mono-num" style={{ fontWeight: 600 }}>
+                    {log.action}
+                  </td>
+                  <td>
+                    <code>{log.resourceType}</code>
+                  </td>
                   <td className="mono-num">{log.resourceId}</td>
                 </tr>
               ))}

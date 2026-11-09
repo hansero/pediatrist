@@ -36,12 +36,7 @@ interface SessionGuardProps {
  * 2. MFA (TOTP) doğrulanmamışsa erişimi engeller.
  * 3. 15 dakika (900 sn) boyunca fare/klavye/dokunma etkileşimi olmazsa ekranı kilitler.
  */
-export function SessionGuard({
-  session,
-  requireAdmin = false,
-  onSignOut,
-  children,
-}: SessionGuardProps) {
+export function SessionGuard({ session, requireAdmin = false, onSignOut, children }: SessionGuardProps) {
   const [remainingSeconds, setRemainingSeconds] = useState<number>(IDLE_TIMEOUT_SECONDS);
   const [isLocked, setIsLocked] = useState<boolean>(false);
 
@@ -90,9 +85,7 @@ export function SessionGuard({
     return (
       <section className="surface-card" aria-labelledby="rbac-denied-heading">
         <h2 id="rbac-denied-heading">Yetkisiz Erişim Engellendi (RBAC)</h2>
-        <p className="page-header-subtitle">
-          Bu bölüm yalnızca eğitim sorumluları (Admin) içindir.
-        </p>
+        <p className="page-header-subtitle">Bu bölüm yalnızca eğitim sorumluları (Admin) içindir.</p>
       </section>
     );
   }

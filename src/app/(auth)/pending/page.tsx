@@ -11,7 +11,8 @@ export default function PendingApprovalPage() {
           Üyeliğiniz Eğitim Sorumlusu Onayı Bekliyor
         </h1>
         <p className="page-header-subtitle" style={{ marginTop: "0.5rem" }}>
-          Pediatrist platformuna yalnızca onaylı klinik üyeleri erişebilir. Başvurunuz Admin panelinde (<code>/admin</code>) onaylandığında 2FA ile giriş yapabilirsiniz.
+          Pediatrist platformuna yalnızca onaylı klinik üyeleri erişebilir. Başvurunuz Admin panelinde (
+          <code>/admin</code>) onaylandığında 2FA ile giriş yapabilirsiniz.
         </p>
       </article>
     </main>

@@ -16,7 +16,11 @@ interface DoctorRealTimeCheckInProps {
     status: "present" | "excused" | "absent";
     verifiedAt: string;
   }>;
-  onVerifyAttendance: (inputCode: string, useRegisteredDevice: boolean, webAuthnOk: boolean) => {
+  onVerifyAttendance: (
+    inputCode: string,
+    useRegisteredDevice: boolean,
+    webAuthnOk: boolean
+  ) => {
     ok: boolean;
     message: string;
   };
@@ -52,7 +56,8 @@ export function DoctorRealTimeCheckIn({
                 Canlı Ders Yoklaması: {liveSession.title}
               </h2>
               <p className="page-header-subtitle" style={{ marginBottom: "1rem" }}>
-                {liveSession.lecturer} • {liveSession.category} — Projektörde yansıtılan 6 haneli dinamik kodu girerek katılımınızı doğrulayın.
+                {liveSession.lecturer} • {liveSession.category} — Projektörde yansıtılan 6 haneli dinamik kodu girerek
+                katılımınızı doğrulayın.
               </p>
 
               {existingRecord?.status === "present" && (
@@ -79,7 +84,16 @@ export function DoctorRealTimeCheckIn({
                 }}
               >
                 <div className="form-group">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.4rem", marginBottom: "0.35rem" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: "0.4rem",
+                      marginBottom: "0.35rem",
+                    }}
+                  >
                     <label htmlFor="checkin-hmac-input" className="form-label" style={{ marginBottom: 0 }}>
                       Projektördeki 6 Haneli Dinamik Yoklama Kodu
                     </label>
@@ -154,7 +168,8 @@ export function DoctorRealTimeCheckIn({
             <div style={{ marginTop: "0.65rem" }}>
               <h2 id="checkin-card-heading">Şu Anda Aktif Ders Yoklaması Yok</h2>
               <p className="page-header-subtitle" style={{ marginTop: "0.4rem" }}>
-                Yoklama alınacak ders yalnızca Eğitim Sorumlusu (Admin) tarafından başlatıldığında bu ekranda aktifleşir.
+                Yoklama alınacak ders yalnızca Eğitim Sorumlusu (Admin) tarafından başlatıldığında bu ekranda
+                aktifleşir.
               </p>
             </div>
           )}
@@ -165,7 +180,15 @@ export function DoctorRealTimeCheckIn({
           <h2 id="security-status-heading" style={{ marginTop: "0.5rem" }}>
             Oturum ve Cihaz Durumu
           </h2>
-          <ul style={{ paddingLeft: "1.2rem", color: "var(--text-secondary)", fontSize: "0.86rem", lineHeight: 1.7, marginTop: "0.75rem" }}>
+          <ul
+            style={{
+              paddingLeft: "1.2rem",
+              color: "var(--text-secondary)",
+              fontSize: "0.86rem",
+              lineHeight: 1.7,
+              marginTop: "0.75rem",
+            }}
+          >
             <li>
               <strong>Hekim:</strong> {session.title} {session.fullName} ({session.residencyYear}. Yıl)
             </li>
@@ -174,7 +197,8 @@ export function DoctorRealTimeCheckIn({
               {session.hasBoundDevice ? "Doğrulandı ✓" : "İlk yoklamada bağlanacak"}
             </li>
             <li>
-              <strong>Vekaleten Yoklama Koruması:</strong> Her hesap yalnızca kendi birincil cihazı ile yoklama verebilir; aynı cihazdan ikinci bir hesap adına yoklama gönderilemez.
+              <strong>Vekaleten Yoklama Koruması:</strong> Her hesap yalnızca kendi birincil cihazı ile yoklama
+              verebilir; aynı cihazdan ikinci bir hesap adına yoklama gönderilemez.
             </li>
           </ul>
         </article>
@@ -201,7 +225,9 @@ export function DoctorRealTimeCheckIn({
               {personalAttendanceHistory.map((item) => (
                 <tr key={item.sessionId}>
                   <td className="mono-num">{item.dateStr}</td>
-                  <td><strong>{item.title}</strong></td>
+                  <td>
+                    <strong>{item.title}</strong>
+                  </td>
                   <td>{item.lecturer}</td>
                   <td>{item.category}</td>
                   <td>

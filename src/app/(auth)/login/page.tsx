@@ -104,7 +104,11 @@ export default function LoginPage() {
             </button>
 
             <div style={{ marginTop: "1rem", textAlign: "center", fontSize: "0.82rem" }}>
-              <a id="login-to-register-link" href="/register" style={{ color: "var(--clinical-primary)", fontWeight: 600 }}>
+              <a
+                id="login-to-register-link"
+                href="/register"
+                style={{ color: "var(--clinical-primary)", fontWeight: 600 }}
+              >
                 Kliniğe yeni başladınız mı? Asistan / Uzman Üyelik Başvurusu Yapın &rarr;
               </a>
             </div>

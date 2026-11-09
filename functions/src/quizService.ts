@@ -47,7 +47,10 @@ function assertActiveMember(request: CallableRequest<unknown>) {
   return request.auth;
 }
 
-const norm = (v: string) => String(v ?? "").trim().toLocaleLowerCase("tr-TR");
+const norm = (v: string) =>
+  String(v ?? "")
+    .trim()
+    .toLocaleLowerCase("tr-TR");
 const clip = (v: unknown, max: number) => String(v ?? "").slice(0, max);
 
 /** 9 alanlı soruyu sunucuda doğrular ve normalize eder. Hata varsa satır numarasıyla fırlatır. */
@@ -75,7 +78,8 @@ function sanitizeQuestion(q: NineFieldQuestionInput, row: number) {
 
   if (q.questionType === "Text Input") {
     maxLength = Number(q.maxLength);
-    if (!Number.isInteger(maxLength) || maxLength < 1 || maxLength > 2000) fail("5. alan (Maximum Length) 1–2000 olmalı.");
+    if (!Number.isInteger(maxLength) || maxLength < 1 || maxLength > 2000)
+      fail("5. alan (Maximum Length) 1–2000 olmalı.");
   } else {
     if (options.length < 2) fail("Seçenekli sorularda en az 2 seçenek gerekir.");
     const optSet = new Set(options.map(norm));
@@ -210,7 +214,9 @@ export const publishQuiz = onCall({ enforceAppCheck: true, region: REGION }, asy
   batch.update(quizRef, {
     status: "published",
     durationMinutes: duration,
-    closesAt: closesAtMs ? admin.firestore.Timestamp.fromMillis(Number(closesAtMs)) : quizSnap.data()?.closesAt ?? null,
+    closesAt: closesAtMs
+      ? admin.firestore.Timestamp.fromMillis(Number(closesAtMs))
+      : (quizSnap.data()?.closesAt ?? null),
     publishedAt: admin.firestore.FieldValue.serverTimestamp(),
     publishedBy: auth.uid,
   });
@@ -262,7 +268,8 @@ export const startQuizAttempt = onCall({ enforceAppCheck: true, region: REGION }
   const db = admin.firestore();
   const quizSnap = await db.collection("quizzes").doc(quizId).get();
   const quiz = quizSnap.data();
-  if (!quiz || quiz.status !== "published") throw new HttpsError("failed-precondition", "Bu sınav şu anda aktif değil.");
+  if (!quiz || quiz.status !== "published")
+    throw new HttpsError("failed-precondition", "Bu sınav şu anda aktif değil.");
 
   const nowMs = Date.now();
   const closesAtMs = quiz.closesAt ? (quiz.closesAt as admin.firestore.Timestamp).toMillis() : null;

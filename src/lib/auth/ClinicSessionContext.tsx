@@ -46,16 +46,14 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
       const profile = userSnap?.data() ?? legacySnap?.data() ?? {};
 
       const effectiveRole: ClinicRole =
-        profile.role === "admin" || (token.claims.role as ClinicRole) === "admin"
-          ? "admin"
-          : "user";
+        profile.role === "admin" || (token.claims.role as ClinicRole) === "admin" ? "admin" : "user";
 
       const effectiveStatus: MemberStatus =
         profile.status === "active" || (token.claims.status as MemberStatus) === "active"
           ? "active"
           : profile.status === "suspended" || (token.claims.status as MemberStatus) === "suspended"
-          ? "suspended"
-          : "pending";
+            ? "suspended"
+            : "pending";
 
       setState({
         loading: false,
@@ -81,9 +79,7 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
     window.location.href = "/login";
   };
 
-  return (
-    <ClinicSessionContext.Provider value={{ ...state, signOutUser }}>{children}</ClinicSessionContext.Provider>
-  );
+  return <ClinicSessionContext.Provider value={{ ...state, signOutUser }}>{children}</ClinicSessionContext.Provider>;
 }
 
 export function useClinicSession() {

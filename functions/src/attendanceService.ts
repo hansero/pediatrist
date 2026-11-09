@@ -205,7 +205,10 @@ export const verifyRealTimeAttendance = onCall({ enforceAppCheck: true, region: 
       resourceId: sessionId,
       severity: "WARN",
     });
-    throw new HttpsError("failed-precondition", "Bu cihaz hesabınıza kayıtlı değil. Cihaz değişikliği için Admin'e başvurun.");
+    throw new HttpsError(
+      "failed-precondition",
+      "Bu cihaz hesabınıza kayıtlı değil. Cihaz değişikliği için Admin'e başvurun."
+    );
   }
 
   // 3. 15 sn'lik HMAC kodu (bir önceki pencere ağ gecikmesi toleransı olarak kabul edilir)

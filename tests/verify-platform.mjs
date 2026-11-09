@@ -46,21 +46,12 @@ test("1. Sıfır Kimlik Bilgisi ve Altyapı Sızıntısı (Zero Credential Expos
     }
   }
 
-  const forbiddenLiterals = [
-    ...envSecrets,
-    "AIzaSy",
-    "DEV-PED-",
-    "PEDIATRIST_FIREBASE_CONFIG",
-  ];
+  const forbiddenLiterals = [...envSecrets, "AIzaSy", "DEV-PED-", "PEDIATRIST_FIREBASE_CONFIG"];
 
   for (const file of filesToScan) {
     const content = fs.readFileSync(file, "utf8");
     for (const secret of forbiddenLiterals) {
-      assert.equal(
-        content.includes(secret),
-        false,
-        `GÜVENLİK İHLALİ: ${file} içinde '${secret}' sızıntısı bulundu!`
-      );
+      assert.equal(content.includes(secret), false, `GÜVENLİK İHLALİ: ${file} içinde '${secret}' sızıntısı bulundu!`);
     }
   }
 
@@ -79,10 +70,7 @@ test("2. Modül 3 Yoklama Edge-Case Mini Testleri (HMAC 15 sn Slot, Ağ Gecikmes
   const CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
   function computeSlotCode(secret, sessionId, slotIndex) {
-    const digest = crypto
-      .createHmac("sha256", secret)
-      .update(`${sessionId}:${slotIndex}`)
-      .digest();
+    const digest = crypto.createHmac("sha256", secret).update(`${sessionId}:${slotIndex}`).digest();
     let code = "";
     for (let i = 0; i < 6; i++) {
       code += CHARSET[digest[i] % CHARSET.length];
@@ -129,10 +117,7 @@ test("2. Modül 3 Yoklama Edge-Case Mini Testleri (HMAC 15 sn Slot, Ağ Gecikmes
     }
 
     // Aynı fiziksel cihazın farklı hesaplarda kullanılmasını yakalamak için fiziksel cihaz özeti
-    const physicalDeviceHash = crypto
-      .createHash("sha256")
-      .update(`physical:${rawPhysicalDeviceSecret}`)
-      .digest("hex");
+    const physicalDeviceHash = crypto.createHash("sha256").update(`physical:${rawPhysicalDeviceSecret}`).digest("hex");
 
     const user = usersDb[uid];
     if (!user.boundDeviceHash) {
@@ -311,11 +296,7 @@ test("3. Modül 4: 9 Sütunlu CSV Ayrıştırıcı, Validasyon ve Türkçe Karak
   }
 
   const acceptedAnswers = ["Krup", "Viral krup", "Akut laringotrakeobronşit", "İdiyopatik İntrakraniyal Hipertansiyon"];
-  const residentInputs = [
-    "  AKUT LARİNGOTRAKEOBRONŞİT ",
-    "vİral   krup",
-    "idiyopatik intrakraniyal hipertansiyon",
-  ];
+  const residentInputs = ["  AKUT LARİNGOTRAKEOBRONŞİT ", "vİral   krup", "idiyopatik intrakraniyal hipertansiyon"];
 
   for (const typed of residentInputs) {
     const normTyped = normalizeClinicalText(typed);
@@ -326,7 +307,7 @@ test("3. Modül 4: 9 Sütunlu CSV Ayrıştırıcı, Validasyon ve Türkçe Karak
   // Edge Case 3.3: CSV Formül Enjeksiyonu (CSV Injection) Koruması
   const hooksTs = fs.readFileSync(path.join(ROOT, "src/lib/firebase/hooks.ts"), "utf8");
   assert.ok(
-    hooksTs.includes('/^[=+\\-@\\t\\r]/'),
+    hooksTs.includes("/^[=+\\-@\\t\\r]/"),
     "CSV dışa aktarımda Excel formül enjeksiyonu (=, +, -, @) koruması bulunmalıdır"
   );
 });
@@ -421,10 +402,7 @@ test("5. Persona UI/UX (Eğitim Sorumlusu Prof. Dr. & Pediatri Asistanı) ve Fir
   }
 
   // 5.3 Persona buton ve arayüz optimizasyonları kontrolü
-  const examRunner = fs.readFileSync(
-    path.join(ROOT, "src/components/quizzes/ClinicalExamRunner.tsx"),
-    "utf8"
-  );
+  const examRunner = fs.readFileSync(path.join(ROOT, "src/components/quizzes/ClinicalExamRunner.tsx"), "utf8");
   assert.ok(
     examRunner.includes("Sınavı Teslim Et ve Vaka Çözümlerini Gör"),
     "ClinicalExamRunner asistan odaklı teslim butonuna sahip olmalı"
@@ -438,10 +416,7 @@ test("5. Persona UI/UX (Eğitim Sorumlusu Prof. Dr. & Pediatri Asistanı) ve Fir
     "ClinicalExamRunner zamanlayıcısı seçenek tıklandığında sıfırlanmamak için useRef kullanmalı"
   );
 
-  const doctorDashboard = fs.readFileSync(
-    path.join(ROOT, "src/components/quizzes/DoctorGrowthDashboard.tsx"),
-    "utf8"
-  );
+  const doctorDashboard = fs.readFileSync(path.join(ROOT, "src/components/quizzes/DoctorGrowthDashboard.tsx"), "utf8");
   assert.ok(
     doctorDashboard.includes("Sınava Katıl ve Vakaları Çözmeye Başla"),
     "DoctorGrowthDashboard asistan odaklı sınava başlama butonuna sahip olmalı"
@@ -464,10 +439,7 @@ test("5. Persona UI/UX (Eğitim Sorumlusu Prof. Dr. & Pediatri Asistanı) ve Fir
     "AdminLiveAttendanceProjector asistan bazlı katılım karnesi sekmesine sahip olmalı"
   );
 
-  const doctorCheckIn = fs.readFileSync(
-    path.join(ROOT, "src/components/attendance/DoctorRealTimeCheckIn.tsx"),
-    "utf8"
-  );
+  const doctorCheckIn = fs.readFileSync(path.join(ROOT, "src/components/attendance/DoctorRealTimeCheckIn.tsx"), "utf8");
   assert.ok(
     doctorCheckIn.includes("Projektör Kodunu Kamera ile Tara"),
     "DoctorRealTimeCheckIn tek tıkla kamera/QR tarama simülasyonuna sahip olmalı"
@@ -493,9 +465,7 @@ test("5. Persona UI/UX (Eğitim Sorumlusu Prof. Dr. & Pediatri Asistanı) ve Fir
 // TEST 6: NEXT.JS 15 & TYPESCRIPT DERLEME BÜTÜNLÜĞÜ DENETİMİ
 // ============================================================================
 test("6. Next.js 15 App Router & TypeScript Sıkı Tip Bütünlüğü Denetimi", () => {
-  const srcFiles = getAllFiles(path.join(ROOT, "src")).filter(
-    (f) => f.endsWith(".ts") || f.endsWith(".tsx")
-  );
+  const srcFiles = getAllFiles(path.join(ROOT, "src")).filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"));
 
   for (const file of srcFiles) {
     const content = fs.readFileSync(file, "utf8");
@@ -507,11 +477,7 @@ test("6. Next.js 15 App Router & TypeScript Sıkı Tip Bütünlüğü Denetimi",
         false,
         `JSX HATASI: ${file} içinde 'class=' yerine 'className=' kullanılmalı`
       );
-      assert.equal(
-        /\sfor=/.test(content),
-        false,
-        `JSX HATASI: ${file} içinde 'for=' yerine 'htmlFor=' kullanılmalı`
-      );
+      assert.equal(/\sfor=/.test(content), false, `JSX HATASI: ${file} içinde 'for=' yerine 'htmlFor=' kullanılmalı`);
     }
 
     // 6.2 Tüm '@/...' içe aktarımları gerçek dosyalara çözümlenmeli
@@ -533,10 +499,7 @@ test("6. Next.js 15 App Router & TypeScript Sıkı Tip Bütünlüğü Denetimi",
   }
 
   // 6.3 TrainingMaterialItem zorunlu alan kontrolü (fileType, storagePath, uploadedBy)
-  const materialsPage = fs.readFileSync(
-    path.join(ROOT, "src/app/(protected)/materials/page.tsx"),
-    "utf8"
-  );
+  const materialsPage = fs.readFileSync(path.join(ROOT, "src/app/(protected)/materials/page.tsx"), "utf8");
   assert.ok(materialsPage.includes("fileType:"), "INITIAL_MATERIALS fileType alanı içermeli");
   assert.ok(materialsPage.includes("storagePath:"), "INITIAL_MATERIALS storagePath alanı içermeli");
   assert.ok(materialsPage.includes("uploadedBy:"), "INITIAL_MATERIALS uploadedBy alanı içermeli");
@@ -550,9 +513,5 @@ test("6. Next.js 15 App Router & TypeScript Sıkı Tip Bütünlüğü Denetimi",
 
   // 6.5 tsconfig.json Next.js eklentisi kontrolü
   const tsconfig = JSON.parse(fs.readFileSync(path.join(ROOT, "tsconfig.json"), "utf8"));
-  assert.ok(
-    tsconfig.include.includes(".next/types/**/*.ts"),
-    "tsconfig.json '.next/types/**/*.ts' içermeli"
-  );
+  assert.ok(tsconfig.include.includes(".next/types/**/*.ts"), "tsconfig.json '.next/types/**/*.ts' içermeli");
 });
-

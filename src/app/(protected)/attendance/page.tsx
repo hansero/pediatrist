@@ -161,11 +161,7 @@ export default function AttendancePage() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleVerifyAttendance = (
-    inputCode: string,
-    useRegisteredDevice: boolean,
-    webAuthnOk: boolean
-  ) => {
+  const handleVerifyAttendance = (inputCode: string, useRegisteredDevice: boolean, webAuthnOk: boolean) => {
     if (!liveSession) {
       return {
         ok: false,
@@ -304,9 +300,7 @@ export default function AttendancePage() {
               () => endLectureSession({ sessionId }),
               () => ({ ok: true, sessionId, status: "closed" as const })
             );
-            setSessions((prev) =>
-              prev.map((s) => (s.id === sessionId ? { ...s, status: "closed" as const } : s))
-            );
+            setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, status: "closed" as const } : s)));
           }}
           onMarkExcused={(sessionId, uid, excuseNote) => {
             const member = CLINIC_ROSTER.find((m) => m.uid === uid);

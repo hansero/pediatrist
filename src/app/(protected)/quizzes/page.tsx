@@ -1,11 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  NineFieldClinicalQuestion,
-  DoctorQuizAttemptLog,
-  evaluateClinicalQuizAttempt,
-} from "@/lib/quiz-parser";
+import { NineFieldClinicalQuestion, DoctorQuizAttemptLog, evaluateClinicalQuizAttempt } from "@/lib/quiz-parser";
 import { DoctorGrowthDashboard } from "@/components/quizzes/DoctorGrowthDashboard";
 import { ClinicalExamRunner } from "@/components/quizzes/ClinicalExamRunner";
 import { InstantFeedbackReport } from "@/components/quizzes/InstantFeedbackReport";
@@ -76,8 +72,7 @@ const INITIAL_ACTIVE_QUESTIONS: NineFieldClinicalQuestion[] = [
     caseContent:
       "5 yaşında çocuk hasta; havlar tarzda öksürük (barking cough), ses kısıklığı ve inspiratuar stridor ile acil servise başvuruyor. Akciğer grafisinde subglottik daralma ('kalem ucu / çan kulesi' görünümü) saptanıyor.",
     imageUrl: "quiz_media/steeple_sign_ap_boyun.png",
-    questionText:
-      "Bu klinik tabloya neden olan en olası tanıyı yazınız (Açık Uçlu Metin - Text Input):",
+    questionText: "Bu klinik tabloya neden olan en olası tanıyı yazınız (Açık Uçlu Metin - Text Input):",
     questionType: "Text Input",
     maxLength: 40,
     optionsRaw: "",
@@ -122,9 +117,7 @@ export default function OnlineQuizzesPage() {
     "Kasım 2026 — 1. Hafta Çocuk Acil, Kawasaki ve Solunum Acilleri Sınavı"
   );
   const [activeQuizDurationMinutes, setActiveQuizDurationMinutes] = useState<number>(15);
-  const [activeQuestions, setActiveQuestions] = useState<NineFieldClinicalQuestion[]>(
-    INITIAL_ACTIVE_QUESTIONS
-  );
+  const [activeQuestions, setActiveQuestions] = useState<NineFieldClinicalQuestion[]>(INITIAL_ACTIVE_QUESTIONS);
   const [archivedQuestions, setArchivedQuestions] = useState<
     Array<NineFieldClinicalQuestion & { sourceQuizTitle: string; archivedAt: string }>
   >([
@@ -189,9 +182,7 @@ export default function OnlineQuizzesPage() {
     if (!att.gradedReport.length) {
       const sampleGraded = evaluateClinicalQuizAttempt(activeQuestions, {
         [activeQuestions[0]?.id || "q_active_1"]: ["Tek doz 2 g/kg IVIG + Aspirin (ASA)"],
-        [activeQuestions[1]?.id || "q_active_2"]: [
-          "20 mL/kg %0.9 NaCl (İzotonik Kristalloid) hızlı IV bolus",
-        ],
+        [activeQuestions[1]?.id || "q_active_2"]: ["20 mL/kg %0.9 NaCl (İzotonik Kristalloid) hızlı IV bolus"],
         [activeQuestions[2]?.id || "q_active_3"]: ["Krup"],
       });
       setInspectedAttempt({ ...att, gradedReport: sampleGraded.gradedReport });
@@ -220,16 +211,10 @@ export default function OnlineQuizzesPage() {
 
       {isAdmin ? (
         inspectedAttempt ? (
-          <InstantFeedbackReport
-            attempt={inspectedAttempt}
-            onBackToDashboard={() => setInspectedAttempt(null)}
-          />
+          <InstantFeedbackReport attempt={inspectedAttempt} onBackToDashboard={() => setInspectedAttempt(null)} />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1.35rem" }}>
-            <AdminCentralAnalytics
-              allAttempts={allAttempts}
-              onInspectAttempt={(att) => openAttemptReport(att)}
-            />
+            <AdminCentralAnalytics allAttempts={allAttempts} onInspectAttempt={(att) => openAttemptReport(att)} />
             <AdminQuizStudio
               activeQuizTitle={activeQuizTitle}
               activeQuizDurationMinutes={activeQuizDurationMinutes}
@@ -299,10 +284,7 @@ export default function OnlineQuizzesPage() {
           onCancel={() => setUserStage("dashboard")}
         />
       ) : userStage === "feedback" && inspectedAttempt ? (
-        <InstantFeedbackReport
-          attempt={inspectedAttempt}
-          onBackToDashboard={() => setUserStage("dashboard")}
-        />
+        <InstantFeedbackReport attempt={inspectedAttempt} onBackToDashboard={() => setUserStage("dashboard")} />
       ) : (
         <DoctorGrowthDashboard
           session={activeSession}
