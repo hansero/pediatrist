@@ -17,8 +17,34 @@ export default defineConfig({
           include: ["tests/unit/**/*.test.{ts,tsx}"],
         },
       },
-      // F0.5: "rules" (Firestore/Storage kuralları, emülatör) ve
-      // "functions" (callable .run() testleri, emülatör) projeleri eklenecek.
+      {
+        // Emülatör gerektirir: npm run test:rules
+        resolve: { alias },
+        test: {
+          name: "rules",
+          environment: "node",
+          include: ["tests/rules/**/*.test.ts"],
+          // Dosyalar aynı emülatör projesini paylaşır; sıralı çalışmalı.
+          fileParallelism: false,
+          testTimeout: 20_000,
+          hookTimeout: 30_000,
+        },
+      },
+      {
+        // Emülatör gerektirir: npm run test:functions
+        // Testler functions/ altında durur ki firebase-admin/functions, functions kodunun
+        // kullandığı AYNI kopyadan (functions/node_modules) çözülsün.
+        resolve: { alias },
+        test: {
+          name: "functions",
+          environment: "node",
+          include: ["functions/test/**/*.test.ts"],
+          setupFiles: ["functions/test/setup.ts"],
+          fileParallelism: false,
+          testTimeout: 20_000,
+          hookTimeout: 30_000,
+        },
+      },
     ],
   },
 });

@@ -39,7 +39,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F0.2 | Lint / typecheck / test script'leri + CI workflow | S | ✅ | §8 |
 | F0.3 | İstemcinin emülatöre bağlanması + App Check debug + `.env` | S | ✅ | §7 |
 | F0.4 | Emülatör seed script'i (test verisi YALNIZCA burada) | M | ✅ | (mock'ların yerine) |
-| F0.5 | Eski sahte testleri kaldır, test iskeletleri + "no-mock" bekçisi | M | ⬜ | §8 |
+| F0.5 | Eski sahte testleri kaldır, test iskeletleri + "no-mock" bekçisi | M | ✅ | §8 |
 | **F1** | **Ortak domain ve API sözleşmeleri** | | | |
 | F1.1 | `functions/src/shared`: sabitler, tipler, zod şemaları, `@shared` alias | M | ⬜ | Tutarlılık tablosu |
 | F1.2 | Ortak CSV doğrulayıcı + birim testleri | S | ⬜ | Tutarlılık (CSV) |
@@ -101,18 +101,12 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-09
-- **Son tamamlanan adım:** F0.4 (emülatör seed'i, fixture'lar, CSV fixture'ı; sınav seed'i F5.1'e taşındı). N4 kapandı.
+- **Son tamamlanan adım:** F0.5. **F0 fazı tamamlandı.** Test zemini: unit 8, rules 15 + 4 `it.fails` (C5, C7, C9, C11), functions 5, e2e 6 (masaüstü + telefon); sahte veri bekçisi (9 dosya izin listesinde); CI'da emülatör işi.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F0.5:
-  1. `tests/verify-platform.mjs`'i sil.
-  2. `vitest.config.mts`'e `rules` (`tests/rules/**`) ve `functions` (`functions/test/**`) projelerini ekle. İlk birer gerçek testi yaz: rules için örn. "bekleyen kullanıcı `materials` okuyamaz", functions için örn. `onClinicMemberCreated`'in claim yazması veya bir callable'ın `.run()` ile yetkisiz çağrıda reddi.
-  3. `playwright.config.ts`: `e2e/`, Chromium, projeler 1280 ve 390 (iPhone), `webServer: next dev`.
-  4. `e2e/fixtures/auth.ts`: seed hesaplarıyla giriş yardımcısı. İlk smoke testi: seed admin girişi → dashboard H1. Not: sayfa `networkidle` beklenmeden form doldurulursa N3 yüzünden gönderim kaybolur.
-  5. `scripts/check-no-mock.mjs` + `scripts/no-mock-allowlist.json` (dosya bazında; mevcut ihlaller).
-  6. Script'ler: `test:rules`, `test:functions`, `test:e2e`, `check:no-mock`. Hepsi `node scripts/firebase.mjs emulators:exec --only … --project demo-pediatrist "<komut>"` ile; e2e için seed de çalıştırılır.
-  7. CI'a `actions/setup-java` (17+) + emülatör işleri.
-- **Ortamı çalıştırma:** `npm run emulators` (arka planda) → `npm run seed` → `npm run dev`.
-- **Engeller / notlar:** N3 açık (§7). Arka planda kalan süreçleri kapatmak için: `pkill -f "next dev"; pkill -f firebase.js; pkill -f cloud-firestore-emulator`.
+- **Sıradaki iş:** F1.1: `functions/src/shared/{constants,types,schemas,index}.ts`, kök `tsconfig.json`'a `@shared/*` → `./functions/src/shared/*` alias'ı (vitest.config.mts'e de aynı alias), Next'in `functions/` altındaki TS'i derleyebildiğini `next build` ile doğrula (gerekirse `experimental.externalDir`). Her callable için zod Request/Response şemaları; takma ad parametreler kaldırılır. Domain tipleri `SessionGuard.tsx` ve `AdminLiveAttendanceProjector.tsx`'ten taşınır. zod şemaları için birim testleri (`tests/unit/schemas.test.ts`).
+- **Dikkat:** Functions kodu `@shared` alias'ını kullanamaz (functions `tsc` CommonJS derler ve deploy'da alias çözülmez). Functions içinde **göreli import** (`./shared/...`) kullanılmalı; alias yalnızca Next ve vitest tarafı için.
+- **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e` (her biri kendi emülatörünü başlatır; açık bir `npm run emulators` ile aynı anda çalıştırmayın, portlar çakışır).
+- **Engeller / notlar:** N3 açık (§7).
 
 ---
 
@@ -245,6 +239,14 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - **Script'ler:** `test:rules`, `test:functions` (`firebase emulators:exec --only auth,firestore,storage --project demo-pediatrist "vitest run --project <ad>"`), `test:e2e` (`… --only auth,firestore,storage,functions … "playwright test"`), `check:no-mock`. vitest.config.mts'e `rules` ve `functions` projeleri eklenir.
 - **CI:** `.github/workflows/ci.yml`'e `actions/setup-java` + emülatör işleri (rules, functions, e2e) eklenir.
 - **Doğrulama:** `npm run test:unit` (en az parser testleri), `npm run check:no-mock` (yalnızca allowlist dışında ihlal varsa kırmızı).
+- **✅ Uygulanan (2026-11-09) — plandan sapmalar ve sonuçlar:**
+  - `tests/verify-platform.mjs` silindi.
+  - **Kural testleri** (`tests/rules/`, `npm run test:rules`): 15 geçen + **4 `it.fails`**. `it.fails`, bilinen açığı belgeler: açık var oldukça "geçer", kapatılınca kırmızıya döner ve `it`'e çevrilmesi gerekir. Açıklar: **C5** (askıya alınmış üye eski token'la okur) → F2.1; **C7** (sorular sınav başlamadan okunur) → F2.1/F5.1; **C9** (davetler herkese açık) → F2.1; **C11** (admin Storage'da dosya silemez; kök neden: silmede `request.resource` null → `storage.rules:17` "Null value error") → F2.2.
+  - **Functions testleri** `functions/test/` altında (**`tests/functions` değil**): testler kökteki `firebase-admin` kopyasını kullanırsa functions kodu ayrı bir SDK örneği görür. `functions/` altında Node çözümlemesi functions'ın kendi paketlerini bulur. Typecheck için `functions/test/tsconfig.json`; functions `typecheck` script'i testleri de kapsıyor. 5 test: `updateMemberAccess.run()` (oturumsuz → `unauthenticated`, asistan → `permission-denied`, admin → claim + profil + denetim kaydı) ve `onClinicMemberCreated.run()` (claim senkronu, geçersiz rolün `user`'a indirgenmesi).
+  - **N2 koruması statik:** functions testleri kodu Node'da çalıştırdığı için emülatöre özgü N2'yi yakalayamaz. Bu yüzden ESLint `no-restricted-imports`, `functions/src` içinde `firebase-admin` namespace import'unu yasaklıyor (deneme dosyasıyla doğrulandı).
+  - **E2E** (`e2e/`, `npm run test:e2e`): **üretim derlemesine** (`next build` + `next start`, port 3100) karşı. Emülatör ayarları `.env.development`'tan `util.parseEnv` ile veriliyor; böylece üretim CSP'si de test ediliyor. Projeler: `masaustu` (1280) ve `telefon` (390, Chromium). Script: functions build → `emulators:exec` → seed → playwright. Duman testi 6/6: admin, asistan ve bekleyen kullanıcı rol bazlı giriş. Giriş yardımcısı `e2e/fixtures/auth.ts` şimdilik sahte TOTP adımını sürüyor; F3.4'te güncellenecek.
+  - **Sahte veri bekçisi** (`scripts/check-no-mock.mjs`): sabit desenler + uydurma kişiler + **seed kimlikleri** (isim/e-posta, `seed-data.ts`'ten okunur) + `scripts/fixtures` import'u + `Math.random(`. İzin listesi `scripts/no-mock-allowlist.json`'da dosya bazında ve faz etiketli (9 dosya: F4.3 ×2, F4.4, F5.2, F6.2 ×2, F7.1, F7.3, F7.5). Liste yalnızca küçülür: temizlenen dosya listede kalırsa hata. Üç durum da denendi.
+  - **CI:** `verify` işine `check:no-mock` eklendi. Yeni `emulator-tests` işi: Java 21 (temurin), emülatör jar önbelleği, functions build, rules, functions, Playwright Chromium kurulumu, e2e; hata olursa rapor artifact'ı.
 
 ---
 
@@ -324,6 +326,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `progress` ekstra alan veya başkasının uid'i ile yazılamaz.
   - Davetleri admin olmayan okuyamaz.
   - Admin her şeyi okuyabilir; istemci yazımları hep reddedilir.
+- **`it.fails` → `it`:** `tests/rules/firestore.test.ts` içindeki C5, C7 ve C9 testleri bu adımda normal teste çevrilir.
 - **Doğrulama:** `npm run test:rules`
 
 #### F2.2 Storage kuralları (S)
@@ -332,6 +335,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Yetki `firestore.get(/databases/(default)/documents/users/$(request.auth.uid))` ile doküman üzerinden kontrol edilir (D3). Deploy sırasında cross-service IAM izni onaylanmalı; `DEPLOY.md`'ye not düşülür.
   - `materials/{materialId}/{file}`: `read` aktif üye. `create, update` admin + boyut + MIME (pdf, video/*, image/*, pptx). `delete` admin.
   - `quiz_media/{file}`: `read` aktif üye. `create` admin + image/* + ≤15 MB. `delete` admin.
+- **`it.fails` → `it`:** `tests/rules/storage.test.ts` içindeki C11 testi bu adımda normal teste çevrilir.
 - **Doğrulama:** `npm run test:rules`
 
 #### F2.3 Kimlik sunucu tarafı (L)

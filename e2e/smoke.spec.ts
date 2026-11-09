@@ -1,0 +1,34 @@
+import { expect, test } from "@playwright/test";
+import { ACCOUNTS, loginAs } from "./fixtures/auth";
+
+/**
+ * Duman testi: seed hesaplarıyla rol bazlı giriş. Gerçek emülatör verisi kullanılır
+ * (seed, `npm run test:e2e` tarafından testlerden önce yüklenir).
+ */
+test.describe("rol bazlı giriş", () => {
+  test("eğitim sorumlusu panele girer ve yönetim menüsünü görür", async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on("pageerror", (e) => pageErrors.push(String(e)));
+
+    await loginAs(page, ACCOUNTS.admin);
+
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Nevin Aydoğan");
+    await expect(page.locator("#nav-link-admin")).toBeVisible();
+    expect(pageErrors).toEqual([]);
+  });
+
+  test("asistan panele girer, yönetim menüsünü görmez", async ({ page }) => {
+    await loginAs(page, ACCOUNTS.asistan2);
+
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Selin Ateş");
+    await expect(page.locator("#nav-link-admin")).toHaveCount(0);
+  });
+
+  test("onay bekleyen kullanıcı modüllere erişemez", async ({ page }) => {
+    await loginAs(page, ACCOUNTS.bekleyen);
+
+    await expect(page.getByRole("heading", { name: "Üyelik Onayı Bekleniyor" })).toBeVisible();
+    await expect(page.locator("#nav-link-materials")).toHaveCount(0);
+  });
+});

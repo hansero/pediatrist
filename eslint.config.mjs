@@ -31,6 +31,18 @@ const config = [
     rules: {
       // Cloud Functions Next.js uygulaması değildir.
       "@next/next/no-assign-module-variable": "off",
+      // N2: namespace API (admin.firestore.FieldValue vb.) Functions emülatöründe undefined döner.
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "firebase-admin",
+              message: "Modüler import kullanın: firebase-admin/app, /auth, /firestore, /storage (REVISION_PLAN N2).",
+            },
+          ],
+        },
+      ],
     },
   },
 ];

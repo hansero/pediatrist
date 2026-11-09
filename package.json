@@ -11,12 +11,16 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit && npm --prefix functions run typecheck",
+    "check:no-mock": "node scripts/check-no-mock.mjs",
     "test": "npm run test:unit",
     "test:unit": "vitest run --project unit",
+    "test:rules": "node scripts/firebase.mjs emulators:exec --only firestore,storage --project demo-pediatrist \"vitest run --project rules\"",
+    "test:functions": "node scripts/firebase.mjs emulators:exec --only auth,firestore --project demo-pediatrist \"vitest run --project functions\"",
+    "test:e2e": "npm --prefix functions run build && node scripts/firebase.mjs emulators:exec --only auth,firestore,storage,functions --project demo-pediatrist \"npm run seed && playwright test\"",
     "emulators": "node scripts/firebase.mjs emulators:start --only auth,firestore,storage,functions --project demo-pediatrist",
+    "seed": "tsx scripts/seed-emulator.ts",
     "deploy:rules": "node scripts/firebase.mjs deploy --only firestore:rules,firestore:indexes,storage",
-    "deploy:functions": "node scripts/firebase.mjs deploy --only functions",
-    "seed": "tsx scripts/seed-emulator.ts"
+    "deploy:functions": "node scripts/firebase.mjs deploy --only functions"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^14.0.0",
