@@ -1,23 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-
-export type ClinicRole = "admin" | "user";
-export type MemberStatus = "active" | "pending" | "suspended";
-
-export interface ClinicMemberSession {
-  uid: string;
-  email: string;
-  fullName: string;
-  title: string;
-  residencyYear: number;
-  role: ClinicRole;
-  status: MemberStatus;
-  mfaVerified: boolean;
-  appCheckVerified: boolean;
-  /** Ham cihaz kimliği UI'a hiç taşınmaz; yalnızca "kayıtlı cihaz var mı" bilgisi tutulur. */
-  hasBoundDevice: boolean;
-}
+import type { ClinicMemberSession } from "@/lib/auth/types";
 
 const IDLE_TIMEOUT_SECONDS = 15 * 60; // 15 dakika hareketsizlik sınırı
 

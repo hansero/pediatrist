@@ -41,7 +41,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F0.4 | Emülatör seed script'i (test verisi YALNIZCA burada) | M | ✅ | (mock'ların yerine) |
 | F0.5 | Eski sahte testleri kaldır, test iskeletleri + "no-mock" bekçisi | M | ✅ | §8 |
 | **F1** | **Ortak domain ve API sözleşmeleri** | | | |
-| F1.1 | `functions/src/shared`: sabitler, tipler, zod şemaları, `@shared` alias | M | ⬜ | Tutarlılık tablosu |
+| F1.1 | `functions/src/shared`: sabitler, tipler, zod şemaları, `@shared` alias | M | ✅ | Tutarlılık tablosu |
 | F1.2 | Ortak CSV doğrulayıcı + birim testleri | S | ⬜ | Tutarlılık (CSV) |
 | F1.3 | Functions: `guards.ts`, `validate.ts`, tüm callable'ların refactor'u | M | ⬜ | C5 (kısmen), S8 |
 | F1.4 | İstemci `callables.ts` yeniden yazımı, `AppError`, `useAsyncAction` | S | ⬜ | C1 (temel) |
@@ -100,13 +100,12 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
-- **Tarih:** 2026-11-09
-- **Son tamamlanan adım:** F0.5. **F0 fazı tamamlandı.** Test zemini: unit 8, rules 15 + 4 `it.fails` (C5, C7, C9, C11), functions 5, e2e 6 (masaüstü + telefon); sahte veri bekçisi (9 dosya izin listesinde); CI'da emülatör işi.
+- **Tarih:** 2026-11-10
+- **Son tamamlanan adım:** F1.1 (ortak sabitler, doküman tipleri, callable sözleşmeleri, `@shared` alias, tek zod kopyası yapılandırması, şema testleri).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F1.1: `functions/src/shared/{constants,types,schemas,index}.ts`, kök `tsconfig.json`'a `@shared/*` → `./functions/src/shared/*` alias'ı (vitest.config.mts'e de aynı alias), Next'in `functions/` altındaki TS'i derleyebildiğini `next build` ile doğrula (gerekirse `experimental.externalDir`). Her callable için zod Request/Response şemaları; takma ad parametreler kaldırılır. Domain tipleri `SessionGuard.tsx` ve `AdminLiveAttendanceProjector.tsx`'ten taşınır. zod şemaları için birim testleri (`tests/unit/schemas.test.ts`).
-- **Dikkat:** Functions kodu `@shared` alias'ını kullanamaz (functions `tsc` CommonJS derler ve deploy'da alias çözülmez). Functions içinde **göreli import** (`./shared/...`) kullanılmalı; alias yalnızca Next ve vitest tarafı için.
-- **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e` (her biri kendi emülatörünü başlatır; açık bir `npm run emulators` ile aynı anda çalıştırmayın, portlar çakışır).
-- **Engeller / notlar:** N3 açık (§7).
+- **Sıradaki iş:** F1.2: CSV ayrıştırıcı + soru doğrulayıcısı `functions/src/shared/quizCsv.ts`'e taşınır (`src/lib/quiz-parser` buradan re-export eder veya importlar güncellenir). Tek `validateQuestion()` hem istemci CSV önizlemesinde hem `SaveQuizDraftRequest`'te kullanılır: `QuizQuestionInput.superRefine` veya `SaveQuizDraftRequest` üzerinde alanlar arası kurallar (Text Input ⇔ maxLength 1–2000, seçenekli ⇔ ≥2 seçenek, doğru cevap seçeneklerde, Single Choice tam 1 doğru, tekrarlı seçenek yok). Başlık adları `NINE_FIELD_CSV_HEADERS` ile doğrulanır. İstemcideki `evaluateClinicalQuizAttempt` silinir (kullanıldığı yer: `quizzes/page.tsx`, mock; o sayfa F5.2'de yeniden yazılacak, şimdilik derlenmesi için gerekirse çağrı yeri kaldırılır). CSV dışa aktarımı tek fonksiyon (`downloadCsv`, `;` ayırıcı, BOM, formül koruması); `downloadQuizLogsAsCsv` buna geçer. Testler: `tests/unit/quizParser.test.ts` güncellenir + başlık sırası hatası, tekrarlı seçenek, sunucu/istemci aynı sonucu verir.
+- **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
+- **Engeller / notlar:** N3 açık (§7). F1.3 ile F1.4 arka arkaya yapılmalı (bkz. F1.1 notu).
 
 ---
 
@@ -260,6 +259,18 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - **zod şemaları:** **her callable için** `Request` ve `Response`. Takma ad parametreler (`dynamicCode|dynamicToken`, `deviceId|clientDeviceSecret`, `resetBoundDevice|resetDeviceBinding`) kaldırılır.
 - `src/components/security/SessionGuard.tsx` ve `AdminLiveAttendanceProjector.tsx` içindeki tipler buraya veya `src/domain/`'e taşınır.
 - **Doğrulama:** `npm run typecheck` (iki paket de `@shared`'i çözer), `npm run build`.
+- **✅ Uygulanan (2026-11-10) — plandan sapmalar:**
+  - `functions/src/shared/`: `constants.ts` (REGION, roller/durumlar, ünvanlar, kıdem, yoklama kodu alfabesi/uzunluğu/slot, ders ve **tek materyal kategori listesi** (6), soru tipleri, teslim toleransı, denetim seviyeleri, `LIMITS`), `types.ts` (Firestore doküman tipleri + `COLLECTIONS`), `schemas.ts` (11 callable için zod istek/yanıt + `CALLABLES` kayıt defteri ve `CallableRequestInput/Data/Response` tip yardımcıları), `index.ts`.
+  - **Doküman tipleri `T` zaman damgası parametresi alır** (`MemberDoc<Timestamp>`); ortak klasör hiçbir Firebase SDK'sına bağımlı değil.
+  - **Sözleşme değişiklikleri (sunucuya F1.3'te bağlanacak):** takma adlar kaldırıldı (yoklama: `code` + `deviceId`; üye: `resetBoundDevice`). Kendi beyanına dayalı `webAuthnVerified` sözleşmede **yok**: zod bilinmeyen alanı atar, sunucu artık sahte `qr+webauthn` etiketi yazamaz. Yoklama süre sınırı tek değer: 240 dk (arayüzdeki 180 F4.3'te düzelir). Soru görseli yalnızca `quiz_media/…` Storage yolu.
+  - **F1.3 ile F1.4 arka arkaya yapılmalı:** F1.3 sunucuyu yeni parametre adlarına geçirince eski istemci adlarıyla gönderilen çağrılar `invalid-argument` alır. Yoklama istemcisi zaten mock (F4'te yeniden yazılıyor), admin sayfası `resetBoundDevice` gönderdiği için etkilenmiyor.
+  - Hata mesajları alan etiketli Türkçe (`requiredText`, `intInRange`, `docId` yardımcıları). zod 4'ün `z.locales.tr()` yerel ayarı mevcut ve F1.3'te `validate.ts`'te yedek olarak açılacak.
+  - Alias: kök `tsconfig.json` (`@shared`, `@shared/*`), `vitest.config.mts`. Functions tarafı **göreli import** kullanıyor (`./shared/constants`).
+  - **Tek zod kopyası:** `next.config.ts` webpack alias'ı `zod`'u kök `node_modules`'a bağlıyor (yoksa `@shared` dosyaları `functions/node_modules/zod`'u paketlerdi). İstemci henüz zod import etmediği için paket analizi **F1.4'te** yapılacak (`.next/static` içinde tek zod).
+  - Tekrarlanan sabitler ortak modüle bağlandı: functions (REGION ×3 dosya, slot/alfabe/uzunluk, soru tipleri, teslim toleransı), `client.ts` (REGION), `quiz-parser` (soru tipleri).
+  - `ClinicMemberSession` UI tipi `SessionGuard.tsx`'ten `src/lib/auth/types.ts`'e taşındı (rol/durum ortak modülden); 7 import güncellendi. **Yoklama UI tipleri (`AttendanceSessionItem` vb.) taşınmadı**: mock'a özgü alanlar içeriyorlar (`hmacSlotCode`) ve F4.3'te silinecekler.
+  - `tests/unit/schemas.test.ts` (16 test): kurallar, Türkçe mesajlar, takma adların ve `webAuthnVerified`'ın reddi, **repodaki örnek CSV'nin sunucu sözleşmesinden geçmesi**, ve **`functions/src/index.ts`'teki her callable'ın `CALLABLES`'ta sözleşmesi olması** (sözleşmesiz bir export eklenerek testin kırmızıya döndüğü doğrulandı).
+  - Doğrulandı: lint, format, typecheck (iki paket), no-mock, unit 24, functions + next build, rules 15 + 4 `it.fails`, functions 5, e2e 6.
 
 #### F1.2 Ortak CSV doğrulayıcı (S)
 - **Dosyalar:** `functions/src/shared/quizCsv.ts` (`src/lib/quiz-parser` buradan re-export eder veya silinir), `tests/unit/quizCsv.test.ts`

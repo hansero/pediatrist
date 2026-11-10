@@ -5,6 +5,7 @@ import { connectStorageEmulator, getStorage, FirebaseStorage } from "firebase/st
 import { connectFunctionsEmulator, getFunctions, Functions } from "firebase/functions";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import firebaseJson from "../../../firebase.json";
+import { REGION } from "@shared/constants";
 
 /**
  * Firebase Web SDK yapılandırması YALNIZCA ortam değişkenlerinden okunur.
@@ -36,7 +37,6 @@ const USE_EMULATORS = process.env.NEXT_PUBLIC_USE_EMULATORS === "true";
 const RECAPTCHA_ENTERPRISE_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY ?? "";
 /** Yalnızca localhost'tan gerçek (staging) projeye bağlanırken kullanılır; konsolda kayıtlı debug token. */
 const APPCHECK_DEBUG_TOKEN = process.env.NEXT_PUBLIC_APPCHECK_DEBUG_TOKEN ?? "";
-const FUNCTIONS_REGION = "europe-west1";
 
 export interface PediatristFirebaseClients {
   auth: Auth;
@@ -97,7 +97,7 @@ export function initPediatristFirebase(): PediatristFirebaseClients | null {
     auth: getAuth(app),
     db: getFirestore(app),
     storage: getStorage(app),
-    functions: getFunctions(app, FUNCTIONS_REGION),
+    functions: getFunctions(app, REGION),
   };
 
   if (USE_EMULATORS) connectEmulators(created);

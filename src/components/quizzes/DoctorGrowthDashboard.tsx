@@ -2,7 +2,7 @@
 
 import React from "react";
 import { DoctorQuizAttemptLog } from "@/lib/quiz-parser";
-import { ClinicMemberSession } from "@/components/security/SessionGuard";
+import type { ClinicMemberSession } from "@/lib/auth/types";
 
 interface DoctorGrowthDashboardProps {
   session: ClinicMemberSession;

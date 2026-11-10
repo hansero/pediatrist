@@ -80,6 +80,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   outputFileTracingRoot: path.join(__dirname),
+  webpack(config) {
+    // `@shared` (functions/src/shared) dosyaları `zod`'u functions/node_modules'tan çözerdi; tarayıcı
+    // paketine ikinci bir zod kopyası girmesin diye tek kopyaya (kök node_modules) bağlanır.
+    config.resolve.alias = { ...config.resolve.alias, zod: path.join(__dirname, "node_modules", "zod") };
+    return config;
+  },
   async headers() {
     return [
       {

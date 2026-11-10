@@ -3,59 +3,57 @@ import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { writeAuditLog } from "./auditLogger";
+import { REGION } from "./shared/constants";
 
 /**
  * `/users/{uid}` dokümanı oluşturulduğunda veya Firebase Console üzerinden güncellendiğinde tetiklenir:
  * - Dokümandaki `role`, `status` ve `residencyYear` değerlerini Firebase Auth Custom Claims'e otomatik senkronize eder.
  * - Böylece konsoldan yapılan ilk Admin ataması da hiçbir terminal komutuna gerek kalmadan anında Custom Claims'e işlenir.
  */
-export const onClinicMemberCreated = onDocumentWritten(
-  { document: "users/{uid}", region: "europe-west1" },
-  async (event) => {
-    const uid = event.params.uid;
-    const afterData = event.data?.after.data();
-    if (!afterData) return;
+export const onClinicMemberCreated = onDocumentWritten({ document: "users/{uid}", region: REGION }, async (event) => {
+  const uid = event.params.uid;
+  const afterData = event.data?.after.data();
+  if (!afterData) return;
 
-    const beforeData = event.data?.before.data();
-    const role = afterData.role === "admin" ? "admin" : "user";
-    const status = afterData.status === "active" || afterData.status === "suspended" ? afterData.status : "pending";
-    const residencyYear = Number(afterData.residencyYear ?? 1);
+  const beforeData = event.data?.before.data();
+  const role = afterData.role === "admin" ? "admin" : "user";
+  const status = afterData.status === "active" || afterData.status === "suspended" ? afterData.status : "pending";
+  const residencyYear = Number(afterData.residencyYear ?? 1);
 
-    if (
-      beforeData &&
-      beforeData.role === role &&
-      beforeData.status === status &&
-      Number(beforeData.residencyYear ?? 1) === residencyYear
-    ) {
-      return;
-    }
-
-    await getAuth().setCustomUserClaims(uid, {
-      role,
-      status,
-      residencyYear,
-    });
-
-    if (!beforeData) {
-      await writeAuditLog({
-        actorUid: uid,
-        actorEmail: String(afterData.email ?? "unknown"),
-        action: "NEW_MEMBER_REGISTERED_WITH_PENDING_STATUS",
-        resourceType: "auth",
-        resourceId: uid,
-        severity: "INFO",
-        metadata: { residencyYear, role, status },
-      });
-    }
+  if (
+    beforeData &&
+    beforeData.role === role &&
+    beforeData.status === status &&
+    Number(beforeData.residencyYear ?? 1) === residencyYear
+  ) {
+    return;
   }
-);
+
+  await getAuth().setCustomUserClaims(uid, {
+    role,
+    status,
+    residencyYear,
+  });
+
+  if (!beforeData) {
+    await writeAuditLog({
+      actorUid: uid,
+      actorEmail: String(afterData.email ?? "unknown"),
+      action: "NEW_MEMBER_REGISTERED_WITH_PENDING_STATUS",
+      resourceType: "auth",
+      resourceId: uid,
+      severity: "INFO",
+      metadata: { residencyYear, role, status },
+    });
+  }
+});
 
 /**
  * Admin tarafından üye onaylama, rol ('admin' | 'user'), kıdem yılı (1..4),
  * durum ('active' | 'pending' | 'suspended') atama ve telefon/cihaz eşleşmesini sıfırlama servisi.
  * Firebase Custom Claims güncellenir ve gerekirse mevcut oturum tokenları iptal edilir.
  */
-export const updateMemberAccess = onCall({ enforceAppCheck: true, region: "europe-west1" }, async (request) => {
+export const updateMemberAccess = onCall({ enforceAppCheck: true, region: REGION }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Oturum açmanız gerekiyor.");
   }

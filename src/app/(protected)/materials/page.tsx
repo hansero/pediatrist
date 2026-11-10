@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { WatermarkedMaterialViewer, TrainingMaterialItem } from "@/components/materials/WatermarkedMaterialViewer";
 import { AdminMaterialManager } from "@/components/materials/AdminMaterialManager";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
-import { ClinicMemberSession } from "@/components/security/SessionGuard";
+import type { ClinicMemberSession } from "@/lib/auth/types";
 
 const INITIAL_MATERIALS: TrainingMaterialItem[] = [
   {

@@ -8,7 +8,7 @@ import {
 } from "@/components/attendance/AdminLiveAttendanceProjector";
 import { DoctorRealTimeCheckIn } from "@/components/attendance/DoctorRealTimeCheckIn";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
-import { ClinicMemberSession } from "@/components/security/SessionGuard";
+import type { ClinicMemberSession } from "@/lib/auth/types";
 import {
   startLectureSession,
   endLectureSession,

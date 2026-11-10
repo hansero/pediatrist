@@ -2,6 +2,7 @@ import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import * as crypto from "crypto";
 import { writeAuditLog } from "./auditLogger";
+import { ATTENDANCE_CODE_ALPHABET, ATTENDANCE_CODE_LENGTH, ATTENDANCE_SLOT_MS, REGION } from "./shared/constants";
 
 /**
  * MODÜL 3 — DERS KATILIM KONTROLÜ (Sunucu Tarafı)
@@ -15,10 +16,6 @@ import { writeAuditLog } from "./auditLogger";
  *  4. Admin `endLectureSession` ile yoklamayı kapatır (süre dolunca da otomatik reddedilir).
  *  Her kayıt `attendance_logs` koleksiyonuna da yazılır → ders ve katılımcı bazlı dashboard.
  */
-
-const REGION = "europe-west1";
-const SLOT_MS = 15_000;
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function assertAdmin(request: CallableRequest<unknown>) {
   if (!request.auth || request.auth.token.role !== "admin" || request.auth.token.status !== "active") {
@@ -38,7 +35,8 @@ function assertActiveMember(request: CallableRequest<unknown>) {
 function computeSlotCode(secret: string, sessionId: string, slot: number): string {
   const digest = crypto.createHmac("sha256", secret).update(`${sessionId}:${slot}`).digest();
   let out = "";
-  for (let i = 0; i < 6; i++) out += CODE_ALPHABET[digest[i] % CODE_ALPHABET.length];
+  for (let i = 0; i < ATTENDANCE_CODE_LENGTH; i++)
+    out += ATTENDANCE_CODE_ALPHABET[digest[i] % ATTENDANCE_CODE_ALPHABET.length];
   return out;
 }
 
@@ -146,10 +144,10 @@ export const getProjectorCode = onCall({ enforceAppCheck: true, region: REGION }
   }
 
   const nowMs = Date.now();
-  const slot = Math.floor(nowMs / SLOT_MS);
+  const slot = Math.floor(nowMs / ATTENDANCE_SLOT_MS);
   return {
     code: computeSlotCode(String(secretSnap.data()!.hmacSecret), sessionId, slot),
-    msUntilRotation: SLOT_MS - (nowMs % SLOT_MS),
+    msUntilRotation: ATTENDANCE_SLOT_MS - (nowMs % ATTENDANCE_SLOT_MS),
     endsAtMs: (session.endsAt as Timestamp).toMillis(),
   };
 });
@@ -217,7 +215,7 @@ export const verifyRealTimeAttendance = onCall({ enforceAppCheck: true, region: 
     throw new HttpsError("failed-precondition", "Bu ders için aktif yoklama bulunmuyor.");
   }
   const secret = String(secretSnap.data()!.hmacSecret);
-  const slot = Math.floor(Date.now() / SLOT_MS);
+  const slot = Math.floor(Date.now() / ATTENDANCE_SLOT_MS);
   const token = dynamicToken.trim().toUpperCase();
   const valid = [slot, slot - 1].some((s) => {
     const expected = Buffer.from(computeSlotCode(secret, sessionId, s));

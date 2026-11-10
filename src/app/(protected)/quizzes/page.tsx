@@ -8,7 +8,7 @@ import { InstantFeedbackReport } from "@/components/quizzes/InstantFeedbackRepor
 import { AdminQuizStudio } from "@/components/quizzes/AdminQuizStudio";
 import { AdminCentralAnalytics } from "@/components/quizzes/AdminCentralAnalytics";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
-import { ClinicMemberSession } from "@/components/security/SessionGuard";
+import type { ClinicMemberSession } from "@/lib/auth/types";
 import {
   invokeWithFallback,
   saveQuizDraft,

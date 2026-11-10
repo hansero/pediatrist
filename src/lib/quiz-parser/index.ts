@@ -1,4 +1,7 @@
-export type QuizQuestionType = "Single Choice" | "Multiple Choice" | "Text Input";
+import { QUESTION_TYPES, type QuestionType } from "@shared/constants";
+
+/** Ortak tip (functions/src/shared). F1.2'de bu modül ortak doğrulayıcıya taşınır. */
+export type QuizQuestionType = QuestionType;
 
 /**
  * Standart 9 Alanlı (A–I) Klinik Vaka Soru Veri Modeli (Firestore Native)
@@ -189,7 +192,6 @@ export interface CsvParseResult {
   rowCount: number;
 }
 
-const QUESTION_TYPES: QuizQuestionType[] = ["Single Choice", "Multiple Choice", "Text Input"];
 const MAX_CSV_BYTES = 2 * 1024 * 1024;
 
 /** RFC 4180 uyumlu CSV ayrıştırıcı: tırnaklı alanlar, kaçışlı "" ve alan içi satır sonları desteklenir. */

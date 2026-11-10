@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ClinicMemberSession } from "@/components/security/SessionGuard";
+import type { ClinicMemberSession } from "@/lib/auth/types";
 import { AttendanceSessionItem } from "./AdminLiveAttendanceProjector";
 
 interface DoctorRealTimeCheckInProps {

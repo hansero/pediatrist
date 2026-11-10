@@ -4,7 +4,8 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { onIdTokenChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { initPediatristFirebase } from "@/lib/firebase/client";
-import type { ClinicMemberSession, ClinicRole, MemberStatus } from "@/components/security/SessionGuard";
+import type { MemberStatus, Role } from "@shared/constants";
+import type { ClinicMemberSession } from "@/lib/auth/types";
 
 interface SessionState {
   session: ClinicMemberSession | null;
@@ -45,8 +46,8 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
           : await getDoc(doc(clients.db, "clinic_members", user.uid)).catch(() => null);
       const profile = userSnap?.data() ?? legacySnap?.data() ?? {};
 
-      const effectiveRole: ClinicRole =
-        profile.role === "admin" || (token.claims.role as ClinicRole) === "admin" ? "admin" : "user";
+      const effectiveRole: Role =
+        profile.role === "admin" || (token.claims.role as Role) === "admin" ? "admin" : "user";
 
       const effectiveStatus: MemberStatus =
         profile.status === "active" || (token.claims.status as MemberStatus) === "active"

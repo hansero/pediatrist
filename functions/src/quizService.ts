@@ -8,6 +8,7 @@ import {
   type DocumentSnapshot,
 } from "firebase-admin/firestore";
 import { writeAuditLog } from "./auditLogger";
+import { QUESTION_TYPES, QUIZ_SUBMIT_GRACE_MS, REGION, type QuestionType } from "./shared/constants";
 
 /**
  * MODÜL 4 — ONLINE QUIZ (Sunucu Tarafı)
@@ -22,11 +23,6 @@ import { writeAuditLog } from "./auditLogger";
  *  - `submitQuizAttempt`: süre sınırı (+30 sn tolerans) sunucuda denetlenir, puanlama sunucuda yapılır.
  *  - 8. (Doğru Seçenek) ve 9. (Feedback_Text) alanlar `quiz_answer_keys` içinde, istemciye kapalıdır.
  */
-
-const REGION = "europe-west1";
-const SUBMIT_GRACE_MS = 30_000;
-const QUESTION_TYPES = ["Single Choice", "Multiple Choice", "Text Input"] as const;
-type QuestionType = (typeof QUESTION_TYPES)[number];
 
 export interface NineFieldQuestionInput {
   caseContent: string; // 1. Soru İçeriği
@@ -337,7 +333,7 @@ export const submitQuizAttempt = onCall({ enforceAppCheck: true, region: REGION 
 
   const nowMs = Date.now();
   const deadlineMs = (attempt.deadline as Timestamp).toMillis();
-  const lateSubmission = nowMs > deadlineMs + SUBMIT_GRACE_MS;
+  const lateSubmission = nowMs > deadlineMs + QUIZ_SUBMIT_GRACE_MS;
 
   const [pubSnap, keySnap] = await Promise.all([
     db.collection("quizzes").doc(quizId).collection("questions_public").orderBy("orderIndex").get(),

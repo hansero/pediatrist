@@ -1,9 +1,12 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
-const alias = {
-  "@": path.resolve(import.meta.dirname, "src"),
-};
+const shared = path.resolve(import.meta.dirname, "functions/src/shared");
+const alias = [
+  { find: /^@shared$/, replacement: path.join(shared, "index.ts") },
+  { find: /^@shared\/(.*)$/, replacement: `${shared}/$1` },
+  { find: /^@\/(.*)$/, replacement: `${path.resolve(import.meta.dirname, "src")}/$1` },
+];
 
 export default defineConfig({
   resolve: { alias },
