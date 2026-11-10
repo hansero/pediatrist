@@ -31,6 +31,8 @@ export const COLLECTIONS = {
   attendanceRecords: "records",
   attendanceLogs: "attendance_logs",
   attendanceSecrets: "attendance_secrets",
+  /** `attendance_meta/live`: tek canlı ders kilidi (F4.1); istemciye kapalı. */
+  attendanceMeta: "attendance_meta",
   quizzes: "quizzes",
   quizQuestionsPublic: "questions_public",
   quizAnswerKeys: "quiz_answer_keys",
@@ -113,8 +115,22 @@ export interface AttendanceSessionDoc<T> {
   startedBy: string;
   presentCount: number;
   excusedCount: number;
+  /**
+   * Ders başladığı anda etkin hekimlerin (rol `user`) uid listesi (F4.1). Katılım oranının paydası budur;
+   * sonradan katılan/ayrılan üyeler geçmiş derslerin oranını değiştirmez.
+   */
+  expectedAttendees?: string[];
+  expectedCount?: number;
   closedAt?: T;
+  /** Kapatan admin uid'i veya süre dolumunda `"system"`. */
   closedBy?: string;
+  closeReason?: "manual" | "expired";
+}
+
+/** `attendance_meta/live`: aynı anda tek canlı ders kilidi (F4.1). Canlı ders yoksa doküman yoktur. */
+export interface AttendanceLiveLockDoc<T> {
+  sessionId: string;
+  endsAt: T;
 }
 
 /** `attendance_sessions/{sessionId}/records/{uid}` */

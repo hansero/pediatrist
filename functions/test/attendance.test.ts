@@ -1,6 +1,8 @@
 import { getFirestore } from "firebase-admin/firestore";
 import { beforeEach, describe, expect, it } from "vitest";
+import { Timestamp } from "firebase-admin/firestore";
 import {
+  closeExpiredLectures,
   endLectureSession,
   getProjectorCode,
   markAttendanceExcused,
@@ -30,6 +32,17 @@ beforeEach(async () => {
   await createMember("r1", "user", "active");
   await createMember("r2", "user", "active");
 });
+
+const sessionDoc = async (id: string) => (await db().doc(`attendance_sessions/${id}`).get()).data();
+const verify = (sessionId: string, code: string, uid: string, deviceId: string) =>
+  verifyRealTimeAttendance.run(callableRequest({ sessionId, code, deviceId }, asMember(uid)));
+const excuse = (sessionId: string, targetUid: string, excuseNote = "Nöbet ertesi") =>
+  markAttendanceExcused.run(callableRequest({ sessionId, targetUid, excuseNote }, asAdmin()));
+/** Dersin bitiş anını geçmişe çeker (süre dolumu senaryoları). */
+const expire = (id: string) =>
+  db()
+    .doc(`attendance_sessions/${id}`)
+    .update({ endsAt: Timestamp.fromMillis(Date.now() - 1000) });
 
 describe("yoklama akışı (sunucu)", () => {
   it("admin başlatır, asistan projektör koduyla katılır; kayıt, log, sayaç ve denetim kaydı yazılır", async () => {
@@ -134,5 +147,133 @@ describe("yoklama akışı (sunucu)", () => {
       excuseNote: "Nöbet ertesi",
       markedBy: "admin",
     });
+  });
+});
+
+describe("F4.1: transaction'lar ve sayaçlar", () => {
+  it("aynı hekimden eşzamanlı iki yoklama: sayaç bir kez artar, biri 'zaten kayıtlı' döner", async () => {
+    const { sessionId, code } = await startLive();
+    const results = await Promise.all([
+      verify(sessionId, code, "r1", DEVICE_A),
+      verify(sessionId, code, "r1", DEVICE_A),
+    ]);
+    expect(results.map((r) => r.alreadyRecorded).sort()).toEqual([false, true]);
+    expect((await sessionDoc(sessionId))?.presentCount).toBe(1);
+    expect((await auditActions()).filter((a) => a === "ATTENDANCE_VERIFIED")).toHaveLength(1);
+  });
+
+  it("farklı hekimlerden eşzamanlı yoklama: ikisi de sayılır", async () => {
+    const { sessionId, code } = await startLive();
+    await Promise.all([verify(sessionId, code, "r1", DEVICE_A), verify(sessionId, code, "r2", DEVICE_B)]);
+    expect((await sessionDoc(sessionId))?.presentCount).toBe(2);
+  });
+
+  it("eşzamanlı iki ders başlatma isteğinden yalnızca biri geçer (kilit)", async () => {
+    const start = () =>
+      errorOf(
+        startLectureSession.run(callableRequest({ title: "Ders", lecturer: "Dr. X", durationMinutes: 10 }, asAdmin()))
+      );
+    const results = await Promise.all([start(), start()]);
+    expect(results.map((r) => r.code).sort()).toEqual(["failed-precondition", "ok"]);
+    expect((await db().collection("attendance_sessions").where("status", "==", "live").get()).size).toBe(1);
+  });
+
+  it("beklenen katılımcılar: dersin başladığı andaki etkin hekimler (admin ve bekleyen hariç)", async () => {
+    await createMember("p1", "user", "pending");
+    const { sessionId } = await startLive();
+    expect(await sessionDoc(sessionId)).toMatchObject({ expectedAttendees: ["r1", "r2"], expectedCount: 2 });
+  });
+
+  it("mazeretli → katıldı: katılan +1, mazeretli −1", async () => {
+    const { sessionId, code } = await startLive();
+    await excuse(sessionId, "r1");
+    expect(await sessionDoc(sessionId)).toMatchObject({ presentCount: 0, excusedCount: 1 });
+    await verify(sessionId, code, "r1", DEVICE_A);
+    expect(await sessionDoc(sessionId)).toMatchObject({ presentCount: 1, excusedCount: 0 });
+    expect((await db().doc(`attendance_sessions/${sessionId}/records/r1`).get()).data()).toMatchObject({
+      status: "present",
+      method: "qr+device_bound",
+    });
+  });
+
+  it("tekrar mazeret: sayaç artmaz, not güncellenir; katılmış hekim mazeretliye çevrilmez", async () => {
+    const { sessionId, code } = await startLive();
+    await excuse(sessionId, "r2", "İlk not");
+    await excuse(sessionId, "r2", "Düzeltilmiş not");
+    expect((await sessionDoc(sessionId))?.excusedCount).toBe(1);
+    expect((await db().doc(`attendance_sessions/${sessionId}/records/r2`).get()).data()?.excuseNote).toBe(
+      "Düzeltilmiş not"
+    );
+    expect(await auditActions()).toContain("ATTENDANCE_EXCUSE_UPDATED");
+
+    await verify(sessionId, code, "r1", DEVICE_A);
+    const err = await errorOf(excuse(sessionId, "r1"));
+    expect(err).toEqual({ code: "failed-precondition", message: expect.stringContaining("katılmış") });
+    expect(await sessionDoc(sessionId)).toMatchObject({ presentCount: 1, excusedCount: 1 });
+  });
+
+  it("kapanmış derse sonradan mazeret işlenebilir; olmayan ders/hekim not-found", async () => {
+    const { sessionId } = await startLive();
+    await endLectureSession.run(callableRequest({ sessionId }, asAdmin()));
+    await excuse(sessionId, "r2");
+    expect((await sessionDoc(sessionId))?.excusedCount).toBe(1);
+    expect((await errorOf(excuse("yok", "r2"))).code).toBe("not-found");
+    expect((await errorOf(excuse(sessionId, "hayalet"))).code).toBe("not-found");
+  });
+});
+
+describe("F4.1: ders sonu ve süre dolumu", () => {
+  it("bitirme: olmayan ders not-found; ikinci bitirme failed-precondition; kilit bırakılır, yeni ders başlar", async () => {
+    expect((await errorOf(endLectureSession.run(callableRequest({ sessionId: "yok" }, asAdmin())))).code).toBe(
+      "not-found"
+    );
+    const { sessionId } = await startLive();
+    await endLectureSession.run(callableRequest({ sessionId }, asAdmin()));
+    expect(await sessionDoc(sessionId)).toMatchObject({ status: "closed", closedBy: "admin", closeReason: "manual" });
+    expect((await db().doc("attendance_meta/live").get()).exists).toBe(false);
+    expect((await errorOf(endLectureSession.run(callableRequest({ sessionId }, asAdmin())))).code).toBe(
+      "failed-precondition"
+    );
+    await startLive();
+  });
+
+  it("süresi dolmuş derste kod üretilmez ve yoklama alınmaz", async () => {
+    const { sessionId, code } = await startLive();
+    await expire(sessionId);
+    expect((await errorOf(getProjectorCode.run(callableRequest({ sessionId }, asAdmin())))).message).toContain(
+      "süresi doldu"
+    );
+    expect((await errorOf(verify(sessionId, code, "r1", DEVICE_A))).code).toBe("failed-precondition");
+    expect((await sessionDoc(sessionId))?.presentCount).toBe(0);
+  });
+
+  it("closeExpiredLectures: süresi dolanı kapatır (sır ve kilit silinir, denetim kaydı), dolmayana dokunmaz, tekrar çağrı boş", async () => {
+    const first = await startLive();
+    await expire(first.sessionId);
+    expect(await closeExpiredLectures()).toEqual([first.sessionId]);
+    expect(await sessionDoc(first.sessionId)).toMatchObject({
+      status: "closed",
+      closedBy: "system",
+      closeReason: "expired",
+    });
+    expect((await db().doc(`attendance_secrets/${first.sessionId}`).get()).exists).toBe(false);
+    expect((await db().doc("attendance_meta/live").get()).exists).toBe(false);
+    expect(await auditActions()).toContain("ATTENDANCE_SESSION_EXPIRED");
+    expect(await closeExpiredLectures()).toEqual([]);
+
+    const second = await startLive();
+    expect(await closeExpiredLectures()).toEqual([]);
+    expect((await sessionDoc(second.sessionId))?.status).toBe("live");
+  });
+
+  it("kilit süresi dolmuş bir derse aitse yeni ders başlatma onu kapatıp devam eder (zamanlayıcı beklenmez)", async () => {
+    const old = await startLive();
+    await expire(old.sessionId);
+    await db()
+      .doc("attendance_meta/live")
+      .update({ endsAt: Timestamp.fromMillis(Date.now() - 1000) });
+    const next = await startLive();
+    expect(await sessionDoc(old.sessionId)).toMatchObject({ status: "closed", closeReason: "expired" });
+    expect((await db().doc("attendance_meta/live").get()).data()?.sessionId).toBe(next.sessionId);
   });
 });

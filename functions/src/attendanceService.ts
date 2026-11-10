@@ -1,10 +1,10 @@
 import { HttpsError } from "firebase-functions/v2/https";
-import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
+import { FieldValue, Timestamp, getFirestore, type Transaction } from "firebase-admin/firestore";
 import * as crypto from "crypto";
 import { auditIn, writeAuditLog } from "./auditLogger";
 import { defineCallable } from "./callable";
 import { ATTENDANCE_CODE_ALPHABET, ATTENDANCE_CODE_LENGTH, ATTENDANCE_SLOT_MS } from "./shared/constants";
-import { COLLECTIONS } from "./shared/types";
+import { COLLECTIONS, type AttendanceLiveLockDoc, type AttendanceStatus } from "./shared/types";
 
 /**
  * MODÜL 3 — DERS KATILIM KONTROLÜ (Sunucu Tarafı)
@@ -15,11 +15,13 @@ import { COLLECTIONS } from "./shared/types";
  *  2. Projektör ekranı (yalnızca Admin) `getProjectorCode` ile 15 sn'lik güncel kodu alır.
  *     Kod / anahtar hiçbir zaman hekim istemcisine gönderilmez.
  *  3. Hekim `verifyRealTimeAttendance` ile kodu + kişisel cihaz kimliğini gönderir.
- *  4. Admin `endLectureSession` ile yoklamayı kapatır (süre dolunca da otomatik reddedilir).
+ *  4. Admin `endLectureSession` ile yoklamayı kapatır; süre dolunca zamanlayıcı (`closeExpiredLectures`)
+ *     veya bir sonraki ders başlatma isteği kapatır.
  *  Her kayıt `attendance_logs` koleksiyonuna da yazılır → ders ve katılımcı bazlı dashboard.
  *
  * Yetki + istek doğrulaması: `defineCallable` (guards.ts + shared/schemas.ts).
- * F4.1'de: transaction'lar, sayaç deltaları, canlı oturum kilidi, süre dolumu zamanlayıcısı.
+ * F4.1: bütün yazımlar transaction içinde; sayaçlar durum geçişlerine göre (+1/−1); tek canlı ders kilidi
+ * (`attendance_meta/live`); süre dolumu zamanlayıcısı; denetim kaydı aynı transaction'da.
  */
 
 /** HMAC çıktısını okunabilir koda çevirir (karışıklık yaratan 0/O/1/I karakterleri yok). */
@@ -39,71 +41,119 @@ function hashDeviceId(deviceId: string): string {
 
 const sessions = () => getFirestore().collection(COLLECTIONS.attendanceSessions);
 const secrets = () => getFirestore().collection(COLLECTIONS.attendanceSecrets);
+const liveLock = () => getFirestore().collection(COLLECTIONS.attendanceMeta).doc("live");
 
-/** Admin: yeni ders yoklaması başlatır. Aynı anda yalnızca bir canlı ders olabilir. */
+const NO_LIVE_SESSION = "Bu ders için aktif yoklama bulunmuyor.";
+
+/** Oturumu kapatma yazımları (transaction veya batch içinde). Kilit bu oturuma aitse bırakılır. */
+function closeSessionWrites(
+  writer: Transaction,
+  sessionId: string,
+  lockSessionId: string | undefined,
+  closedBy: string,
+  reason: "manual" | "expired"
+) {
+  writer.update(sessions().doc(sessionId), {
+    status: "closed",
+    closedAt: FieldValue.serverTimestamp(),
+    closedBy,
+    closeReason: reason,
+  });
+  writer.delete(secrets().doc(sessionId));
+  if (lockSessionId === sessionId) writer.delete(liveLock());
+}
+
+/**
+ * Admin: yeni ders yoklaması başlatır (F4.1).
+ * Tek canlı ders kuralı `attendance_meta/live` kilidiyle TRANSACTION içinde uygulanır (eşzamanlı iki
+ * başlatma isteğinden yalnızca biri geçer). Kilit süresi dolmuş bir derse aitse o ders aynı işlemde
+ * kapatılır (zamanlayıcıyı beklemeden). Beklenen katılımcılar (o andaki etkin hekimler) derse yazılır.
+ */
 export const startLectureSession = defineCallable("startLectureSession", "admin", async (data, actor) => {
   const db = getFirestore();
-  const live = await sessions().where("status", "==", "live").limit(1).get();
-  if (!live.empty) {
-    throw new HttpsError("failed-precondition", "Zaten devam eden bir ders yoklaması var. Önce onu bitirin.");
-  }
-
   const sessionRef = sessions().doc();
   const now = Timestamp.now();
   const endsAt = Timestamp.fromMillis(now.toMillis() + data.durationMinutes * 60_000);
 
-  const batch = db.batch();
-  batch.set(sessionRef, {
-    title: data.title,
-    lecturer: data.lecturer,
-    category: data.category,
-    durationMinutes: data.durationMinutes,
-    status: "live",
-    startedAt: now,
-    endsAt,
-    startedBy: actor.uid,
-    presentCount: 0,
-    excusedCount: 0,
+  await db.runTransaction(async (tx) => {
+    const [lockSnap, members] = await Promise.all([
+      tx.get(liveLock()),
+      tx.get(db.collection(COLLECTIONS.users).where("status", "==", "active").where("role", "==", "user")),
+    ]);
+    const lock = lockSnap.data() as AttendanceLiveLockDoc<Timestamp> | undefined;
+    if (lock) {
+      if (lock.endsAt.toMillis() > now.toMillis()) {
+        throw new HttpsError("failed-precondition", "Zaten devam eden bir ders yoklaması var. Önce onu bitirin.");
+      }
+      // Süresi dolmuş ama kapatılmamış ders: burada kapatılır.
+      const stale = await tx.get(sessions().doc(lock.sessionId));
+      if (stale.exists && stale.data()?.status === "live") {
+        closeSessionWrites(tx, lock.sessionId, lock.sessionId, "system", "expired");
+        auditIn(tx, {
+          actorUid: "system",
+          actorEmail: "system",
+          action: "ATTENDANCE_SESSION_EXPIRED",
+          resourceType: "attendance",
+          resourceId: lock.sessionId,
+        });
+      }
+    }
+
+    const expectedAttendees = members.docs.map((d) => d.id).sort();
+    tx.set(sessionRef, {
+      title: data.title,
+      lecturer: data.lecturer,
+      category: data.category,
+      durationMinutes: data.durationMinutes,
+      status: "live",
+      startedAt: now,
+      endsAt,
+      startedBy: actor.uid,
+      presentCount: 0,
+      excusedCount: 0,
+      expectedAttendees,
+      expectedCount: expectedAttendees.length,
+    });
+    tx.set(secrets().doc(sessionRef.id), {
+      hmacSecret: crypto.randomBytes(32).toString("hex"),
+      createdAt: now,
+    });
+    tx.set(liveLock(), { sessionId: sessionRef.id, endsAt });
+    auditIn(tx, {
+      actorUid: actor.uid,
+      actorEmail: actor.email,
+      action: "ATTENDANCE_SESSION_STARTED",
+      resourceType: "attendance",
+      resourceId: sessionRef.id,
+      metadata: { title: data.title, durationMinutes: data.durationMinutes, expectedCount: expectedAttendees.length },
+    });
   });
-  batch.set(secrets().doc(sessionRef.id), {
-    hmacSecret: crypto.randomBytes(32).toString("hex"),
-    createdAt: now,
-  });
-  auditIn(batch, {
-    actorUid: actor.uid,
-    actorEmail: actor.email,
-    action: "ATTENDANCE_SESSION_STARTED",
-    resourceType: "attendance",
-    resourceId: sessionRef.id,
-    metadata: { title: data.title, durationMinutes: data.durationMinutes },
-  });
-  await batch.commit();
 
   return { sessionId: sessionRef.id, endsAtMs: endsAt.toMillis() };
 });
 
-/** Admin: yoklamayı kapatır ve HMAC anahtarını imha eder. */
+/** Admin: yoklamayı kapatır, HMAC anahtarını imha eder ve kilidi bırakır. */
 export const endLectureSession = defineCallable("endLectureSession", "admin", async (data, actor) => {
   const db = getFirestore();
-  const batch = db.batch();
-  batch.update(sessions().doc(data.sessionId), {
-    status: "closed",
-    closedAt: FieldValue.serverTimestamp(),
-    closedBy: actor.uid,
+  await db.runTransaction(async (tx) => {
+    const [sessionSnap, lockSnap] = await Promise.all([tx.get(sessions().doc(data.sessionId)), tx.get(liveLock())]);
+    if (!sessionSnap.exists) throw new HttpsError("not-found", "Yoklama oturumu bulunamadı.");
+    if (sessionSnap.data()?.status !== "live") {
+      throw new HttpsError("failed-precondition", "Bu ders yoklaması zaten kapatılmış.");
+    }
+    closeSessionWrites(tx, data.sessionId, lockSnap.data()?.sessionId, actor.uid, "manual");
+    auditIn(tx, {
+      actorUid: actor.uid,
+      actorEmail: actor.email,
+      action: "ATTENDANCE_SESSION_CLOSED",
+      resourceType: "attendance",
+      resourceId: data.sessionId,
+    });
   });
-  batch.delete(secrets().doc(data.sessionId));
-  auditIn(batch, {
-    actorUid: actor.uid,
-    actorEmail: actor.email,
-    action: "ATTENDANCE_SESSION_CLOSED",
-    resourceType: "attendance",
-    resourceId: data.sessionId,
-  });
-  await batch.commit();
   return { closed: true as const };
 });
 
-/** Admin (projektör): güncel kodu ve yenilenmeye kalan süreyi döndürür. */
+/** Admin (projektör): güncel kodu ve yenilenmeye kalan süreyi döndürür. Süresi dolan derste kod üretilmez. */
 export const getProjectorCode = defineCallable("getProjectorCode", "admin", async (data) => {
   const [sessionSnap, secretSnap] = await Promise.all([
     sessions().doc(data.sessionId).get(),
@@ -113,8 +163,11 @@ export const getProjectorCode = defineCallable("getProjectorCode", "admin", asyn
   if (!session || session.status !== "live" || !secretSnap.exists) {
     throw new HttpsError("failed-precondition", "Canlı yoklama oturumu bulunamadı.");
   }
-
   const nowMs = Date.now();
+  if ((session.endsAt as Timestamp).toMillis() <= nowMs) {
+    throw new HttpsError("failed-precondition", "Ders süresi doldu; yoklama kapandı.");
+  }
+
   const slot = Math.floor(nowMs / ATTENDANCE_SLOT_MS);
   return {
     code: computeSlotCode(String(secretSnap.data()!.hmacSecret), data.sessionId, slot),
@@ -123,159 +176,226 @@ export const getProjectorCode = defineCallable("getProjectorCode", "admin", asyn
   };
 });
 
-/** Hekim: kodu ve kişisel cihaz bağını doğrular, katılım kaydını yazar. */
+type VerifyOutcome =
+  | { kind: "recorded"; alreadyRecorded: boolean }
+  | { kind: "no-session" }
+  | { kind: "device-mismatch" }
+  | { kind: "invalid-code" }
+  | { kind: "same-device" };
+
+/**
+ * Hekim: kodu ve kişisel cihaz bağını doğrular, katılım kaydını yazar (F4.1: tek TRANSACTION).
+ * Durum geçişleri: kayıt yok → katıldı (katılan +1); mazeretli → katıldı (katılan +1, mazeretli −1);
+ * zaten katıldı → değişiklik yok. Aynı anda gelen iki istekten sayaç yalnızca bir kez artar.
+ * Reddedilen girişimlerin denetim kaydı transaction dışında yazılır (transaction reddedildiğinde geri alınır).
+ */
 export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance", "member", async (data, actor) => {
   const db = getFirestore();
-  const { uid, email: actorEmail, profile } = actor;
+  const { uid, email: actorEmail } = actor;
   const deviceHash = hashDeviceId(data.deviceId);
-
-  // 1. Oturum canlı ve süresi dolmamış olmalı (yoklamayı yalnızca Admin başlatır)
   const sessionRef = sessions().doc(data.sessionId);
-  const session = (await sessionRef.get()).data();
-  if (!session || session.status !== "live" || (session.endsAt as Timestamp).toMillis() < Date.now()) {
-    throw new HttpsError("failed-precondition", "Bu ders için aktif yoklama bulunmuyor.");
-  }
-
-  // 2. Kişisel cihaz bağlama (ham cihaz kimliği saklanmaz, hata mesajında da gösterilmez)
-  const userRef = db.collection(COLLECTIONS.users).doc(uid);
-  if (profile.boundDeviceHash && profile.boundDeviceHash !== deviceHash) {
-    await writeAuditLog({
-      actorUid: uid,
-      actorEmail,
-      action: "ATTENDANCE_DEVICE_MISMATCH_BLOCKED",
-      resourceType: "attendance",
-      resourceId: data.sessionId,
-      severity: "WARN",
-    });
-    throw new HttpsError(
-      "failed-precondition",
-      "Bu cihaz hesabınıza kayıtlı değil. Cihaz değişikliği için Admin'e başvurun."
-    );
-  }
-
-  // 3. Kod (bir önceki pencere ağ gecikmesi toleransı olarak kabul edilir)
-  const secretSnap = await secrets().doc(data.sessionId).get();
-  if (!secretSnap.exists) {
-    throw new HttpsError("failed-precondition", "Bu ders için aktif yoklama bulunmuyor.");
-  }
-  const secret = String(secretSnap.data()!.hmacSecret);
-  const slot = Math.floor(Date.now() / ATTENDANCE_SLOT_MS);
-  const given = Buffer.from(data.code);
-  const valid = [slot, slot - 1].some((s) =>
-    crypto.timingSafeEqual(Buffer.from(computeSlotCode(secret, data.sessionId, s)), given)
-  );
-  if (!valid) {
-    await writeAuditLog({
-      actorUid: uid,
-      actorEmail,
-      action: "ATTENDANCE_EXPIRED_OR_INVALID_CODE",
-      resourceType: "attendance",
-      resourceId: data.sessionId,
-      severity: "WARN",
-    });
-    throw new HttpsError("deadline-exceeded", "Kod geçersiz veya süresi doldu. Projektördeki güncel kodu girin.");
-  }
-
-  // 4. Aynı fiziksel cihazdan başka hekim adına yoklama engeli
   const recordsCol = sessionRef.collection(COLLECTIONS.attendanceRecords);
-  const sameDevice = await recordsCol.where("deviceHash", "==", deviceHash).get();
-  if (sameDevice.docs.some((d) => d.id !== uid)) {
-    await writeAuditLog({
+  const recordRef = recordsCol.doc(uid);
+  const userRef = db.collection(COLLECTIONS.users).doc(uid);
+
+  const outcome = await db.runTransaction<VerifyOutcome>(async (tx) => {
+    const [sessionSnap, secretSnap, userSnap, recordSnap, sameDevice] = await Promise.all([
+      tx.get(sessionRef),
+      tx.get(secrets().doc(data.sessionId)),
+      tx.get(userRef),
+      tx.get(recordRef),
+      tx.get(recordsCol.where("deviceHash", "==", deviceHash)),
+    ]);
+    const session = sessionSnap.data();
+    if (
+      !session ||
+      session.status !== "live" ||
+      !secretSnap.exists ||
+      (session.endsAt as Timestamp).toMillis() < Date.now()
+    ) {
+      return { kind: "no-session" };
+    }
+
+    // Kişisel cihaz bağı (ham cihaz kimliği saklanmaz, hata mesajında da gösterilmez).
+    const boundDeviceHash = userSnap.data()?.boundDeviceHash as string | null | undefined;
+    if (boundDeviceHash && boundDeviceHash !== deviceHash) return { kind: "device-mismatch" };
+
+    // Kod (bir önceki pencere ağ gecikmesi toleransı olarak kabul edilir).
+    const secret = String(secretSnap.data()!.hmacSecret);
+    const slot = Math.floor(Date.now() / ATTENDANCE_SLOT_MS);
+    const given = Buffer.from(data.code);
+    const valid = [slot, slot - 1].some((s) =>
+      crypto.timingSafeEqual(Buffer.from(computeSlotCode(secret, data.sessionId, s)), given)
+    );
+    if (!valid) return { kind: "invalid-code" };
+
+    // Aynı fiziksel cihazdan başka hekim adına yoklama.
+    if (sameDevice.docs.some((d) => d.id !== uid)) return { kind: "same-device" };
+
+    const previous = recordSnap.data()?.status as AttendanceStatus | undefined;
+    if (previous === "present") return { kind: "recorded", alreadyRecorded: true };
+
+    const profile = userSnap.data() ?? {};
+    const record = {
+      uid,
+      fullName: profile.fullName ?? actorEmail,
+      title: profile.title ?? "",
+      residencyYear: profile.residencyYear ?? null,
+      verifiedAt: FieldValue.serverTimestamp(),
+      // Yalnızca sunucunun doğruladığı yöntem yazılır (istemci beyanı kabul edilmez; WebAuthn → F4.2).
+      method: "qr+device_bound",
+      deviceHash,
+      status: "present",
+    };
+    if (!boundDeviceHash) tx.set(userRef, { boundDeviceHash: deviceHash }, { merge: true });
+    tx.set(recordRef, record);
+    tx.set(db.collection(COLLECTIONS.attendanceLogs).doc(`${data.sessionId}_${uid}`), {
+      ...record,
+      sessionId: data.sessionId,
+      sessionTitle: session.title,
+      lecturer: session.lecturer,
+      category: session.category,
+      sessionStartedAt: session.startedAt,
+    });
+    tx.update(sessionRef, {
+      presentCount: FieldValue.increment(1),
+      ...(previous === "excused" ? { excusedCount: FieldValue.increment(-1) } : {}),
+    });
+    auditIn(tx, {
       actorUid: uid,
       actorEmail,
-      action: "ATTENDANCE_MULTI_ACCOUNT_SAME_DEVICE_BLOCKED",
+      action: "ATTENDANCE_VERIFIED",
       resourceType: "attendance",
       resourceId: data.sessionId,
-      severity: "CRITICAL",
+      ...(previous === "excused" ? { metadata: { previousStatus: "excused" } } : {}),
     });
-    throw new HttpsError("already-exists", "Bu cihazdan bu derse başka bir hesap ile yoklama verilmiş.");
-  }
-
-  // 5. Kayıt (oturum alt koleksiyonu + dashboard için düz log) — idempotent
-  const recordRef = recordsCol.doc(uid);
-  const already = await recordRef.get();
-  if (already.exists && already.data()?.status === "present") {
-    return { verified: true as const, alreadyRecorded: true };
-  }
-
-  const record = {
-    uid,
-    fullName: profile.fullName ?? actorEmail,
-    title: profile.title ?? "",
-    residencyYear: profile.residencyYear ?? null,
-    verifiedAt: FieldValue.serverTimestamp(),
-    // Yalnızca sunucunun doğruladığı yöntem yazılır (istemci beyanı kabul edilmez; WebAuthn → F4.2).
-    method: "qr+device_bound",
-    deviceHash,
-    status: "present",
-  };
-
-  const batch = db.batch();
-  if (!profile.boundDeviceHash) batch.set(userRef, { boundDeviceHash: deviceHash }, { merge: true });
-  batch.set(recordRef, record);
-  batch.set(db.collection(COLLECTIONS.attendanceLogs).doc(`${data.sessionId}_${uid}`), {
-    ...record,
-    sessionId: data.sessionId,
-    sessionTitle: session.title,
-    lecturer: session.lecturer,
-    category: session.category,
-    sessionStartedAt: session.startedAt,
+    return { kind: "recorded", alreadyRecorded: false };
   });
-  batch.update(sessionRef, { presentCount: FieldValue.increment(1) });
-  auditIn(batch, {
-    actorUid: uid,
-    actorEmail,
-    action: "ATTENDANCE_VERIFIED",
-    resourceType: "attendance",
-    resourceId: data.sessionId,
-  });
-  await batch.commit();
 
-  return { verified: true as const, alreadyRecorded: false };
+  switch (outcome.kind) {
+    case "recorded":
+      return { verified: true as const, alreadyRecorded: outcome.alreadyRecorded };
+    case "no-session":
+      throw new HttpsError("failed-precondition", NO_LIVE_SESSION);
+    case "device-mismatch":
+      await writeAuditLog({
+        actorUid: uid,
+        actorEmail,
+        action: "ATTENDANCE_DEVICE_MISMATCH_BLOCKED",
+        resourceType: "attendance",
+        resourceId: data.sessionId,
+        severity: "WARN",
+      });
+      throw new HttpsError(
+        "failed-precondition",
+        "Bu cihaz hesabınıza kayıtlı değil. Cihaz değişikliği için Admin'e başvurun."
+      );
+    case "invalid-code":
+      await writeAuditLog({
+        actorUid: uid,
+        actorEmail,
+        action: "ATTENDANCE_EXPIRED_OR_INVALID_CODE",
+        resourceType: "attendance",
+        resourceId: data.sessionId,
+        severity: "WARN",
+      });
+      throw new HttpsError("deadline-exceeded", "Kod geçersiz veya süresi doldu. Projektördeki güncel kodu girin.");
+    case "same-device":
+      await writeAuditLog({
+        actorUid: uid,
+        actorEmail,
+        action: "ATTENDANCE_MULTI_ACCOUNT_SAME_DEVICE_BLOCKED",
+        resourceType: "attendance",
+        resourceId: data.sessionId,
+        severity: "CRITICAL",
+      });
+      throw new HttpsError("already-exists", "Bu cihazdan bu derse başka bir hesap ile yoklama verilmiş.");
+  }
 });
 
-/** Admin: hekimi derste mazeretli olarak işaretler. */
+/**
+ * Admin: hekimi derste mazeretli olarak işaretler (F4.1: TRANSACTION).
+ * Kayıt yok → mazeretli (+1); zaten mazeretli → yalnızca not güncellenir (sayaç değişmez);
+ * katılmış hekim mazeretliye çevrilmez (doğrulanmış katılım yanlışlıkla silinmesin).
+ * Ders kapandıktan sonra da işaretlenebilir (mazeretler çoğunlukla sonradan bildirilir).
+ */
 export const markAttendanceExcused = defineCallable("markAttendanceExcused", "admin", async (data, actor) => {
   const db = getFirestore();
-  const [sessionSnap, userSnap] = await Promise.all([
-    sessions().doc(data.sessionId).get(),
-    db.collection(COLLECTIONS.users).doc(data.targetUid).get(),
-  ]);
-  if (!sessionSnap.exists || !userSnap.exists) throw new HttpsError("not-found", "Oturum veya hekim bulunamadı.");
-  const session = sessionSnap.data()!;
-  const user = userSnap.data()!;
+  const sessionRef = sessions().doc(data.sessionId);
+  const recordRef = sessionRef.collection(COLLECTIONS.attendanceRecords).doc(data.targetUid);
 
-  const record = {
-    uid: data.targetUid,
-    fullName: user.fullName ?? "",
-    title: user.title ?? "",
-    residencyYear: user.residencyYear ?? null,
-    verifiedAt: FieldValue.serverTimestamp(),
-    method: "admin_excused",
-    status: "excused",
-    excuseNote: data.excuseNote,
-    markedBy: actor.uid,
-  };
-  const batch = db.batch();
-  batch.set(sessionSnap.ref.collection(COLLECTIONS.attendanceRecords).doc(data.targetUid), record);
-  batch.set(db.collection(COLLECTIONS.attendanceLogs).doc(`${data.sessionId}_${data.targetUid}`), {
-    ...record,
-    sessionId: data.sessionId,
-    sessionTitle: session.title,
-    lecturer: session.lecturer,
-    category: session.category,
-    sessionStartedAt: session.startedAt,
+  await db.runTransaction(async (tx) => {
+    const [sessionSnap, userSnap, recordSnap] = await Promise.all([
+      tx.get(sessionRef),
+      tx.get(db.collection(COLLECTIONS.users).doc(data.targetUid)),
+      tx.get(recordRef),
+    ]);
+    if (!sessionSnap.exists || !userSnap.exists) throw new HttpsError("not-found", "Oturum veya hekim bulunamadı.");
+    const previous = recordSnap.data()?.status as AttendanceStatus | undefined;
+    if (previous === "present") {
+      throw new HttpsError("failed-precondition", "Bu hekim derse katılmış görünüyor; mazeretli olarak işaretlenemez.");
+    }
+    const session = sessionSnap.data()!;
+    const user = userSnap.data()!;
+
+    const record = {
+      uid: data.targetUid,
+      fullName: user.fullName ?? "",
+      title: user.title ?? "",
+      residencyYear: user.residencyYear ?? null,
+      verifiedAt: FieldValue.serverTimestamp(),
+      method: "admin_excused",
+      status: "excused",
+      excuseNote: data.excuseNote,
+      markedBy: actor.uid,
+    };
+    tx.set(recordRef, record);
+    tx.set(db.collection(COLLECTIONS.attendanceLogs).doc(`${data.sessionId}_${data.targetUid}`), {
+      ...record,
+      sessionId: data.sessionId,
+      sessionTitle: session.title,
+      lecturer: session.lecturer,
+      category: session.category,
+      sessionStartedAt: session.startedAt,
+    });
+    if (previous !== "excused") tx.update(sessionRef, { excusedCount: FieldValue.increment(1) });
+    auditIn(tx, {
+      actorUid: actor.uid,
+      actorEmail: actor.email,
+      action: previous === "excused" ? "ATTENDANCE_EXCUSE_UPDATED" : "ATTENDANCE_MARKED_EXCUSED",
+      resourceType: "attendance",
+      resourceId: data.sessionId,
+      metadata: { targetUid: data.targetUid },
+    });
   });
-  batch.update(sessionSnap.ref, { excusedCount: FieldValue.increment(1) });
-  auditIn(batch, {
-    actorUid: actor.uid,
-    actorEmail: actor.email,
-    action: "ATTENDANCE_MARKED_EXCUSED",
-    resourceType: "attendance",
-    resourceId: data.sessionId,
-    metadata: { targetUid: data.targetUid },
-  });
-  await batch.commit();
 
   return { ok: true as const };
 });
+
+/**
+ * Süresi dolmuş canlı dersleri kapatır, sırlarını siler ve kilidi bırakır (F4.1, AUDIT S4).
+ * Zamanlayıcıdan (`scheduled.ts`) çağrılır; emülatör zamanlayıcıyı tetiklemediği için ayrı test edilir.
+ * Her ders kendi transaction'ında kapatılır: aynı anda admin de kapatırsa çift kapatma/denetim kaydı olmaz.
+ */
+export async function closeExpiredLectures(now: Date = new Date()): Promise<string[]> {
+  const db = getFirestore();
+  const expired = await sessions().where("status", "==", "live").where("endsAt", "<=", Timestamp.fromDate(now)).get();
+  const closed: string[] = [];
+  for (const doc of expired.docs) {
+    const done = await db.runTransaction(async (tx) => {
+      const [snap, lockSnap] = await Promise.all([tx.get(doc.ref), tx.get(liveLock())]);
+      if (snap.data()?.status !== "live") return false;
+      closeSessionWrites(tx, doc.id, lockSnap.data()?.sessionId, "system", "expired");
+      auditIn(tx, {
+        actorUid: "system",
+        actorEmail: "system",
+        action: "ATTENDANCE_SESSION_EXPIRED",
+        resourceType: "attendance",
+        resourceId: doc.id,
+      });
+      return true;
+    });
+    if (done) closed.push(doc.id);
+  }
+  return closed;
+}

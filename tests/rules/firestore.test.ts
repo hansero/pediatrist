@@ -270,6 +270,12 @@ describe("değiştirilemez kayıtlar, davetler, yapılandırma", () => {
   it("tanımlanmamış koleksiyonlar varsayılan olarak kapalıdır", async () => {
     await assertFails(as(admin).collection("baska_bir_sey").doc("x").get());
   });
+
+  it("yoklama kilidi (attendance_meta) ve HMAC sırları admin dahil istemciye kapalıdır (F4.1)", async () => {
+    await assertFails(as(admin, SECOND_FACTOR).collection("attendance_meta").doc("live").get());
+    await assertFails(as(admin, SECOND_FACTOR).collection("attendance_meta").doc("live").set({ sessionId: "x" }));
+    await assertFails(as(admin, SECOND_FACTOR).collection("attendance_secrets").doc("s1").get());
+  });
 });
 
 describe("MFA zorunluluğu (N8: config/security tek kaynak)", () => {

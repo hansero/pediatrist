@@ -58,7 +58,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F3.4 | Giriş: gerçek hata yönetimi, şifre sıfırlama, gerçek TOTP MFA | L | ✅ | C4 |
 | F3.5 | Kayıt, KVKK onayı, e-posta doğrulama, bekleme/askı ekranları | M | ✅ | C9, Kullanılabilirlik |
 | **F4** | **Yoklama modülü (gerçek)** | | | |
-| F4.1 | Backend sağlamlaştırma (transaction, kilit, süre dolumu, zamanlayıcı) | M | ⬜ | S3, S4, S5, S10 |
+| F4.1 | Backend sağlamlaştırma (transaction, kilit, süre dolumu, zamanlayıcı) | M | ✅ | S3, S4, S5, S10 |
 | F4.2 | WebAuthn passkey ile cihaz bağlama | L | ⬜ | S1, C2 (biyometrik) |
 | F4.3 | Admin: ders başlat/bitir + projektör kiosk sayfası (QR, wake lock) | M | ⬜ | C2, C8 (projektör) |
 | F4.4 | Hekim: QR deep-link ile yoklama + kişisel geçmiş | M | ⬜ | C2 |
@@ -101,15 +101,15 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F3.5. **F3 fazı (UI temeli ve kimlik doğrulama) tamamlandı.** Ayrıca N8 (D20, MFA tek kaynak `config/security`) uygulandı. F3.5: KVKK aydınlatma metni (sürümlü, veri sorumlusu yapılandırmadan, sunucuda zorunlu onay), yeni kayıt formu, doğrulama e-postası, korumalı alanda canlı bekleme ekranı, kıdem yılı yalnızca asistan için (`null` modeli; sessiz `?? 1` uydurmaları kaldırıldı). Testler: unit 180, rules 48, functions 47, e2e 46 (+2 ekran boyutuna özel atlanan).
+- **Son tamamlanan adım:** F4.1. Yoklama backend'i transaction'larla sağlamlaştırıldı (sayaç geçişleri, tek canlı ders kilidi `attendance_meta/live`, beklenen katılımcılar, süre dolumu zamanlayıcısı `closeExpiredLecturesJob`). Testler: unit 180, rules 49, functions 58, e2e 46 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **Kullanıcıya sorulacak (D-kaydı gerektirir):** `REQUIRE_EMAIL_VERIFIED` hâlâ functions parametresi ve kurallarda uygulanmıyor; MFA gibi `config/security.requireEmailVerified` tek kaynağına taşınması önerilir.
-- **Sıradaki iş:** F4.1 (M) yoklama backend sağlamlaştırma (S3, S4, S5, S10):
-  - `verifyRealTimeAttendance` ve `markAttendanceExcused` transaction içinde: mevcut kaydı oku, durum geçişine göre sayaç farkı (+1/−1), ilk cihaz bağlama transaction içinde.
-  - Tek canlı ders kilidi `attendance_meta/live` (transaction); `endLectureSession` var mı/durum kontrolü (`not-found`/`failed-precondition`); `getProjectorCode` `endsAt` kontrolü.
-  - `onSchedule` (5 dk): süresi dolan canlı dersleri kapat + sırları sil; aynı şekilde `closesAt`'i geçen sınavlar (F5.1 ile paylaşılır).
-  - Denetim kaydı aynı batch/transaction'da (zaten `auditIn`); `ipHash` (tuzlu, `AUDIT_IP_SALT`) doldurulur.
-  - Testler: eşzamanlı yoklama (sayaç tek artar), mazeret↔var geçişleri, çift mazeret, süresi geçmiş ders, zamanlayıcı.
+- **Kullanıcıya sorulacak (D-kaydı gerektirir):** `REQUIRE_EMAIL_VERIFIED` hâlâ functions parametresi ve kurallarda uygulanmıyor; MFA gibi `config/security.requireEmailVerified` tek kaynağına taşınması önerildi (yanıt bekleniyor).
+- **Sıradaki iş:** F4.2 (L) WebAuthn passkey ile cihaz bağlama (D6, S1):
+  - `@simplewebauthn/server` (functions) + `@simplewebauthn/browser` (istemci); sürümler en az 2 haftalık ve kilitli.
+  - Callable'lar: `getPasskeyRegistrationOptions` / `verifyPasskeyRegistration` (kayıt, hesap güvenliği sayfasından), `getAttendanceAssertionOptions` + `verifyRealTimeAttendance` içinde assertion doğrulama. Challenge'lar `webauthn_challenges/{uid}` (kısa ömürlü, istemciye kapalı).
+  - RP ID: `NEXT_PUBLIC_WEBAUTHN_RP_ID` (emülatörde `localhost`); sunucu tarafında da aynı değer (tek kaynak kararı gerekebilir; D-kaydı kontrol et).
+  - `method: "qr+webauthn"` yalnızca sunucu assertion'ı doğrularsa; `localStorage` cihaz sırrı (`getOrCreateClientDeviceSecret`) kaldırılır; `boundDeviceHash` yerine `webAuthnCredentialId` + public key.
+  - e2e: Playwright CDP sanal doğrulayıcı (`WebAuthn.addVirtualAuthenticator`).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -724,6 +724,31 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `markAttendanceExcused`: aynı delta mantığı; tekrar çağrıda sayaç artmaz.
   - `closeExpiredLectures` (`onSchedule('every 5 minutes')`): süresi dolan oturumları kapatır, sırları siler, kilidi bırakır. Mantık export edilen saf bir fonksiyonda tutulur ve doğrudan test edilir (emülatör zamanlayıcıyı tetiklemez).
 - **Testler:** eşzamanlı 2 yoklama → sayaç 1; excused↔present deltaları; süresi dolmuş oturum; ikinci canlı oturum reddi; kapanmış oturuma kod isteği.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **Bütün yoklama yazımları transaction içinde**; denetim kaydı aynı transaction'da (`auditIn(tx)`). Reddedilen girişimlerin (cihaz uyuşmazlığı, geçersiz kod, aynı cihazdan ikinci hesap) denetim kaydı transaction **dışında** yazılır: transaction bir sonuç türü döndürür (`VerifyOutcome`), kayıt ve hata ondan sonra. Aksi halde hata fırlatıldığında kayıt da geri alınırdı.
+  - `verifyRealTimeAttendance`:
+    - Oturum, sır, kullanıcı, mevcut kayıt ve aynı cihaz sorgusu tek transaction'da okunur.
+    - Cihaz bağı guard'dan gelen profilden değil transaction'daki güncel dokümandan kontrol edilir; ilk bağlama da aynı transaction'da.
+    - Geçişler: yok → katıldı (+1); mazeretli → katıldı (katılan +1, mazeretli −1, denetimde `previousStatus`); katıldı → değişiklik yok.
+  - `markAttendanceExcused`:
+    - Yok → mazeretli (+1); mazeretli → yalnızca not (sayaç değişmez, `ATTENDANCE_EXCUSE_UPDATED`).
+    - **Plandan sapma:** katılmış hekim mazeretliye **çevrilmez** (`failed-precondition`). Doğrulanmış katılımın yanlış tıklamayla silinmesini önler.
+    - Kapanmış derse mazeret işlenebilir; olmayan ders veya hekim `not-found`.
+  - **Tek canlı ders kilidi** `attendance_meta/live` (`{sessionId, endsAt}`), transaction'da. Kilit süresi dolmuş bir derse aitse yeni başlatma o dersi aynı işlemde `expired` olarak kapatır (zamanlayıcı beklenmez).
+  - `startLectureSession` derse `expectedAttendees` (o andaki etkin `role=user` üyeler, admin ve bekleyen hariç) ve `expectedCount` yazar: F4.5 raporlarında katılım oranının paydası.
+  - `endLectureSession`: yoksa `not-found`, zaten kapalıysa `failed-precondition`; `closeReason: "manual"`, kilit bırakılır, sır silinir.
+  - `getProjectorCode`: `endsAt` geçmişse kod üretmez ("Ders süresi doldu").
+  - **`closeExpiredLectures(now)`** (`attendanceService.ts`, dışa aktarılan fonksiyon; her ders kendi transaction'ında, eşzamanlı manuel kapatmada çift kayıt olmaz): `closedBy: "system"`, `closeReason: "expired"`, sır ve kilit silinir, `ATTENDANCE_SESSION_EXPIRED`. Zamanlayıcı `functions/src/scheduled.ts → closeExpiredLecturesJob` (`every 5 minutes`, `europe-west1`, `Europe/Istanbul`).
+  - Bileşik indeks: `attendance_sessions (status, endsAt)` (`firestore.indexes.json`).
+  - Tipler: `AttendanceSessionDoc` + `expectedAttendees`, `expectedCount`, `closeReason`; `AttendanceLiveLockDoc`; `COLLECTIONS.attendanceMeta`.
+  - **Kapsam dışı (F9.2'ye):** denetim kaydına tuzlu `ipHash` ve geçersiz kod denemeleri için hız sınırı. Sınavların `closesAt` ile otomatik kapanması F5.1'de aynı zamanlayıcı dosyasına eklenecek.
+  - Testler:
+    - functions +11: eşzamanlı aynı hekim (sayaç 1, biri "zaten kayıtlı", tek denetim kaydı); eşzamanlı iki hekim (2); eşzamanlı iki başlatma (yalnızca biri); beklenen katılımcılar; mazeretli → katıldı; tekrar mazeret ve katılmışa mazeret reddi; kapanmış derse mazeret ve `not-found`; bitirme hataları ve kilidin bırakılması; süresi dolmuş derste kod/yoklama yok; `closeExpiredLectures` (kapatır, dokunmaz, tekrar boş); süresi dolmuş kilidin yeni başlatmada temizlenmesi.
+    - Mutasyon: "zaten katıldı" kontrolü ve kilit kaldırılınca 4 test düşüyor.
+    - rules +1: `attendance_meta` ve `attendance_secrets` admin dahil kapalı.
+    - Unit: callable sözleşme testi zamanlanmış işi callable saymıyor.
+  - Functions emülatörü `closeExpiredLecturesJob`'u yüklüyor ve Pub/Sub emülatörü olmadığı için tetiklemiyor (beklenen; mantık doğrudan test edildi).
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 180, rules 49, functions 58, e2e 46 (+2 ekran boyutuna özel atlanan), next build.
 
 #### F4.2 WebAuthn cihaz bağlama (L)
 - **Dosyalar:** `functions/src/webauthn.ts`, `functions/src/shared/schemas.ts`, `src/lib/webauthn.ts`, `src/app/(protected)/account/device/page.tsx`

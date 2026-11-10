@@ -162,7 +162,8 @@ describe("CALLABLES kayıt defteri", () => {
         .map((s) => s.trim())
         .filter(Boolean)
     );
-    const triggers = ["syncUserClaims"];
+    // Tetikleyiciler ve zamanlanmış işler callable değildir.
+    const triggers = ["syncUserClaims", "closeExpiredLecturesJob"];
     const callables = exported.filter((n) => !triggers.includes(n));
     expect(callables).toHaveLength(Object.keys(CALLABLES).length);
     expect(callables.filter((n) => !(n in CALLABLES))).toEqual([]);
