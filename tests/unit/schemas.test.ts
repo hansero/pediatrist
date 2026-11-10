@@ -169,3 +169,13 @@ describe("CALLABLES kayıt defteri", () => {
     expect(Object.keys(CALLABLES).filter((n) => !callables.includes(n))).toEqual([]);
   });
 });
+
+describe("ortak zod yapılandırması (F2.5)", () => {
+  it("istemcide de Türkçe varsayılan mesajlar ve CSP uyumlu jitless modu etkin", async () => {
+    const { z } = await import("@shared/zod");
+    expect(z.config().jitless).toBe(true);
+    const result = z.object({ ad: z.string() }).safeParse({ ad: 42 });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toMatch(/Geçersiz/);
+  });
+});

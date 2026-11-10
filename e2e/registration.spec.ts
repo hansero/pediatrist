@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures/test";
 import { fillRegistration } from "./fixtures/registration";
 import { findUserProfileByEmail, readDocument, writeDocument } from "./fixtures/emulator";
 

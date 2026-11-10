@@ -1,9 +1,7 @@
 import { HttpsError } from "firebase-functions/v2/https";
-import { z } from "zod";
 import { formatIssues } from "./shared/issues";
-
-// Şemalarda açık mesajı olmayan kurallar için Türkçe varsayılan mesajlar.
-z.config(z.locales.tr());
+// Türkçe varsayılan mesajlar ve `jitless` ayarı ortak modülde (istemciyle aynı).
+import { z } from "./shared/zod";
 
 /** İsteği şemayla doğrular; geçersizse `invalid-argument` fırlatır. İstemci doğrulamasına güvenilmez. */
 export function parse<S extends z.ZodType>(schema: S, data: unknown): z.output<S> {

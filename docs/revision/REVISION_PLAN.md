@@ -50,7 +50,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F2.2 | `storage.rules` yeniden yazımı + testler | S | ✅ | C5, C11 (silme/MIME) |
 | F2.3 | Claim senkronu, `tokensValidAfter`, üye yönetimi korumaları, sunucu tarafı kayıt, davetler | L | ✅ | C5, C9, S9 |
 | F2.4 | `ClinicSessionContext` yeniden yazımı (canlı profil, token yenileme) | M | ✅ | C5 |
-| F2.5 | Tek kaynaklı CSP, header'lar, SSR bölgesi | S | ⬜ | C6, §7 bölge |
+| F2.5 | Tek kaynaklı CSP, header'lar, SSR bölgesi | S | ✅ | C6, §7 bölge |
 | **F3** | **UI temeli ve kimlik doğrulama UX** | | | |
 | F3.1 | Tasarım token'ları, kontrast/odak, `next/font`, UI primitifleri | L | ⬜ | Tutarlılık, Erişilebilirlik |
 | F3.2 | Korumalı layout: `next/link`, aktif menü, mobil çekmece, hata/404/yükleniyor | M | ⬜ | Kullanılabilirlik |
@@ -101,18 +101,18 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F2.4. **F2 fazı (yetkilendirme temeli) tamamlandı:** Firestore ve Storage kuralları doküman tabanlı (C5, C7 kural tarafı, C9, C11 kapandı); sunucu tarafı kayıt ve davetler (C9 akışı); korumalı üye yönetimi; anında oturum iptali (kurallar + callable'lar + arayüz); canlı oturum. Testler: unit 77, rules 40, functions 44, e2e 14.
+- **Son tamamlanan adım:** F2.5. **F2 fazı (yetkilendirme temeli) tamamen bitti.** F2.5: tek kaynaklı güvenlik başlıkları (`config/securityHeaders.ts`), uç nokta bazlı üretim CSP'si (callable, App Check, reCAPTCHA, medya, worker), `firebase.json` başlık kopyası silindi, SSR bölgesi `europe-west1`, Auth resolver'sız başlatma, e2e CSP bekçisi, zod `jitless` (N7). Testler: unit 90, rules 40, functions 44, e2e 18.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F3.1 (L) tasarım token'ları + UI primitifleri:
+- **Sıradaki iş:** F3.1 (L) tasarım token'ları + UI primitifleri (F2.5 bitti; sıra doğru):
   - Token düzeltmeleri: `--status-warn*` → `--status-warning*`, alert sınıfları tek sözlük (`success | warning | critical | info`; `DoctorRealTimeCheckIn` `success/critical` kullanıyor, CSS `ok/warn/err` tanımlıyor).
   - Kontrast: `--text-muted` ≈ `hsl(215,16%,42%)`, `--status-warning` ≈ `hsl(30,90%,30%)`, input kenarı ≈ `hsl(214,18%,58%)`; `:focus-visible` 2 px outline.
   - `.btn:disabled`, mobilde ≥44 px dokunma hedefi, `--space-*` ölçeği, `prefers-reduced-motion`.
-  - `next/font` (Google Fonts `@import` ve tekrarlı CSS importları kaldırılır).
+  - `next/font` (Google Fonts `@import` ve tekrarlı CSS importları kaldırılır). Ardından `config/securityHeaders.ts`'ten `fonts.googleapis.com` / `fonts.gstatic.com` çıkarılır ve birim testine "Google Fonts yok" eklenir.
   - Primitifler `src/components/ui/`: Button (loading/disabled; **N3: hydration'a kadar disabled**), Alert, ConfirmDialog, Tabs, StatusChip, PageHeader, Card, EmptyState, DataTable, Field, Countdown, Toast.
   - Testler jsdom'da (`// @vitest-environment jsdom`, `@testing-library/react` kurulu).
   - Kontrast değerleri betikle yeniden hesaplanır (AUDIT §6'daki yöntem).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
-- **Engeller / notlar:** N3 açık (§7; F3.1 Button ile çözülecek). Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
+- **Engeller / notlar:** N3 açık (§7; F3.1 Button ile çözülecek). Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
 ---
 
@@ -503,6 +503,18 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `firebase.json` içindeki `hosting.headers` silinir. `hosting.frameworksBackend.region = "europe-west1"` eklenir.
   - Nonce tabanlı `script-src` F8.2'de değerlendirilir.
 - **Doğrulama:** `npm run build && npm start`: tarayıcı konsolunda CSP ihlali yok, callable istekleri emülatöre gidiyor.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **Tek kaynak `config/securityHeaders.ts`** (D9): `next.config.ts` → `headers()` yalnızca `buildSecurityHeaders({ isDev, useEmulators, projectId })` çağırır. `firebase.json` → `hosting.headers` silindi (Firebase webframeworks Next'in `routes-manifest` başlıklarını Hosting'e aktarır). `hosting.frameworksBackend.region = "europe-west1"`; ortak `REGION` ile eşitliği birim testinde.
+  - **Üretim izin listesi joker yerine gerçekten kullanılan uç noktalardan:** `https://*.googleapis.com` ve kullanılmayan Realtime Database (`*.firebaseio.com`) kaldırıldı. connect-src: identitytoolkit, securetoken, firestore, firebasestorage, content-firebaseappcheck ve **`https://europe-west1-{projectId}.cloudfunctions.net`** (proje kimliği yoksa `https://*.cloudfunctions.net`).
+  - reCAPTCHA Enterprise yol kısıtlı: script `www.google.com/recaptcha/`, `www.gstatic.com/recaptcha/`; frame `www.google.com/recaptcha/`, `recaptcha.google.com/recaptcha/`.
+  - Eklenenler: `media-src 'self' blob: firebasestorage`, `worker-src 'self' blob:`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `manifest-src 'self'`, `Cross-Origin-Opener-Policy: same-origin`. Permissions-Policy: `geolocation=()` (kullanılmıyor; S2 coğrafi sınır seçilirse açılır); `screen-wake-lock`, `fullscreen` (F4.3) ve `publickey-credentials-*` (F4.2) `self`.
+  - **`apis.google.com` kaldırıldı:** Auth artık `initializeAuth` ile, açılır pencere ve yönlendirme çözücüsü olmadan başlatılıyor (kalıcılık sırası `getAuth` ile aynı). `getAuth()` varsayılanı Safari ve mobilde sayfa açılışında gapi betiğini ve authDomain iframe'ini yüklüyordu. Uygulama yalnızca e-posta/şifre ve TOTP kullanıyor; F3.4 bunu değiştirmez.
+  - `upgrade-insecure-requests` **bilinçli olarak yok**: Hosting zaten yalnızca HTTPS (HSTS); yerelde `next start` ile aynı kökenli varlıkları bozar.
+  - Google Fonts kaynakları (`fonts.googleapis.com`, `fonts.gstatic.com`) F3.1'de `next/font` ile kaldırılacak.
+  - **E2E CSP bekçisi** `e2e/fixtures/test.ts`: bütün spec'ler bu `test`'i kullanır. Her bağlamda `securitypolicyviolation` olayları ve konsoldaki CSP hataları toplanır; ihlal varsa test düşer. Ek bağlamlar `guardedContext()` ile dahil edilir. `e2e/csp.spec.ts`: başlıkların üretim derlemesinde gönderildiği ve bekçinin izinsiz bir isteği gerçekten yakaladığı doğrulanır.
+  - **Bekçi gerçek bir ihlal buldu (N7):** zod 4, nesne doğrulayıcılarını derlemeden önce `new Function("")` ile `eval` iznini yokluyor. Hata yakalansa bile CSP ihlali raporlanıyordu (her sayfada). Çözüm `functions/src/shared/zod.ts`: `z.config({ jitless: true })` ve Türkçe yerel ayar. **Ortak şemalar ve `validate.ts` zod'u yalnızca bu modülden alır**; ESLint `no-restricted-imports` doğrudan `zod` importunu engeller (`src/**`, `functions/src/**`).
+  - Yan bulgu: Türkçe varsayılan mesajlar önceden **yalnızca functions'ta** ayarlıydı; istemci ön doğrulaması açık mesajı olmayan kurallarda İngilizce gösterebiliyordu. Artık ortak ayar her iki tarafta. Birim testiyle doğrulandı.
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 90, functions 44, e2e 18 (CSP bekçisi açık), next build.
 
 ---
 
@@ -922,5 +934,6 @@ Denetimde (AUDIT.md) olmayan, uygulama çalıştırılınca ortaya çıkan sorun
 | N3 | Formlar hydration tamamlanmadan gönderilirse tarayıcının varsayılan GET gönderimiyle sayfa yenileniyor (`/register?`). Input'larda `name` olmadığı için veri sızmıyor, ama kullanıcı "hiçbir şey olmadı" deneyimi yaşıyor. | UX; yavaş bağlantıda kafa karıştırıcı. | ⬜ F3.1 `Button`/form primitifleri: gönder butonu hydration'a kadar `disabled`, form `method="post"` + `action` yok + `noValidate` kararı; F3.4/F3.5'te uygulanır |
 | N5 | `defineBoolean(...).value()` ortam değişkeni yoksa **`false`** döner (`firebase-functions/lib/params/types.js` → `process.env[name] === "true"`); `default: true` yalnızca deploy sırasında kullanılır. `.value()` ile okunsaydı, değişkeni eksik bir ortamda App Check/MFA/e-posta zorunlulukları **sessizce kapanırdı**. | Güvenlik | ✅ F1.3: `guards.ts → isEnforced()` yalnızca açıkça `"false"` değerinde kapatır; testle doğrulandı |
 | N6 | İstemci, şemanın isteğe bağlı alanlar için ürettiği `undefined` değerleri gönderiyordu; Firebase SDK'sı bunları **`null`**'a çeviriyor ve `.optional()` alanlar `null`'ı reddettiği için sunucu `invalid-argument` ("Geçersiz değer") dönüyordu. Örnek: boş davet kodu ile kayıt. | İsteğe bağlı alanı olan her callable | ✅ F2.3: `callFunction` → `stripUndefined`; birim testi + e2e kayıt testleri |
+| N7 | zod 4 ilk nesne doğrulamasında `new Function("")` ile `eval` iznini yokluyor. Üretim CSP'sinde (`'unsafe-eval'` yok) hata yakalanıyor ama tarayıcı her sayfada `securitypolicyviolation` raporluyordu; F2.5 e2e CSP bekçisi buldu. | Gürültülü CSP raporları; ileride rapor toplayıcı (report-to) bağlanınca sahte alarm. | ✅ F2.5: `functions/src/shared/zod.ts` → `jitless: true`; doğrudan `zod` importu ESLint ile yasak |
 | N4 | Storage emülatörü başlarken "Unexpected rules runtime error" uyarısı veriyor; içerik yalnızca ortamın `JAVA_TOOL_OPTIONS` satırı. | Yok | ✅ F0.4'te doğrulandı: Storage kuralları doğru değerlendiriliyor (aktif kullanıcıya izin, bekleyene `storage/unauthorized`). Uyarı zararsız. |
 

@@ -12,7 +12,7 @@
  * Soru alanları arası kurallar (seçenek ⇔ doğru cevap, Text Input ⇔ maxLength) `quizQuestion.ts` içindedir ve
  * admin CSV önizlemesiyle ortaktır.
  */
-import { z } from "zod";
+import { z } from "./zod";
 import { QuizQuestionInput } from "./quizQuestion";
 import {
   ATTENDANCE_CODE_ALPHABET,

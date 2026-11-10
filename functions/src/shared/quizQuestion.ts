@@ -9,7 +9,7 @@
  * Çıktı normalize edilmiştir: seçenekler tek listede (`optionsArray`), `optionsRaw` ondan üretilir,
  * seçenekli sorularda `maxLength` 0'dır.
  */
-import { z } from "zod";
+import { z } from "./zod";
 import { LIMITS, QUESTION_TYPES, type QuestionType } from "./constants";
 
 /** `quiz_media/` altındaki bir Storage yolu. Harici URL'ler CSP'ye takılır ve kabul edilmez. */

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, guardedContext, test } from "./fixtures/test";
 import { ACCOUNTS, loginAs } from "./fixtures/auth";
 import { findUserProfileByEmail } from "./fixtures/emulator";
 import { REGISTRATION_PASSWORD, fillRegistration } from "./fixtures/registration";
@@ -13,8 +13,8 @@ test("onay → canlı aktifleşme; cihaz sıfırlama → oturum sonlanır; askı
   const email = `canli.${testInfo.project.name}.${Date.now()}@example.test`;
   const fullName = "Canlı Oturum Asistanı";
 
-  const userCtx = await browser.newContext();
-  const adminCtx = await browser.newContext();
+  const userCtx = await guardedContext(await browser.newContext());
+  const adminCtx = await guardedContext(await browser.newContext());
   const user = await userCtx.newPage();
   const admin = await adminCtx.newPage();
 

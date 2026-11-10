@@ -1,5 +1,13 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { connectAuthEmulator, getAuth, Auth } from "firebase/auth";
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  connectAuthEmulator,
+  getAuth,
+  indexedDBLocalPersistence,
+  initializeAuth,
+  type Auth,
+} from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore, Firestore } from "firebase/firestore";
 import { connectStorageEmulator, getStorage, FirebaseStorage } from "firebase/storage";
 import { connectFunctionsEmulator, getFunctions, Functions } from "firebase/functions";
@@ -85,6 +93,18 @@ function initAppCheck(app: FirebaseApp) {
 }
 
 /**
+ * Auth, açılır pencere / yönlendirme çözücüsü OLMADAN başlatılır (F2.5). Uygulama yalnızca e-posta/şifre
+ * ve TOTP kullanır; `getAuth()` varsayılanı Safari ve mobilde sayfa açılışında `apis.google.com` betiğini
+ * ve authDomain iframe'ini yükler, bu da CSP'yi gereksiz yere genişletmeyi gerektirirdi.
+ * Kalıcılık sırası `getAuth()` varsayılanıyla aynıdır. Uygulama zaten başlatılmışsa (HMR) mevcut örnek alınır.
+ */
+function createAuth(app: FirebaseApp): Auth {
+  return initializeAuth(app, {
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+  });
+}
+
+/**
  * Firebase İstemci SDK'sını (Auth, Firestore, Storage, Functions ve App Check) bir kez başlatır
  * ve aynı nesneyi döndürür. Yapılandırma eksikse `null` döner (hata mesajında hiçbir değer basılmaz).
  */
@@ -92,9 +112,10 @@ export function initPediatristFirebase(): PediatristFirebaseClients | null {
   if (clients) return clients;
   if (!isFirebaseConfigured()) return null;
 
-  const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+  const existing = getApps().length > 0;
+  const app = existing ? getApp() : initializeApp(firebaseConfig);
   const created: PediatristFirebaseClients = {
-    auth: getAuth(app),
+    auth: existing ? getAuth(app) : createAuth(app),
     db: getFirestore(app),
     storage: getStorage(app),
     functions: getFunctions(app, REGION),

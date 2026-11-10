@@ -3,6 +3,12 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 
 const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
 
+// F2.5: zod yalnızca ortak yapılandırılmış modülden alınır (Türkçe mesajlar + CSP uyumlu `jitless`).
+const ZOD_IMPORT_RULE = {
+  name: "zod",
+  message: "zod'u `@shared/zod` (functions içinde `./shared/zod`) üzerinden import edin (REVISION_PLAN F2.5).",
+};
+
 const config = [
   {
     ignores: [
@@ -40,10 +46,25 @@ const config = [
               name: "firebase-admin",
               message: "Modüler import kullanın: firebase-admin/app, /auth, /firestore, /storage (REVISION_PLAN N2).",
             },
+            ZOD_IMPORT_RULE,
           ],
         },
       ],
     },
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: { "no-restricted-imports": ["error", { paths: [ZOD_IMPORT_RULE] }] },
+  },
+  {
+    // Yapılandırmanın kendisi zod'u doğrudan alır.
+    files: ["functions/src/shared/zod.ts"],
+    rules: { "no-restricted-imports": "off" },
+  },
+  {
+    // Playwright fixture'larındaki `use(...)` bir React kancası değildir.
+    files: ["e2e/**/*.ts"],
+    rules: { "react-hooks/rules-of-hooks": "off" },
   },
 ];
 
