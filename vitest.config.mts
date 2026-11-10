@@ -14,10 +14,13 @@ export default defineConfig({
     projects: [
       {
         resolve: { alias },
+        // tsconfig `jsx: "preserve"` (Next derler); bileşen testleri için React 19 otomatik çalışma zamanı.
+        oxc: { jsx: { runtime: "automatic" } },
         test: {
           name: "unit",
           environment: "node",
           include: ["tests/unit/**/*.test.{ts,tsx}"],
+          setupFiles: ["tests/unit/setup.ts"],
         },
       },
       {

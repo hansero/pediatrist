@@ -17,7 +17,7 @@ export default function PediatricCalculatorsPage() {
     <section aria-labelledby="calculators-page-heading">
       <div className="page-header">
         <div>
-          <span className="sec-chip primary">Modül 2 • /calculators (Yer Tutucu Mimari)</span>
+          <span className="sec-chip info">Modül 2 • /calculators (Yer Tutucu Mimari)</span>
           <h1 id="calculators-page-heading" style={{ marginTop: "0.45rem" }}>
             Pediatri Hesaplama Uygulamaları
           </h1>
@@ -73,7 +73,7 @@ export default function PediatricCalculatorsPage() {
                   <span className="mono-num" style={{ fontSize: "0.75rem", fontWeight: 700 }}>
                     {item.code} • {item.categoryLabel}
                   </span>
-                  <span className="sec-chip warn">Yer Tutucu (Placeholder)</span>
+                  <span className="sec-chip warning">Yer Tutucu (Placeholder)</span>
                 </div>
                 <div style={{ fontWeight: 700, marginTop: "0.3rem" }}>{item.title}</div>
               </button>
@@ -82,7 +82,7 @@ export default function PediatricCalculatorsPage() {
         </aside>
 
         <article className="surface-card" aria-labelledby="active-calc-heading">
-          <span className="sec-chip primary">
+          <span className="sec-chip info">
             {activeCalc.code} • {activeCalc.formulaVersion}
           </span>
           <h2 id="active-calc-heading" style={{ marginTop: "0.5rem" }}>
@@ -116,8 +116,8 @@ export default function PediatricCalculatorsPage() {
                 style={{
                   padding: "0.9rem",
                   borderRadius: "var(--radius-md)",
-                  background: "var(--status-warn-bg)",
-                  color: "var(--status-warn)",
+                  background: "var(--status-warning-bg)",
+                  color: "var(--status-warning)",
                   fontSize: "0.83rem",
                   fontWeight: 600,
                 }}

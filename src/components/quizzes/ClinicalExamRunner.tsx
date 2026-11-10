@@ -128,14 +128,14 @@ export function ClinicalExamRunner({
           }}
         >
           <div>
-            <span className="sec-chip primary">Aktif Klinik Vaka Sınavı</span>
+            <span className="sec-chip info">Aktif Klinik Vaka Sınavı</span>
             <h2 id="exam-runner-heading" style={{ marginTop: "0.35rem" }}>
               {quizTitle}
             </h2>
           </div>
 
           <div style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap" }}>
-            <span className={`sec-chip mono-num ${tabSwitchCount > 0 ? "warn" : "verified"}`}>
+            <span className={`sec-chip mono-num ${tabSwitchCount > 0 ? "warning" : "success"}`}>
               Ekran Değişimi: {tabSwitchCount}
             </span>
             <span className="sec-chip critical mono-num" style={{ fontSize: "0.94rem" }}>
@@ -204,7 +204,7 @@ export function ClinicalExamRunner({
                 marginBottom: "0.65rem",
               }}
             >
-              <span className="sec-chip primary mono-num">
+              <span className="sec-chip info mono-num">
                 Vaka {idx + 1} / {questions.length}
               </span>
               <span className="sec-chip">{formatQuestionTypeLabel(q.questionType)}</span>
@@ -340,7 +340,7 @@ export function ClinicalExamRunner({
       })}
 
       {confirmUnansweredWarning && (
-        <div role="alert" className="clinical-alert warn">
+        <div role="alert" className="clinical-alert warning">
           Henüz yanıtlamadığınız {questions.length - answeredCount} vaka sorusu bulunuyor. Yine de sınavı teslim etmek
           istiyorsanız aşağıdaki butona tekrar tıklayın.
         </div>

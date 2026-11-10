@@ -201,7 +201,7 @@ export function AdminLiveAttendanceProjector({
       {dashboardTab === "projector" && (
         <div className="grid-2">
           <article className="surface-card" aria-labelledby="start-lecture-heading">
-            <span className="sec-chip primary">Admin Yetkisi • Yoklama Başlatma</span>
+            <span className="sec-chip info">Admin Yetkisi • Yoklama Başlatma</span>
             <h2 id="start-lecture-heading" style={{ marginTop: "0.5rem" }}>
               Yoklama Alınacak Dersi Başlat
             </h2>
@@ -299,7 +299,7 @@ export function AdminLiveAttendanceProjector({
                     gap: "0.5rem",
                   }}
                 >
-                  <span className="sec-chip verified">Canlı Yoklama Açık • 15 sn Kriptografik Kod</span>
+                  <span className="sec-chip success">Canlı Yoklama Açık • 15 sn Kriptografik Kod</span>
                   <button
                     id="end-attendance-session-btn"
                     type="button"
@@ -371,9 +371,9 @@ export function AdminLiveAttendanceProjector({
                             </td>
                             <td>
                               {rec?.status === "present" ? (
-                                <span className="sec-chip verified">Katıldı ✓</span>
+                                <span className="sec-chip success">Katıldı ✓</span>
                               ) : rec?.status === "excused" ? (
-                                <span className="sec-chip warn">Mazeretli ({rec.excuseNote || "İzinli"})</span>
+                                <span className="sec-chip warning">Mazeretli ({rec.excuseNote || "İzinli"})</span>
                               ) : (
                                 <span className="sec-chip critical">Bekleniyor</span>
                               )}
@@ -420,7 +420,7 @@ export function AdminLiveAttendanceProjector({
               </>
             ) : (
               <div>
-                <span className="sec-chip warn">Aktif Ders Yoklaması Yok</span>
+                <span className="sec-chip warning">Aktif Ders Yoklaması Yok</span>
                 <h2 id="projector-heading" style={{ marginTop: "0.55rem" }}>
                   Yoklama Bekleniyor
                 </h2>
@@ -518,7 +518,7 @@ export function AdminLiveAttendanceProjector({
                         <td>{sess.lecturer}</td>
                         <td>{sess.category}</td>
                         <td>
-                          <span className={`sec-chip ${sess.status === "live" ? "verified" : "primary"}`}>
+                          <span className={`sec-chip ${sess.status === "live" ? "success" : "info"}`}>
                             {sess.status === "live" ? "Canlı" : "Tamamlandı"}
                           </span>
                         </td>
@@ -559,7 +559,7 @@ export function AdminLiveAttendanceProjector({
                 }}
               >
                 <div>
-                  <span className="sec-chip primary">Seçili Dersin Katılımcı Logları</span>
+                  <span className="sec-chip info">Seçili Dersin Katılımcı Logları</span>
                   <h3 style={{ marginTop: "0.35rem" }}>
                     {inspectedLecture.title} ({inspectedLecture.dateStr})
                   </h3>
@@ -614,9 +614,9 @@ export function AdminLiveAttendanceProjector({
                           <td className="mono-num">{m.residencyYear}. Yıl</td>
                           <td>
                             {r?.status === "present" ? (
-                              <span className="sec-chip verified">Katıldı ✓</span>
+                              <span className="sec-chip success">Katıldı ✓</span>
                             ) : r?.status === "excused" ? (
-                              <span className="sec-chip warn">Mazeretli ({r.excuseNote || "İzinli"})</span>
+                              <span className="sec-chip warning">Mazeretli ({r.excuseNote || "İzinli"})</span>
                             ) : (
                               <span className="sec-chip critical">Katılmadı</span>
                             )}
@@ -718,7 +718,7 @@ export function AdminLiveAttendanceProjector({
                       <td className="mono-num">{p.excusedCount}</td>
                       <td className="mono-num">{p.absentCount}</td>
                       <td>
-                        <span className={`sec-chip mono-num ${p.rate >= 70 ? "verified" : "critical"}`}>%{p.rate}</span>
+                        <span className={`sec-chip mono-num ${p.rate >= 70 ? "success" : "critical"}`}>%{p.rate}</span>
                       </td>
                       <td className="mono-num">{p.lastAttendedDate}</td>
                       <td>
@@ -740,7 +740,7 @@ export function AdminLiveAttendanceProjector({
 
           {inspectedParticipant && (
             <article className="surface-card">
-              <span className="sec-chip primary">Bireysel Ders Katılım Logları</span>
+              <span className="sec-chip info">Bireysel Ders Katılım Logları</span>
               <h3 style={{ marginTop: "0.35rem", marginBottom: "0.75rem" }}>
                 {inspectedParticipant.member.title} {inspectedParticipant.member.fullName} — Tüm Ders Kayıtları
               </h3>
@@ -768,9 +768,9 @@ export function AdminLiveAttendanceProjector({
                         <td>{log.category}</td>
                         <td>
                           {log.status === "present" ? (
-                            <span className="sec-chip verified">Katıldı ✓</span>
+                            <span className="sec-chip success">Katıldı ✓</span>
                           ) : log.status === "excused" ? (
-                            <span className="sec-chip warn">Mazeretli ({log.excuseNote || "İzinli"})</span>
+                            <span className="sec-chip warning">Mazeretli ({log.excuseNote || "İzinli"})</span>
                           ) : (
                             <span className="sec-chip critical">Katılmadı</span>
                           )}

@@ -69,12 +69,12 @@ export function WatermarkedMaterialViewer({
       <div className="page-header" style={{ paddingBottom: "0.85rem", marginBottom: "1rem" }}>
         <div>
           <div style={{ display: "flex", gap: "0.45rem", alignItems: "center", flexWrap: "wrap" }}>
-            <span className="sec-chip primary">{material.category}</span>
+            <span className="sec-chip info">{material.category}</span>
             <span className="sec-chip">Format: {material.fileType.toUpperCase()}</span>
             {!material.allowDownload ? (
               <span className="sec-chip critical">DRM Korumalı • İndirme Kapalı (Filigran Aktif)</span>
             ) : (
-              <span className="sec-chip verified">İndirilebilir Materyal</span>
+              <span className="sec-chip success">İndirilebilir Materyal</span>
             )}
           </div>
           <h2 id="viewer-material-title" style={{ marginTop: "0.5rem" }}>

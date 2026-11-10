@@ -6,7 +6,7 @@ import type { ResidencyYear, Title } from "@shared/constants";
 import { completeRegistration } from "@/lib/firebase/callables";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { toUserMessage } from "@/lib/errors";
-import "@/styles/index.css";
+import { Button } from "@/components/ui/Button";
 
 /**
  * Üyelik başvurusu (F2.3): hesap Firebase Auth'ta açılır, profil SUNUCUDA `completeRegistration` ile yazılır
@@ -63,7 +63,7 @@ export default function RegisterPage() {
         </p>
 
         {errorMessage && (
-          <div role="alert" className="clinical-alert err" style={{ marginBottom: "1rem" }}>
+          <div role="alert" className="clinical-alert critical" style={{ marginBottom: "1rem" }}>
             {errorMessage}
           </div>
         )}
@@ -165,15 +165,15 @@ export default function RegisterPage() {
             />
           </div>
 
-          <button
+          <Button
             id="register-submit-btn"
             type="submit"
-            className="btn btn-primary"
             style={{ width: "100%" }}
-            disabled={submitting}
+            loading={submitting}
+            loadingText="Başvuru Kaydediliyor…"
           >
-            {submitting ? "Başvuru Kaydediliyor…" : "Üyelik Başvurusunu Eğitim Sorumlusuna Gönder"}
-          </button>
+            Üyelik Başvurusunu Eğitim Sorumlusuna Gönder
+          </Button>
 
           <div style={{ marginTop: "1rem", textAlign: "center", fontSize: "0.82rem" }}>
             <a id="register-to-login-link" href="/login" style={{ color: "var(--clinical-primary)", fontWeight: 600 }}>

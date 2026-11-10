@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { SIGN_OUT_MESSAGES, type SignOutReason } from "@/lib/auth/sessionDecision";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { initPediatristFirebase } from "@/lib/firebase/client";
-import "@/styles/index.css";
+import { Button } from "@/components/ui/Button";
 
 export default function LoginPage() {
   const [step, setStep] = useState<"credentials" | "mfa">("credentials");
@@ -64,13 +64,13 @@ export default function LoginPage() {
         </div>
 
         {notice && (
-          <div role="status" className="clinical-alert warn" style={{ marginBottom: "1rem" }}>
+          <div role="status" className="clinical-alert warning" style={{ marginBottom: "1rem" }}>
             {notice}
           </div>
         )}
 
         {errorMessage && (
-          <div role="alert" className="clinical-alert err" style={{ marginBottom: "1rem" }}>
+          <div role="alert" className="clinical-alert critical" style={{ marginBottom: "1rem" }}>
             {errorMessage}
           </div>
         )}
@@ -107,15 +107,15 @@ export default function LoginPage() {
               />
             </div>
 
-            <button
+            <Button
               id="login-continue-mfa-btn"
               type="submit"
-              className="btn btn-primary"
               style={{ width: "100%" }}
-              disabled={submitting}
+              loading={submitting}
+              loadingText="Bilgiler Doğrulanıyor…"
             >
-              {submitting ? "Bilgiler Doğrulanıyor…" : "İki Aşamalı Doğrulamaya Geç"}
-            </button>
+              İki Aşamalı Doğrulamaya Geç
+            </Button>
 
             <div style={{ marginTop: "1rem", textAlign: "center", fontSize: "0.82rem" }}>
               <a

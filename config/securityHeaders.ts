@@ -17,7 +17,7 @@ import { REGION } from "../functions/src/shared/constants";
  *  - App Check (reCAPTCHA Enterprise): betik www.google.com/recaptcha + www.gstatic.com/recaptcha,
  *    çerçeve www.google.com/recaptcha + recaptcha.google.com/recaptcha, token takası
  *    content-firebaseappcheck.googleapis.com.
- *  - Yazı tipleri: Google Fonts geçici olarak; F3.1'de `next/font` ile kendi sunucumuzdan sunulunca kaldırılır.
+ *  - Yazı tipleri: `next/font` ile kendi sunucumuzdan (F3.1); çalışma zamanında Google Fonts'a istek yok.
  *
  * Bilinçli açık kalanlar:
  *  - `script-src 'unsafe-inline'`: Next.js App Router hidrasyon betikleri satır içi. Nonce tabanlı
@@ -56,8 +56,9 @@ export function buildCspDirectives({ isDev, useEmulators, projectId }: SecurityH
     "form-action": ["'self'"],
     "frame-ancestors": ["'none'"],
     "script-src": ["'self'", "'unsafe-inline'", ...RECAPTCHA_SCRIPTS],
-    "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-    "font-src": ["'self'", "https://fonts.gstatic.com"],
+    "style-src": ["'self'", "'unsafe-inline'"],
+    // Yazı tipleri `next/font` ile derlemede indirilir ve kendi sunucumuzdan verilir (F3.1).
+    "font-src": ["'self'"],
     "img-src": ["'self'", "data:", "blob:", STORAGE],
     "media-src": ["'self'", "blob:", STORAGE],
     "worker-src": ["'self'", "blob:"],

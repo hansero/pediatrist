@@ -19,7 +19,7 @@ export default function DashboardPage() {
     >
       <div className="page-header">
         <div>
-          <span className="sec-chip verified">
+          <span className="sec-chip success">
             {isAdmin ? "Eğitim Sorumlusu Yönetim Görünümü" : "Pediatri Asistanı Klinik Eğitim Görünümü"}
           </span>
           <h1 id="dashboard-main-heading" style={{ marginTop: "0.45rem" }}>
@@ -64,7 +64,7 @@ export default function DashboardPage() {
           style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "1rem" }}
         >
           <div>
-            <span className="sec-chip primary">Modül 3 • Derslere Katılım Kontrolü</span>
+            <span className="sec-chip info">Modül 3 • Derslere Katılım Kontrolü</span>
             <h2 style={{ marginTop: "0.45rem" }}>
               {isAdmin ? "Sabah Vaka Dersi Başlat & Katılım Raporlarını İncele" : "Canlı Ders Yoklamasına Katıl"}
             </h2>
@@ -89,7 +89,7 @@ export default function DashboardPage() {
           style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "1rem" }}
         >
           <div>
-            <span className="sec-chip primary">Modül 4 • Online Vaka Sınavları</span>
+            <span className="sec-chip info">Modül 4 • Online Vaka Sınavları</span>
             <h2 style={{ marginTop: "0.45rem" }}>
               {isAdmin
                 ? "CSV ile Vaka Sınavı Yükle, Önizle ve Sonuçları İzle"
@@ -118,7 +118,7 @@ export default function DashboardPage() {
           style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "1rem" }}
         >
           <div>
-            <span className="sec-chip verified">Modül 1 • Eğitim Materyalleri</span>
+            <span className="sec-chip success">Modül 1 • Eğitim Materyalleri</span>
             <h2 style={{ marginTop: "0.45rem" }}>Klinik Kılavuzlar ve Ders Sunumları</h2>
             <p className="page-header-subtitle" style={{ marginTop: "0.35rem" }}>
               Çocuk Acil, Yenidoğan ve Enfeksiyon kılavuzlarını kıdem yılınıza göre filtreleyin ve uygulama içi
@@ -140,7 +140,7 @@ export default function DashboardPage() {
           style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "1rem" }}
         >
           <div>
-            <span className="sec-chip warn">Modül 2 • Pediatri Hesaplamaları</span>
+            <span className="sec-chip warning">Modül 2 • Pediatri Hesaplamaları</span>
             <h2 style={{ marginTop: "0.45rem" }}>Sıvı, Doz, Neonatoloji ve Skorlama Araçları</h2>
             <p className="page-header-subtitle" style={{ marginTop: "0.35rem" }}>
               Holliday-Segar sıvı, PALS acil resüsitasyon dozları, yenidoğan bilirubin ve klinik skorlama modüllerini

@@ -22,7 +22,7 @@ export function InstantFeedbackReport({ attempt, onBackToDashboard }: InstantFee
       <article className="surface-card">
         <div className="page-header" style={{ paddingBottom: "0.85rem" }}>
           <div>
-            <span className={`sec-chip ${attempt.score >= 70 ? "verified" : "warn"}`}>
+            <span className={`sec-chip ${attempt.score >= 70 ? "success" : "warning"}`}>
               Sınav Sonuç ve Klinik Öğrenme Karnesi
             </span>
             <h2 id="feedback-report-heading" style={{ marginTop: "0.5rem" }}>
@@ -55,7 +55,7 @@ export function InstantFeedbackReport({ attempt, onBackToDashboard }: InstantFee
             <span className="mono-num" style={{ fontWeight: 700 }}>
               Vaka {idx + 1}
             </span>
-            <span className={`sec-chip ${item.isCorrect ? "verified" : "critical"}`}>
+            <span className={`sec-chip ${item.isCorrect ? "success" : "critical"}`}>
               {item.isCorrect ? "Doğru Yanıt ✓" : "Gözden Geçirilmeli ✗"}
             </span>
           </div>

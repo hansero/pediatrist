@@ -3,7 +3,6 @@
 import React from "react";
 import { SessionGuard } from "@/components/security/SessionGuard";
 import { ClinicSessionProvider, useClinicSession } from "@/lib/auth/ClinicSessionContext";
-import "@/styles/index.css";
 
 /**
  * Korumalı alan iskeleti.
@@ -32,7 +31,7 @@ function ClinicShell({ children }: { children: React.ReactNode }) {
   if (phase === "error") {
     return (
       <main className="app-content">
-        <div role="alert" className="clinical-alert err">
+        <div role="alert" className="clinical-alert critical">
           Oturum bilgileri yüklenemedi: {error}
         </div>
         <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>

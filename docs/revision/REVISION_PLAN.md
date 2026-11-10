@@ -52,7 +52,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F2.4 | `ClinicSessionContext` yeniden yazımı (canlı profil, token yenileme) | M | ✅ | C5 |
 | F2.5 | Tek kaynaklı CSP, header'lar, SSR bölgesi | S | ✅ | C6, §7 bölge |
 | **F3** | **UI temeli ve kimlik doğrulama UX** | | | |
-| F3.1 | Tasarım token'ları, kontrast/odak, `next/font`, UI primitifleri | L | ⬜ | Tutarlılık, Erişilebilirlik |
+| F3.1 | Tasarım token'ları, kontrast/odak, `next/font`, UI primitifleri | L | ✅ | Tutarlılık, Erişilebilirlik |
 | F3.2 | Korumalı layout: `next/link`, aktif menü, mobil çekmece, hata/404/yükleniyor | M | ⬜ | Kullanılabilirlik |
 | F3.3 | `SessionGuard` yeniden yazımı (uyarı, muafiyet, odak tuzağı) | S | ⬜ | C8 (temel) |
 | F3.4 | Giriş: gerçek hata yönetimi, şifre sıfırlama, gerçek TOTP MFA | L | ⬜ | C4 |
@@ -101,18 +101,17 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F2.5. **F2 fazı (yetkilendirme temeli) tamamen bitti.** F2.5: tek kaynaklı güvenlik başlıkları (`config/securityHeaders.ts`), uç nokta bazlı üretim CSP'si (callable, App Check, reCAPTCHA, medya, worker), `firebase.json` başlık kopyası silindi, SSR bölgesi `europe-west1`, Auth resolver'sız başlatma, e2e CSP bekçisi, zod `jitless` (N7). Testler: unit 90, rules 40, functions 44, e2e 18.
+- **Son tamamlanan adım:** F3.1. Tasarım token'ları (`src/styles/tokens.css`, kontrast birim testiyle), tek durum sözlüğü, odak/dokunma/hareket erişilebilirliği, `next/font` (CSP'den Google Fonts çıktı), 13 UI primitifi (`src/components/ui/`), N3 kapandı. Testler: unit 140, rules 40, functions 44, e2e 20.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F3.1 (L) tasarım token'ları + UI primitifleri (F2.5 bitti; sıra doğru):
-  - Token düzeltmeleri: `--status-warn*` → `--status-warning*`, alert sınıfları tek sözlük (`success | warning | critical | info`; `DoctorRealTimeCheckIn` `success/critical` kullanıyor, CSS `ok/warn/err` tanımlıyor).
-  - Kontrast: `--text-muted` ≈ `hsl(215,16%,42%)`, `--status-warning` ≈ `hsl(30,90%,30%)`, input kenarı ≈ `hsl(214,18%,58%)`; `:focus-visible` 2 px outline.
-  - `.btn:disabled`, mobilde ≥44 px dokunma hedefi, `--space-*` ölçeği, `prefers-reduced-motion`.
-  - `next/font` (Google Fonts `@import` ve tekrarlı CSS importları kaldırılır). Ardından `config/securityHeaders.ts`'ten `fonts.googleapis.com` / `fonts.gstatic.com` çıkarılır ve birim testine "Google Fonts yok" eklenir.
-  - Primitifler `src/components/ui/`: Button (loading/disabled; **N3: hydration'a kadar disabled**), Alert, ConfirmDialog, Tabs, StatusChip, PageHeader, Card, EmptyState, DataTable, Field, Countdown, Toast.
-  - Testler jsdom'da (`// @vitest-environment jsdom`, `@testing-library/react` kurulu).
-  - Kontrast değerleri betikle yeniden hesaplanır (AUDIT §6'daki yöntem).
+- **Sıradaki iş:** F3.2 (M) korumalı layout:
+  - `src/app/(protected)/layout.tsx`: `<a href>` → `next/link`, `usePathname()` ile `.nav-link.active` + `aria-current="page"`.
+  - Mobilde (≤960 px) kenar çubuğu yerine çekmece (hamburger, `Dialog` benzeri odak yönetimi) veya alt sekme çubuğu; hekim için yoklama kartı önce.
+  - `not-found.tsx`, `error.tsx` (yeniden dene), `loading.tsx` (app router).
+  - Rota yönlendirme çipleri ("Modül 4 • /quizzes") kaldırılır; sayfa başlıkları `PageHeader` ile.
+  - Yeni ekranlar `@/components/ui` primitiflerini kullanır; satır içi stil eklenmez.
+  - E2E: menü gezinmesi tam sayfa yenilemesi olmadan (oturum doğrulanıyor ekranı çıkmadan), telefonda çekmece klavye ile açılıp kapanır.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
-- **Engeller / notlar:** N3 açık (§7; F3.1 Button ile çözülecek). Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
+- **Engeller / notlar:** Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
 ---
 
@@ -535,6 +534,25 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - **Font:** `next/font/google` ile Plus Jakarta Sans ve JetBrains Mono. `@import` ve diğer sayfalardaki tekrar CSS importları silinir.
 - **Primitifler:** `Button` (loading/disabled), `Alert`, `ConfirmDialog` (odak tuzağı, Esc, başlangıç odağı), `Tabs` (role=tab, aria-selected, ok tuşları), `StatusChip`, `PageHeader`, `Card`, `EmptyState`, `DataTable` (th scope, boş durum, yükleniyor), `Field` (label, `aria-invalid`, `aria-describedby`), `Countdown` (deadline prop, kendi state'i, `role="timer"`), `Toast`.
 - **Doğrulama:** `tests/unit/ui/*.test.tsx` (Tabs klavye, ConfirmDialog odak) ve kontrast değerleri betikle yeniden hesaplanır (AUDIT §6'daki python yöntemi).
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **Token'lar `src/styles/tokens.css`** (tek kaynak); `index.css` iskelet/eski sınıflar, `ui.css` primitif parçaları. Kök layout üçünü bir kez import eder; login/register/korumalı layout'taki tekrar importlar silindi.
+  - Kontrast düzeltmeleri: `--text-muted` `hsl(215,16%,42%)` (5.65:1), `--status-warning` `hsl(30,90%,30%)` (5.80:1), `--border-strong` `hsl(214,18%,58%)` (3.20:1). Yeni: `--text-on-accent`, `--status-*-border`, `--status-info*`, `--focus-ring`, `--focus-ring-on-dark` (koyu kenar çubuğunda 8.56:1), `--space-1..8`, `--tap-target: 44px`.
+  - **Kontrast bir birim testi** (`tests/unit/ui/contrast.test.ts`): değerleri `tokens.css`'ten okuyup 19 metin (≥4.5) ve 5 kontrol/odak (≥3) çiftini hesaplar. Eski değerlerle denendi, 4 çifti düşürüyor. Aynı dosya **tanımsız `var(--…)` kullanımını** `src/**/*.css|tsx` genelinde yasaklar (`--status-warn` hatası bir daha olamaz).
+  - **Tek durum sözlüğü** `success | warning | critical | info`: `.sec-chip` (`verified/warn/primary` → `success/warning/info`) ve `.clinical-alert` (`ok/warn/err` → `success/warning/critical`) 19 dosyada mekanik olarak taşındı; eski sınıflar CSS'ten silindi. `DoctorRealTimeCheckIn`'in `success/critical` kullanımı artık stilli.
+  - Odak: `:focus-visible` 2 px halka (koyu kenar çubuğunda açık renk); input `:focus` gölgesi kaldırıldı. `aria-invalid` ve `disabled` kontrol stilleri, `.btn:disabled` / `[aria-busy]`, `.btn-ghost`, `pointer: coarse` cihazlarda bütün kontroller ≥44 px, `prefers-reduced-motion`, `.sr-only`. Kullanılmayan `.security-topbar`, `.security-indicators`, `.nav-badge` silindi.
+  - **Yazı tipi:** `next/font/google` (Plus Jakarta Sans, JetBrains Mono; `latin` + `latin-ext` Türkçe için), CSS değişkenleri `--font-jakarta` / `--font-jetbrains`. Dosyalar derlemede indirilip `/_next/static/media`'dan sunuluyor; **CSP'den `fonts.googleapis.com` ve `fonts.gstatic.com` çıkarıldı** (birim testinde). Not: derleme Google Fonts'a erişebilmeli (CI'da var); erişim yoksa `@fontsource-variable/*` alternatifi.
+  - **Primitifler `src/components/ui/`** (barrel `index.ts`): `Button`, `Alert`, `StatusChip`, `Card`, `PageHeader`, `EmptyState`, `Field`, `Tabs`, `Dialog`, `ConfirmDialog`, `DataTable`, `Countdown`, `Toast` (`ToastProvider` kök layout'ta).
+    - `Button`: varsayılan `type="button"`; **hydration'a kadar gerçekten `disabled` (N3, `useHydrated`)**; `loading` sırasında `disabled` yerine `aria-disabled` + `aria-busy` (odak kaybolmaz), tıklama ve form gönderimi engellenir.
+    - `Dialog`: portal, odak tuzağı, başlangıç odağı, kapanınca odağı geri verme, arka planı `inert` yapma, Esc, kaydırma kilidi; arka plana tıklama kapatmaz. `ConfirmDialog`: `alertdialog`, başlangıç odağı "Vazgeç", işlem sürerken Esc ve Vazgeç kapalı, başarıda kapanır, hatada Türkçe hata ile açık kalır (iyimser başarı yok).
+    - `Tabs`: WAI-ARIA (roving tabindex, ←/→ döngüsel, Home/End, devre dışı atlanır, kontrollü/kontrolsüz, `keepMounted`).
+    - `Countdown`: sunucu `deadlineMs` + `clockOffsetMs`; kendi state'i; `role="timer"` her saniye duyurulmaz, eşiklerde (varsayılan 5 dk, 1 dk) ayrı kibar canlı bölge; açılışta geçilmiş eşikler duyurulmaz; arka planda atlanan eşiklerden yalnızca en yakını; `onExpire` bir kez.
+    - `DataTable`: caption zorunlu, `th scope`, satır başlığı, yükleniyor/hata/boş durumlarında eski satır gösterilmez. `Field`: render-prop ile `id`, `aria-invalid`, `aria-describedby` (ipucu + hata).
+    - `Toast`: iki canlı bölge baştan DOM'da (kibar/acil); critical kendiliğinden kapanmaz.
+  - **N3 uygulandı:** login ve register gönder butonları `Button`. e2e yardımcıları `networkidle` yerine **gönder butonunun etkinleşmesini** bekliyor; smoke testi sunucu HTML'inde butonun `disabled` olduğunu ve hydration sonrası etkinleştiğini doğruluyor.
+  - Vitest: unit projesine `oxc.jsx.runtime = "automatic"` (tsconfig `jsx: preserve`) ve DOM temizleyen `tests/unit/setup.ts`.
+  - E2E değişikliği: bildirim bölgesi de `role="status"` olduğu için `session.spec.ts` durum mesajını metinle süzerek arıyor.
+  - **Kapsam notu:** mevcut (mock) sayfalar primitiflere toplu taşınmadı; her sayfa yeniden yazıldığı fazda (F3.2–F7) primitiflere geçer ve satır içi stiller o sırada temizlenir.
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 140, functions 44, e2e 20, next build; giriş sayfası ekran görüntüsüyle (odak halkası, uyarı rengi, Türkçe glifler) kontrol edildi.
 
 #### F3.2 Korumalı layout (M)
 - **Dosyalar:** `src/app/(protected)/layout.tsx`, `src/components/nav/*`, `src/app/not-found.tsx`, `src/app/error.tsx`, `src/app/(protected)/loading.tsx`
@@ -931,7 +949,7 @@ Denetimde (AUDIT.md) olmayan, uygulama çalıştırılınca ortaya çıkan sorun
 |---|---|---|---|
 | N1 | `next.config.ts` CSP'si `'unsafe-eval'`'e izin vermediği için **uygulama `next dev` altında hiç hydrate olmuyordu**: hiçbir buton/form çalışmıyordu. | Uygulama yerelde hiç çalıştırılıp test edilmemiş. | ✅ F0.3'te düzeltildi (yalnızca geliştirme/emülatör ekleri) |
 | N2 | Cloud Functions, `firebase-admin` namespace API'sini (`admin.firestore.FieldValue/Timestamp`) kullanıyordu. Functions emülatöründe bunlar `undefined` geliyor, bu yüzden **her yazma işlemi `TypeError` ile çöküyordu** (denetim kaydı, sayaçlar, zaman damgaları). Düz Node'da çalışıyor; sorun emülatörün admin SDK sarmalayıcısında. | Bütün backend emülatörde test edilemezdi. | ✅ F0.3'te düzeltildi: modüler import'lar (`firebase-admin/app`, `/auth`, `/firestore`; firebase-admin v12+ için önerilen API), davranış değişikliği yok |
-| N3 | Formlar hydration tamamlanmadan gönderilirse tarayıcının varsayılan GET gönderimiyle sayfa yenileniyor (`/register?`). Input'larda `name` olmadığı için veri sızmıyor, ama kullanıcı "hiçbir şey olmadı" deneyimi yaşıyor. | UX; yavaş bağlantıda kafa karıştırıcı. | ⬜ F3.1 `Button`/form primitifleri: gönder butonu hydration'a kadar `disabled`, form `method="post"` + `action` yok + `noValidate` kararı; F3.4/F3.5'te uygulanır |
+| N3 | Formlar hydration tamamlanmadan gönderilirse tarayıcının varsayılan GET gönderimiyle sayfa yenileniyor (`/register?`). Input'larda `name` olmadığı için veri sızmıyor, ama kullanıcı "hiçbir şey olmadı" deneyimi yaşıyor. | UX; yavaş bağlantıda kafa karıştırıcı. | ✅ F3.1: `Button` hydration'a kadar `disabled` (`useHydrated`); login ve register gönder butonları taşındı; e2e buton etkinleşmesini bekliyor ve sunucu HTML'inde `disabled` olduğunu doğruluyor. Diğer formlar kendi fazlarında `Button`'a geçer |
 | N5 | `defineBoolean(...).value()` ortam değişkeni yoksa **`false`** döner (`firebase-functions/lib/params/types.js` → `process.env[name] === "true"`); `default: true` yalnızca deploy sırasında kullanılır. `.value()` ile okunsaydı, değişkeni eksik bir ortamda App Check/MFA/e-posta zorunlulukları **sessizce kapanırdı**. | Güvenlik | ✅ F1.3: `guards.ts → isEnforced()` yalnızca açıkça `"false"` değerinde kapatır; testle doğrulandı |
 | N6 | İstemci, şemanın isteğe bağlı alanlar için ürettiği `undefined` değerleri gönderiyordu; Firebase SDK'sı bunları **`null`**'a çeviriyor ve `.optional()` alanlar `null`'ı reddettiği için sunucu `invalid-argument` ("Geçersiz değer") dönüyordu. Örnek: boş davet kodu ile kayıt. | İsteğe bağlı alanı olan her callable | ✅ F2.3: `callFunction` → `stripUndefined`; birim testi + e2e kayıt testleri |
 | N7 | zod 4 ilk nesne doğrulamasında `new Function("")` ile `eval` iznini yokluyor. Üretim CSP'sinde (`'unsafe-eval'` yok) hata yakalanıyor ama tarayıcı her sayfada `securitypolicyviolation` raporluyordu; F2.5 e2e CSP bekçisi buldu. | Gürültülü CSP raporları; ileride rapor toplayıcı (report-to) bağlanınca sahte alarm. | ✅ F2.5: `functions/src/shared/zod.ts` → `jitless: true`; doğrudan `zod` importu ESLint ile yasak |

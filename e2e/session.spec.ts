@@ -35,7 +35,7 @@ test("onay → canlı aktifleşme; cihaz sıfırlama → oturum sonlanır; askı
   // 3) Admin cihaz eşleşmesini sıfırlar → oturum iptal zamanı yazılır → asistanın oturumu kapanır.
   await admin.locator(`#admin-reset-dev-${uid}`).click();
   await expect(user).toHaveURL(/\/login\?neden=oturum-sonlandi$/, { timeout: 15_000 });
-  await expect(user.getByRole("status")).toContainText("güvenlik nedeniyle sonlandırıldı");
+  await expect(user.getByRole("status").filter({ hasText: "güvenlik nedeniyle sonlandırıldı" })).toBeVisible();
 
   // 4) Asistan yeniden giriş yapar (iptal zamanı saniye çözünürlüklü; aynı saniyede açılan oturum da geçersiz sayılır).
   await user.waitForTimeout(1100);
@@ -45,7 +45,7 @@ test("onay → canlı aktifleşme; cihaz sıfırlama → oturum sonlanır; askı
   // 5) Admin askıya alır → asistanın oturumu anında kapanır.
   await admin.locator(`#admin-suspend-${uid}`).click();
   await expect(user).toHaveURL(/\/login\?neden=askida$/, { timeout: 15_000 });
-  await expect(user.getByRole("status")).toContainText("askıya alındı");
+  await expect(user.getByRole("status").filter({ hasText: "askıya alındı" })).toBeVisible();
   expect(await findUserProfileByEmail(email)).toMatchObject({ status: "suspended" });
 
   await userCtx.close();

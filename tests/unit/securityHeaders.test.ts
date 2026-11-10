@@ -47,6 +47,9 @@ describe("üretim CSP'si", () => {
     expect(all).not.toContain("https://*.googleapis.com");
     expect(all.some((s) => s.includes("firebaseio.com"))).toBe(false);
     expect(all).not.toContain("https://apis.google.com");
+    // F3.1: yazı tipleri kendi sunucumuzdan (next/font).
+    expect(all.some((s) => /fonts\.(googleapis|gstatic)\.com/.test(s))).toBe(false);
+    expect(prod["font-src"]).toEqual(["'self'"]);
     expect(all).not.toContain("*");
   });
 

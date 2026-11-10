@@ -172,7 +172,7 @@ export default function AdminSecurityPage() {
     <section aria-labelledby="admin-security-page-heading">
       <div className="page-header">
         <div>
-          <span className="sec-chip verified">Modül 5 • /admin • Güvenlik &amp; Üye Yönetimi</span>
+          <span className="sec-chip success">Modül 5 • /admin • Güvenlik &amp; Üye Yönetimi</span>
           <h1 id="admin-security-page-heading" style={{ marginTop: "0.45rem" }}>
             Kapalı Devre Üyelik, RBAC ve Siber Güvenlik Denetim Paneli
           </h1>
@@ -201,7 +201,7 @@ export default function AdminSecurityPage() {
               değişkenleri üzerinden yönetilir.
             </p>
           </div>
-          <span className={`sec-chip ${configured ? "verified" : "warn"}`}>
+          <span className={`sec-chip ${configured ? "success" : "warning"}`}>
             {configured ? "Güvenli Sunucu Bağlantısı: Aktif" : "Ortam Değişkeni Bekleniyor (.env.local)"}
           </span>
         </div>
@@ -255,21 +255,19 @@ export default function AdminSecurityPage() {
                     </select>
                   </td>
                   <td>
-                    <span className="sec-chip primary">
-                      {m.role === "admin" ? "EĞİTİM SORUMLUSU" : "ASİSTAN HEKİM"}
-                    </span>
+                    <span className="sec-chip info">{m.role === "admin" ? "EĞİTİM SORUMLUSU" : "ASİSTAN HEKİM"}</span>
                   </td>
                   <td>
                     <span
                       className={`sec-chip ${
-                        m.status === "active" ? "verified" : m.status === "pending" ? "warn" : "critical"
+                        m.status === "active" ? "success" : m.status === "pending" ? "warning" : "critical"
                       }`}
                     >
                       {m.status === "active" ? "AKTİF" : m.status === "pending" ? "ONAY BEKLİYOR" : "ASKIDA"}
                     </span>
                   </td>
                   <td>
-                    <span className={`sec-chip ${m.hasBoundDevice ? "verified" : "warn"}`}>
+                    <span className={`sec-chip ${m.hasBoundDevice ? "success" : "warning"}`}>
                       {m.hasBoundDevice ? "Kayıtlı Telefon Doğrulandı ✓" : "Sıfırlandı / İlk Yoklama Bekleniyor"}
                     </span>
                   </td>
@@ -427,7 +425,7 @@ export default function AdminSecurityPage() {
                   <td>
                     <span
                       className={`sec-chip ${
-                        log.severity === "CRITICAL" ? "critical" : log.severity === "WARN" ? "warn" : "verified"
+                        log.severity === "CRITICAL" ? "critical" : log.severity === "WARN" ? "warning" : "success"
                       }`}
                     >
                       {log.severity}

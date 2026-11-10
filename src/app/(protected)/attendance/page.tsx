@@ -247,7 +247,7 @@ export default function AttendancePage() {
     <section aria-labelledby="attendance-page-heading">
       <div className="page-header">
         <div>
-          <span className="sec-chip primary">Modül 3 • /attendance</span>
+          <span className="sec-chip info">Modül 3 • /attendance</span>
           <h1 id="attendance-page-heading" style={{ marginTop: "0.45rem" }}>
             Derslere Katılım Kontrolü
           </h1>

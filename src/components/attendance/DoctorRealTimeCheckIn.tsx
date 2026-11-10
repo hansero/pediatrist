@@ -49,7 +49,7 @@ export function DoctorRealTimeCheckIn({
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
       <div className="grid-2">
         <article className="surface-card" aria-labelledby="checkin-card-heading">
-          <span className="sec-chip primary">Kişisel Gerçek Zamanlı Yoklama</span>
+          <span className="sec-chip info">Kişisel Gerçek Zamanlı Yoklama</span>
           {liveSession ? (
             <>
               <h2 id="checkin-card-heading" style={{ marginTop: "0.5rem" }}>
@@ -176,7 +176,7 @@ export function DoctorRealTimeCheckIn({
         </article>
 
         <article className="surface-card" aria-labelledby="security-status-heading">
-          <span className="sec-chip verified">Kişisel Yoklama Güvenliği</span>
+          <span className="sec-chip success">Kişisel Yoklama Güvenliği</span>
           <h2 id="security-status-heading" style={{ marginTop: "0.5rem" }}>
             Oturum ve Cihaz Durumu
           </h2>
@@ -232,9 +232,9 @@ export function DoctorRealTimeCheckIn({
                   <td>{item.category}</td>
                   <td>
                     {item.status === "present" ? (
-                      <span className="sec-chip verified">Katıldım ✓</span>
+                      <span className="sec-chip success">Katıldım ✓</span>
                     ) : item.status === "excused" ? (
-                      <span className="sec-chip warn">Mazeretli</span>
+                      <span className="sec-chip warning">Mazeretli</span>
                     ) : (
                       <span className="sec-chip critical">Katılmadım</span>
                     )}

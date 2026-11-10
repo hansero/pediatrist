@@ -1,0 +1,81 @@
+/* ===========================================================================
+   TASARIM TOKEN'LARI (F3.1)
+   Tek kaynak. Kontrast oranları `tests/unit/ui/contrast.test.ts` ile denetlenir (WCAG 2.2 AA):
+   metin ≥ 4.5:1, kontrol kenarı ve odak halkası ≥ 3:1. Bir değeri değiştirirseniz test sizi uyarır.
+   =========================================================================== */
+:root {
+  /* Yüzeyler */
+  --bg-canvas: hsl(210, 33%, 98%);
+  --bg-surface: hsl(0, 0%, 100%);
+  --bg-surface-subtle: hsl(210, 28%, 95%);
+  --bg-sidebar: hsl(214, 42%, 12%);
+  --bg-sidebar-hover: hsl(214, 36%, 18%);
+  --bg-sidebar-active: hsl(204, 86%, 36%);
+
+  /* Metin */
+  --text-primary: hsl(215, 35%, 13%);
+  --text-secondary: hsl(215, 18%, 38%);
+  --text-muted: hsl(215, 16%, 42%);
+  --text-on-dark: hsl(210, 40%, 98%);
+  --text-on-dark-muted: hsl(214, 20%, 72%);
+  --text-on-accent: hsl(0, 0%, 100%);
+
+  /* Birincil vurgu */
+  --clinical-primary: hsl(204, 88%, 36%);
+  --clinical-primary-hover: hsl(204, 90%, 30%);
+  --clinical-primary-soft: hsl(204, 82%, 94%);
+
+  /* Durum tonları (tek sözlük: success | warning | critical | info) */
+  --status-success: hsl(154, 70%, 28%);
+  --status-success-bg: hsl(154, 65%, 94%);
+  --status-success-border: hsla(154, 70%, 28%, 0.25);
+  --status-warning: hsl(30, 90%, 30%);
+  --status-warning-bg: hsl(38, 95%, 93%);
+  --status-warning-border: hsla(30, 90%, 30%, 0.25);
+  --status-critical: hsl(354, 78%, 42%);
+  --status-critical-bg: hsl(354, 85%, 95%);
+  --status-critical-border: hsla(354, 78%, 42%, 0.25);
+  --status-info: var(--clinical-primary);
+  --status-info-bg: var(--clinical-primary-soft);
+  --status-info-border: hsla(204, 88%, 36%, 0.25);
+
+  /* Kenarlar */
+  --border-subtle: hsl(214, 24%, 89%);
+  /* Form kontrolleri ve etkileşimli kenarlar (WCAG 1.4.11: ≥ 3:1) */
+  --border-strong: hsl(214, 18%, 58%);
+
+  /* Odak (WCAG 2.4.7 / 2.4.11) */
+  --focus-ring: var(--clinical-primary);
+  --focus-ring-on-dark: hsl(204, 90%, 70%);
+  --focus-width: 2px;
+  --focus-offset: 2px;
+
+  /* Gölgeler */
+  --shadow-xs: 0 1px 2px rgba(15, 29, 46, 0.05);
+  --shadow-sm: 0 2px 6px rgba(15, 29, 46, 0.06), 0 1px 2px rgba(15, 29, 46, 0.04);
+  --shadow-md: 0 8px 24px rgba(15, 29, 46, 0.08), 0 2px 6px rgba(15, 29, 46, 0.04);
+  --shadow-lg: 0 20px 40px rgba(15, 29, 46, 0.14);
+
+  /* Tipografi: yazı tipleri `next/font` ile kendi sunucumuzdan (src/app/layout.tsx) */
+  --font-sans: var(--font-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Boşluk ölçeği */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 2rem;
+  --space-8: 3rem;
+
+  /* Dokunma hedefi (WCAG 2.5.5 hedefi; mobilde birincil eylemler) */
+  --tap-target: 44px;
+
+  /* Yuvarlatma ve hareket */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}

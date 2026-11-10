@@ -133,7 +133,7 @@ export default function TrainingMaterialsPage() {
     <section aria-labelledby="materials-page-heading">
       <div className="page-header">
         <div>
-          <span className="sec-chip primary">Modül 1 • /materials</span>
+          <span className="sec-chip info">Modül 1 • /materials</span>
           <h1 id="materials-page-heading" style={{ marginTop: "0.45rem" }}>
             Eğitim Materyalleri Paylaşma ve Görüntüleme
           </h1>
@@ -245,8 +245,8 @@ export default function TrainingMaterialsPage() {
                 >
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: "0.4rem", flexWrap: "wrap" }}>
-                      <span className="sec-chip primary">{mat.category}</span>
-                      {mat.isMandatory && <span className="sec-chip warn">Zorunlu</span>}
+                      <span className="sec-chip info">{mat.category}</span>
+                      {mat.isMandatory && <span className="sec-chip warning">Zorunlu</span>}
                     </div>
                     <h2 style={{ marginTop: "0.6rem", fontSize: "1.05rem" }}>{mat.title}</h2>
                     <p className="page-header-subtitle" style={{ fontSize: "0.84rem", marginTop: "0.35rem" }}>
@@ -266,7 +266,7 @@ export default function TrainingMaterialsPage() {
                       }}
                     >
                       <span className="mono-num">Hedef: {mat.targetYears.join(", ")}. Yıl</span>
-                      <span className={userStat?.completed ? "sec-chip verified" : "sec-chip"}>
+                      <span className={userStat?.completed ? "sec-chip success" : "sec-chip"}>
                         {userStat?.completed ? "Tamamlandı ✓" : "Henüz Okunmadı"}
                       </span>
                     </div>

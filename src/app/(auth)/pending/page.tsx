@@ -6,7 +6,7 @@ export default function PendingApprovalPage() {
   return (
     <main className="auth-screen">
       <article className="auth-card" aria-labelledby="pending-approval-heading">
-        <span className="sec-chip warn">Custom Claims: status = &quot;pending&quot;</span>
+        <span className="sec-chip warning">Custom Claims: status = &quot;pending&quot;</span>
         <h1 id="pending-approval-heading" style={{ marginTop: "0.75rem" }}>
           Üyeliğiniz Eğitim Sorumlusu Onayı Bekliyor
         </h1>

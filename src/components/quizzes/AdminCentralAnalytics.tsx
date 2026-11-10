@@ -73,7 +73,7 @@ export function AdminCentralAnalytics({ allAttempts, onInspectAttempt }: AdminCe
     <article className="surface-card" aria-labelledby="central-analytics-heading">
       <div className="page-header" style={{ paddingBottom: "0.85rem", marginBottom: "1rem" }}>
         <div>
-          <span className="sec-chip primary">Admin Merkezi Sınav &amp; Kullanıcı Log Dashboard&apos;u</span>
+          <span className="sec-chip info">Admin Merkezi Sınav &amp; Kullanıcı Log Dashboard&apos;u</span>
           <h2 id="central-analytics-heading" style={{ marginTop: "0.35rem" }}>
             Tüm Kullanıcı ve Sınav Logları Analitik Paneli
           </h2>
@@ -194,10 +194,14 @@ export function AdminCentralAnalytics({ allAttempts, onInspectAttempt }: AdminCe
                     {att.correctCount} / {att.totalQuestions}
                   </td>
                   <td>
-                    <span className={`sec-chip mono-num ${att.score >= 70 ? "verified" : "warn"}`}>{att.score}</span>
+                    <span className={`sec-chip mono-num ${att.score >= 70 ? "success" : "warning"}`}>{att.score}</span>
                   </td>
                   <td className="mono-num">
-                    {att.tabSwitchCount > 0 ? <span className="sec-chip warn">{att.tabSwitchCount} Uyarı</span> : "0"}
+                    {att.tabSwitchCount > 0 ? (
+                      <span className="sec-chip warning">{att.tabSwitchCount} Uyarı</span>
+                    ) : (
+                      "0"
+                    )}
                   </td>
                   <td>
                     {onInspectAttempt && (
@@ -240,7 +244,9 @@ export function AdminCentralAnalytics({ allAttempts, onInspectAttempt }: AdminCe
                   <td className="mono-num">{d.residencyYear}. Yıl</td>
                   <td className="mono-num">{d.attemptCount}</td>
                   <td>
-                    <span className={`sec-chip mono-num ${d.avgScore >= 70 ? "verified" : "warn"}`}>{d.avgScore}</span>
+                    <span className={`sec-chip mono-num ${d.avgScore >= 70 ? "success" : "warning"}`}>
+                      {d.avgScore}
+                    </span>
                   </td>
                   <td className="mono-num">{d.bestScore}</td>
                   <td>
@@ -273,7 +279,9 @@ export function AdminCentralAnalytics({ allAttempts, onInspectAttempt }: AdminCe
                   </td>
                   <td className="mono-num">{q.participantCount} Hekim</td>
                   <td>
-                    <span className={`sec-chip mono-num ${q.avgScore >= 70 ? "verified" : "warn"}`}>{q.avgScore}</span>
+                    <span className={`sec-chip mono-num ${q.avgScore >= 70 ? "success" : "warning"}`}>
+                      {q.avgScore}
+                    </span>
                   </td>
                   <td className="mono-num">
                     {q.minScore} / {q.maxScore}

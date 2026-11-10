@@ -32,3 +32,10 @@ test.describe("rol bazlı giriş", () => {
     await expect(page.locator("#nav-link-materials")).toHaveCount(0);
   });
 });
+
+test("N3: gönder butonu sunucu HTML'inde devre dışı, hydration sonrası etkin", async ({ page }) => {
+  const response = await page.goto("/login");
+  const html = (await response?.text()) ?? "";
+  expect(html).toMatch(/id="login-continue-mfa-btn"[^>]*disabled=""/);
+  await expect(page.getByRole("button", { name: "İki Aşamalı Doğrulamaya Geç" })).toBeEnabled();
+});

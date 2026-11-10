@@ -187,7 +187,7 @@ export default function OnlineQuizzesPage() {
     <section aria-labelledby="quizzes-page-heading">
       <div className="page-header">
         <div>
-          <span className="sec-chip primary">Modül 4 • /quizzes</span>
+          <span className="sec-chip info">Modül 4 • /quizzes</span>
           <h1 id="quizzes-page-heading" style={{ marginTop: "0.45rem" }}>
             {isAdmin
               ? "Online Sınav Yönetimi, CSV Yükleme ve Merkezi Log Dashboard'u"
@@ -202,7 +202,7 @@ export default function OnlineQuizzesPage() {
       </div>
 
       {submitError && (
-        <div role="alert" className="clinical-alert err" style={{ marginTop: "1rem" }}>
+        <div role="alert" className="clinical-alert critical" style={{ marginTop: "1rem" }}>
           Sınav teslim edilemedi: {submitError}
         </div>
       )}

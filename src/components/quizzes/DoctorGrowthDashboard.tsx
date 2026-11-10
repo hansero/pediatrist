@@ -47,7 +47,7 @@ export function DoctorGrowthDashboard({
               gap: "0.5rem",
             }}
           >
-            <span className="sec-chip verified">Yayındaki Haftalık Klinik Sınav</span>
+            <span className="sec-chip success">Yayındaki Haftalık Klinik Sınav</span>
             <span className="sec-chip mono-num">
               {activeQuizQuestionCount} Klinik Vaka • {activeQuizDurationMinutes} Dakika
             </span>
@@ -83,7 +83,7 @@ export function DoctorGrowthDashboard({
             <h2 id="personal-curve-heading">
               Kişisel Gelişim Özeti ({session.title} {session.fullName})
             </h2>
-            <span className="sec-chip primary mono-num">Genel Ortalama: {avgScore} / 100</span>
+            <span className="sec-chip info mono-num">Genel Ortalama: {avgScore} / 100</span>
           </div>
 
           <div className="grid-3" style={{ marginTop: "0.75rem", marginBottom: "0.85rem" }}>
@@ -215,7 +215,7 @@ export function DoctorGrowthDashboard({
                     {att.correctCount} / {att.totalQuestions}
                   </td>
                   <td>
-                    <span className={`sec-chip mono-num ${att.score >= 70 ? "verified" : "warn"}`}>
+                    <span className={`sec-chip mono-num ${att.score >= 70 ? "success" : "warning"}`}>
                       {att.score} / 100
                     </span>
                   </td>

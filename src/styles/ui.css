@@ -1,0 +1,233 @@
+/* ===========================================================================
+   ORTAK ARAYÜZ PRİMİTİFLERİ (F3.1) — src/components/ui/*
+   Var olan sınıfları (btn, sec-chip, clinical-alert, surface-card, mode-switcher, clinical-table,
+   overlay-backdrop, modal-dialog) yeniden kullanır; burada yalnızca eklenen parçalar var.
+   =========================================================================== */
+
+.ui-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Buton yükleniyor göstergesi */
+.ui-spinner {
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: ui-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Dönme yerine sabit yarım halka: "meşgul" bilgisi aria-busy ile zaten verilir. */
+  .ui-spinner {
+    animation: none;
+  }
+}
+
+/* Uyarı (yalnızca <Alert>/<Toast>; eski satır içi .clinical-alert kullanımları etkilenmesin) */
+.ui-alert {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.clinical-alert-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.clinical-alert-title {
+  font-weight: 700;
+}
+
+.ui-icon-btn {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+  min-width: 2rem;
+  min-height: 2rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.ui-icon-btn:hover {
+  background: rgba(15, 29, 46, 0.06);
+}
+
+/* Kart başlığı */
+.ui-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* Boş durum */
+.ui-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding: var(--space-7) var(--space-4);
+  color: var(--text-secondary);
+}
+
+.ui-empty-title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Form alanı */
+.ui-required {
+  color: var(--status-critical);
+}
+
+.ui-field-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.ui-field-error {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--status-critical);
+}
+
+/* Sekmeler */
+.ui-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ui-tabs > .mode-switcher {
+  align-self: flex-start;
+  flex-wrap: wrap;
+}
+
+.mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ui-tabpanel:focus-visible {
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
+/* Diyalog */
+.modal-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ui-dialog-description {
+  color: var(--text-secondary);
+}
+
+.ui-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Tablo */
+.ui-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ui-caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 600;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-primary);
+}
+
+.ui-table-state {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: var(--space-6) var(--space-4) !important;
+}
+
+.clinical-table th[scope="row"] {
+  background: transparent;
+  color: var(--text-primary);
+  white-space: normal;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ui-align-end {
+  text-align: right;
+}
+
+/* Geri sayım */
+.ui-countdown {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 700;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-subtle);
+  color: var(--text-primary);
+}
+
+.ui-countdown[data-state="warning"] {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+  border-color: var(--status-warning-border);
+}
+
+.ui-countdown[data-state="expired"] {
+  background: var(--status-critical-bg);
+  color: var(--status-critical);
+  border-color: var(--status-critical-border);
+}
+
+/* Bildirimler */
+.ui-toast-region {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(380px, calc(100vw - 2 * var(--space-4)));
+  pointer-events: none;
+}
+
+.ui-toast-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ui-toast {
+  pointer-events: auto;
+  box-shadow: var(--shadow-md);
+}

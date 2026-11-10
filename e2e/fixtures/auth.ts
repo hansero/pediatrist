@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { SEED_PASSWORD } from "../../scripts/fixtures/seed-data";
 
 /**
@@ -6,14 +6,15 @@ import { SEED_PASSWORD } from "../../scripts/fixtures/seed-data";
  *
  * Not: Mevcut giriş akışındaki ikinci adım sahte bir TOTP ekranıdır (AUDIT C4). F3.4'te gerçek
  * MFA'ya geçilince bu yardımcı güncellenir; o zamana kadar akışı olduğu gibi sürer.
- * Sayfanın hydrate olmasını beklemek gerekir; aksi halde form tarayıcının varsayılan gönderimiyle
- * kaybolur (REVISION_PLAN N3).
+ * N3: gönder butonu hydration tamamlanana kadar devre dışıdır; etkinleşmesi beklenir.
  */
 export async function loginAs(page: Page, email: string, password: string = SEED_PASSWORD) {
-  await page.goto("/login", { waitUntil: "networkidle" });
+  await page.goto("/login");
+  const submit = page.getByRole("button", { name: "İki Aşamalı Doğrulamaya Geç" });
+  await expect(submit).toBeEnabled();
   await page.getByLabel("Kurumsal Hekim E-Postası").fill(email);
   await page.getByLabel("Klinik Oturum Şifresi").fill(password);
-  await page.getByRole("button", { name: "İki Aşamalı Doğrulamaya Geç" }).click();
+  await submit.click();
   const totp = page.getByLabel("6 Haneli Doğrulama Kodu (Authenticator)");
   await totp.waitFor();
   await totp.fill("123456");

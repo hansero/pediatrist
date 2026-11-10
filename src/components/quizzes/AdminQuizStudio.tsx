@@ -75,7 +75,7 @@ export function AdminQuizStudio({
           }}
         >
           <div>
-            <span className="sec-chip verified">Yayındaki Aktif Sınav</span>
+            <span className="sec-chip success">Yayındaki Aktif Sınav</span>
             <h2 style={{ marginTop: "0.4rem" }}>{activeQuizTitle}</h2>
             <p className="page-header-subtitle">
               Soru Sayısı: <strong>{activeQuestions.length}</strong> • Admin Belirlenen Sınav Süresi:{" "}
@@ -95,7 +95,7 @@ export function AdminQuizStudio({
 
       {/* ADIM 1: CSV YÜKLEME VE SÜRE BELİRLEME */}
       <article className="surface-card" aria-labelledby="csv-upload-heading">
-        <span className="sec-chip primary">Adım 1 • CSV Yükle &amp; Sınav Süresini Belirle</span>
+        <span className="sec-chip info">Adım 1 • CSV Yükle &amp; Sınav Süresini Belirle</span>
         <h2 id="csv-upload-heading" style={{ marginTop: "0.45rem" }}>
           CSV Dosyası ile Yeni Klinik Vaka Sınavı Oluştur
         </h2>
@@ -228,7 +228,7 @@ export function AdminQuizStudio({
             }}
           >
             <div>
-              <span className="sec-chip verified">Adım 2 • Sınav Önizleme ({previewQuestions.length} Soru)</span>
+              <span className="sec-chip success">Adım 2 • Sınav Önizleme ({previewQuestions.length} Soru)</span>
               <h2 id="csv-preview-heading" style={{ marginTop: "0.4rem" }}>
                 Önizleme: {quizTitleInput} ({durationMinutesInput} dk)
               </h2>
@@ -287,7 +287,7 @@ export function AdminQuizStudio({
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-                  <span className="sec-chip primary">
+                  <span className="sec-chip info">
                     Soru {idx + 1} • {q.questionType}
                   </span>
                   {q.questionType === "Text Input" && (
@@ -406,7 +406,7 @@ export function AdminQuizStudio({
                   <td className="mono-num">{aq.archivedAt}</td>
                   <td>{aq.sourceQuizTitle}</td>
                   <td>
-                    <span className="sec-chip primary">{aq.questionType}</span>
+                    <span className="sec-chip info">{aq.questionType}</span>
                   </td>
                   <td>
                     <strong>{aq.questionText}</strong>
