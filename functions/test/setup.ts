@@ -17,4 +17,11 @@ if (!(process.env.GCLOUD_PROJECT ?? PROJECT_ID).startsWith("demo-")) {
 process.env.GCLOUD_PROJECT = PROJECT_ID;
 process.env.METADATA_SERVER_DETECTION = "none";
 
+// Testler emülatör çalışma ortamında değil vitest sürecinde koşar; `.env.demo-pediatrist` yüklenmez.
+// guards.ts güvenli varsayılan kullandığı için (değişken yoksa zorunluluk AÇIK) burada kapatılır;
+// koruyucu testleri bunları tek tek açar (`withEnforced`).
+process.env.ENFORCE_APP_CHECK = "false";
+process.env.REQUIRE_MFA = "false";
+process.env.REQUIRE_EMAIL_VERIFIED = "false";
+
 if (getApps().length === 0) initializeApp({ projectId: PROJECT_ID });

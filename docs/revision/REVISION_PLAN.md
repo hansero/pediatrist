@@ -43,7 +43,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F1** | **Ortak domain ve API sözleşmeleri** | | | |
 | F1.1 | `functions/src/shared`: sabitler, tipler, zod şemaları, `@shared` alias | M | ✅ | Tutarlılık tablosu |
 | F1.2 | Ortak CSV doğrulayıcı + birim testleri | S | ✅ | Tutarlılık (CSV) |
-| F1.3 | Functions: `guards.ts`, `validate.ts`, tüm callable'ların refactor'u | M | ⬜ | C5 (kısmen), S8 |
+| F1.3 | Functions: `guards.ts`, `validate.ts`, tüm callable'ların refactor'u | M | ✅ | C5 (kısmen), S8 |
 | F1.4 | İstemci `callables.ts` yeniden yazımı, `AppError`, `useAsyncAction` | S | ⬜ | C1 (temel) |
 | **F2** | **Yetkilendirme temeli** | | | |
 | F2.1 | `firestore.rules` yeniden yazımı + rules testleri | L | ⬜ | C5, C7 (kural), S11, S12, C9 (davet) |
@@ -304,6 +304,29 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - Bütün `onCall`'lar `{ enforceAppCheck: ENFORCE_APP_CHECK, region: REGION }` ayarlarını kullanır.
 - Üç kopya `assertAdmin` / `assertActiveMember` silinir.
 - **Doğrulama:** `npm --prefix functions run build`, `npm run test:functions` (koruyucu testleri: askıdaki kullanıcı, iptal edilmiş token, admin olmayan kullanıcı).
+- **✅ Uygulanan (2026-11-10) — plandan sapmalar:**
+  - **`functions/src/callable.ts` → `defineCallable(name, "admin" | "member", handler)`:** her callable aynı sırayla korunur: (1) yetki (`guards.ts`), (2) `CALLABLES[name].request` ile doğrulama, (3) handler; handler'ın dönüş tipi `CALLABLES[name].response` ile uyumlu olmak zorunda. Yetki doğrulamadan **önce** gelir, böylece oturumsuz kullanıcıya şema ayrıntısı sızmaz. 11 callable'ın hepsi bununla tanımlı; üç kopya `assertAdmin`/`assertActiveMember` ve bütün `enforceAppCheck: true` kullanımları silindi.
+  - **`guards.ts`:**
+    - Yetki `users/{uid}` dokümanından okunur. **C5 fonksiyon katmanında kapandı:** askıya alınmış üye eski "active" token'la geçemez, dokümanda `user` olan kullanıcı claim'de admin yazsa da admin işlemi yapamaz. Kural katmanında C5 F2.1'de kapanacak.
+    - `tokensValidAfter` (epoch saniye) ile `auth_time` karşılaştırması uygulanıyor; alanı F2.3 yazacak (`MemberDoc`'a eklendi).
+    - App Check, MFA ve e-posta doğrulaması parametreyle yönetiliyor.
+    - **Güvenli varsayılan:** zorunluluk yalnızca ortam değişkeni açıkça `"false"` ise kapanır. Gerekçe için N5.
+  - **`validate.ts`:** zod hatası → `invalid-argument` + Türkçe mesaj (en fazla 3 sorun; sınav sorularında `Satır N:` öneki). `z.locales.tr()` yedek olarak açık. Ayrıntılar `details.issues` içinde.
+  - **`auditLogger.ts` → `auditIn(batch | transaction, …)`:** başarılı işlemlerin denetim kaydı ana yazımla **aynı batch/transaction**'da yazılıyor (S10'un bu kısmı kapandı). Reddedilen girişimler (yanlış kod, cihaz uyuşmazlığı) tek başına yazılmaya devam ediyor.
+  - **`ipHash` bu adımda yapılmadı → F9.2'ye taşındı.** `defineSecret` emülatörde `functions/.secret.local` gerektiriyor (git'e girmez, CI ve yeni oturumlar için ek kurulum demek). Hız sınırıyla birlikte F9.2'de ele alınacak.
+  - **Sunucu davranış değişiklikleri:**
+    - Takma ad parametreler reddediliyor (`dynamicCode` → `invalid-argument`).
+    - İstemcinin `webAuthnVerified` beyanı yok sayılıyor; yöntem her zaman sunucunun doğruladığı `qr+device_bound` (C2'nin "sahte biyometrik etiket" kısmı kapandı).
+    - Sınav soruları F1.2 ortak şemasından normalize edilmiş geliyor; `sanitizeQuestion` silindi.
+    - Geçmiş `closesAtMs` reddediliyor.
+    - `startQuizAttempt` denetim kaydı transaction içinde yazılıyor.
+  - **Testler (functions toplam 26):**
+    - `guards.test.ts` (10): güvenli varsayılan, C5, bekleyen/profilsiz kullanıcı, claim'de admin ama dokümanda user, `tokensValidAfter`, App Check/MFA/e-posta zorunlulukları, önce yetki sonra doğrulama, Türkçe `invalid-argument`.
+    - `attendance.test.ts` (7): başlat → kod → yoklama, log, sayaç, denetim kaydı, tekrar (idempotent), sahte biyometrik beyan, yanlış kod, eski parametre adları, cihaz bağı ve aynı cihaz, ikinci canlı ders, bitir, asistanın kod isteği, mazeret.
+    - `quiz.test.ts` (4): **repodaki örnek CSV** ile taslak → yayın → giriş → devam → teslim (puan 67, Türkçe harf duyarsız eşleşme), cevap anahtarının public sorulara karışmaması, önizlemeyle aynı kuralla satır numaralı ret, geçmiş kapanış, yeni yayının öncekini arşivlemesi.
+    - Her başarılı yanıt `CALLABLES[...].response` ile doğrulanıyor.
+  - **Emülatör çalışma ortamında uçtan uca doğrulandı (istemci SDK'sı → Functions emülatörü):** seed admin ders başlattı, kod aldı; seed asistan yoklama verdi; asistanın kod isteği `permission-denied`; geçersiz istek Türkçe `invalid-argument`; askıdaki kullanıcı `permission-denied`. **F0.4'teki "callable'lar emülatörde çağrılamıyor" engeli kalktı.**
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 49, functions 26, rules 15 + 4 `it.fails`, e2e 6, functions ve next build.
 
 #### F1.4 İstemci çağrı katmanı (S)
 - **Dosyalar:** `src/lib/firebase/callables.ts`, `src/lib/errors.ts`, `src/hooks/useAsyncAction.ts`
@@ -362,7 +385,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 #### F2.3 Kimlik sunucu tarafı (L)
 - **Dosyalar:** `functions/src/authTriggers.ts` → `functions/src/members.ts`, `functions/src/index.ts`, `functions/test/members.test.ts`
 - **Yapılacaklar:**
-  - `onClinicMemberCreated` → `syncUserClaims` olarak yeniden adlandırılır (`onDocumentWritten`). `status` veya `role` değişince claim'leri günceller, `revokeRefreshTokens` çağırır ve `tokensValidAfter = now()` yazar.
+  - `onClinicMemberCreated` → `syncUserClaims` olarak yeniden adlandırılır (`onDocumentWritten`). **`tokensValidAfter` epoch SANİYE olarak yazılır** (F1.3 `guards.ts` bunu `auth_time` ile karşılaştırıyor). `updateMemberAccess` de askıya alma, rol düşürme ve cihaz sıfırlamada aynı alanı yazmalı. `status` veya `role` değişince claim'leri günceller, `revokeRefreshTokens` çağırır ve `tokensValidAfter = now()` yazar.
   - `completeRegistration` (callable, idempotent):
     - Token'dan email alınır.
     - İstemciden gelen alanlar: `title`, `fullName`, `residencyYear`, `inviteCode?`, `consentVersion`.
@@ -733,6 +756,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - **Yapılacaklar:**
   - `audit_logs` için `expireAt` alanı ve Firestore TTL politikası (süre `DEPLOY.md`'de karar olarak yazılır, örn. 2 yıl).
   - Hız sınırı: uid başına dakikalık sayaç dokümanı (yoklama ve kod denemeleri için). Hassas callable'larda `consumeAppCheckToken: true`.
+  - **`ipHash` (F1.3'ten devredildi):** `sha256(salt + rawRequest.ip)`; salt `defineSecret('AUDIT_IP_SALT')`. Emülatör için `functions/.secret.local` gerekir (git'e girmez); seed/README'ye kurulum adımı yazılır veya emülatörde sabit test tuzu kullanılır. S2'deki aynı IP işaretlemesi de bunu kullanır.
   - Log tabanlı alarm (`severity=CRITICAL`), bütçe alarmı ve zamanlanmış Firestore yedeği/PITR, `DEPLOY.md`'de adım adım anlatılır.
 
 #### F9.3 Dokümantasyon (S)
@@ -817,5 +841,6 @@ Denetimde (AUDIT.md) olmayan, uygulama çalıştırılınca ortaya çıkan sorun
 | N1 | `next.config.ts` CSP'si `'unsafe-eval'`'e izin vermediği için **uygulama `next dev` altında hiç hydrate olmuyordu**: hiçbir buton/form çalışmıyordu. | Uygulama yerelde hiç çalıştırılıp test edilmemiş. | ✅ F0.3'te düzeltildi (yalnızca geliştirme/emülatör ekleri) |
 | N2 | Cloud Functions, `firebase-admin` namespace API'sini (`admin.firestore.FieldValue/Timestamp`) kullanıyordu. Functions emülatöründe bunlar `undefined` geliyor, bu yüzden **her yazma işlemi `TypeError` ile çöküyordu** (denetim kaydı, sayaçlar, zaman damgaları). Düz Node'da çalışıyor; sorun emülatörün admin SDK sarmalayıcısında. | Bütün backend emülatörde test edilemezdi. | ✅ F0.3'te düzeltildi: modüler import'lar (`firebase-admin/app`, `/auth`, `/firestore`; firebase-admin v12+ için önerilen API), davranış değişikliği yok |
 | N3 | Formlar hydration tamamlanmadan gönderilirse tarayıcının varsayılan GET gönderimiyle sayfa yenileniyor (`/register?`). Input'larda `name` olmadığı için veri sızmıyor, ama kullanıcı "hiçbir şey olmadı" deneyimi yaşıyor. | UX; yavaş bağlantıda kafa karıştırıcı. | ⬜ F3.1 `Button`/form primitifleri: gönder butonu hydration'a kadar `disabled`, form `method="post"` + `action` yok + `noValidate` kararı; F3.4/F3.5'te uygulanır |
+| N5 | `defineBoolean(...).value()` ortam değişkeni yoksa **`false`** döner (`firebase-functions/lib/params/types.js` → `process.env[name] === "true"`); `default: true` yalnızca deploy sırasında kullanılır. `.value()` ile okunsaydı, değişkeni eksik bir ortamda App Check/MFA/e-posta zorunlulukları **sessizce kapanırdı**. | Güvenlik | ✅ F1.3: `guards.ts → isEnforced()` yalnızca açıkça `"false"` değerinde kapatır; testle doğrulandı |
 | N4 | Storage emülatörü başlarken "Unexpected rules runtime error" uyarısı veriyor; içerik yalnızca ortamın `JAVA_TOOL_OPTIONS` satırı. | Yok | ✅ F0.4'te doğrulandı: Storage kuralları doğru değerlendiriliyor (aktif kullanıcıya izin, bekleyene `storage/unauthorized`). Uyarı zararsız. |
 

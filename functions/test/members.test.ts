@@ -2,19 +2,11 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { beforeEach, describe, expect, it } from "vitest";
 import { onClinicMemberCreated, updateMemberAccess } from "../src/authTriggers";
-import { callableRequest, errorCode, resetEmulators } from "./helpers";
+import { CALLABLES } from "../src/shared/schemas";
+import { callableRequest, createMember, errorCode, resetEmulators } from "./helpers";
 
 const auth = () => getAuth();
 const db = () => getFirestore();
-
-async function createMember(uid: string, role: "admin" | "user", status: "active" | "pending" | "suspended") {
-  await auth().createUser({ uid, email: `${uid}@example.test`, password: "Test-Sifre-123" });
-  await auth().setCustomUserClaims(uid, { role, status, residencyYear: 1 });
-  await db()
-    .collection("users")
-    .doc(uid)
-    .set({ uid, role, status, residencyYear: 1, email: `${uid}@example.test` });
-}
 
 async function auditActions() {
   const snap = await db().collection("audit_logs").get();
@@ -52,6 +44,7 @@ describe("updateMemberAccess", () => {
     );
 
     const res = await updateMemberAccess.run(req);
+    CALLABLES.updateMemberAccess.response.parse(res);
 
     expect(res).toMatchObject({ ok: true, targetUid: "hedef", status: "active", role: "user" });
     expect((await auth().getUser("hedef")).customClaims).toMatchObject({ role: "user", status: "active" });

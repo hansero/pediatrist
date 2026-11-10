@@ -65,6 +65,11 @@ export interface MemberDoc<T> {
   boundDeviceHash?: string | null;
   hasBoundDevice?: boolean;
   webAuthnCredentialId?: string | null;
+  /**
+   * Bu zamandan (epoch SANİYE) önce açılmış oturumlar geçersizdir: askıya alma / rol düşürme / cihaz sıfırlama
+   * anında yazılır ve `auth_time` ile karşılaştırılır (D3). F2.3'te `syncUserClaims` yazar.
+   */
+  tokensValidAfter?: number;
 }
 
 /** `invitations/{id}` (Plan.MD §5) */
