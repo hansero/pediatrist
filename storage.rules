@@ -1,31 +1,67 @@
 rules_version = '2';
+
+// Pediatrist — Cloud Storage güvenlik kuralları (REVISION_PLAN F2.2)
+//
+// - Yetkinin kaynağı Firestore'daki `users/{uid}` dokümanıdır (D3); token claim'lerine bakılmaz.
+//   Firestore ile aynı mantık: aktif üyelik + `auth_time > tokensValidAfter` (bkz. firestore.rules).
+//   Çapraz servis erişimi (`firestore.get`) üretimde Storage servis hesabına IAM izni gerektirir;
+//   deploy sırasında Firebase CLI bu izni ister (DEPLOY.md).
+// - Sunumlar PDF olarak yüklenir (D19): tarayıcı pptx'i görüntüleyemez ve filigran uygulanamaz.
+// - SVG kabul edilmez (içinde betik çalıştırılabilir).
+// - Listelenmeyen her yol kapalıdır.
 service firebase.storage {
   match /b/{bucket}/o {
-    function isActiveMember() {
-      return request.auth != null
-             && request.auth.token.status == 'active';
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profilePath() {
+      return /databases/(default)/documents/users/$(request.auth.uid);
+    }
+
+    function profile() {
+      return firestore.get(profilePath()).data;
+    }
+
+    function isActive() {
+      return signedIn()
+        && firestore.exists(profilePath())
+        && profile().status == 'active'
+        && request.auth.token.auth_time > profile().get('tokensValidAfter', 0);
     }
 
     function isAdmin() {
-      return isActiveMember() && request.auth.token.role == 'admin';
+      return isActive() && profile().role == 'admin';
     }
 
-    // Modül 1: Eğitim Materyalleri (PDF, Video, Sunum)
-    match /materials/{allPaths=**} {
-      allow read: if isActiveMember();
-      allow write: if isAdmin()
-                   && request.resource.size < 150 * 1024 * 1024
-                   && (request.resource.contentType.matches('application/pdf')
-                       || request.resource.contentType.matches('video/.*')
-                       || request.resource.contentType.matches('image/.*'));
+    function sizeBelowMb(mb) {
+      return request.resource.size < mb * 1024 * 1024;
     }
 
-    // Modül 4: Online Quiz Klinik, Radyoloji ve Laboratuvar Görselleri
-    match /quiz_media/{allPaths=**} {
-      allow read: if isActiveMember();
-      allow write: if isAdmin()
-                   && request.resource.size < 15 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
+    function contentTypeMatches(pattern) {
+      return request.resource.contentType.matches(pattern);
+    }
+
+    // Modül 1: eğitim materyalleri — materials/{materialId}/{dosya}
+    match /materials/{materialId}/{fileName} {
+      allow read: if isActive();
+      allow create, update: if isAdmin()
+        && sizeBelowMb(150)
+        && (contentTypeMatches('application/pdf')
+            || contentTypeMatches('video/(mp4|webm|quicktime)')
+            || contentTypeMatches('image/(png|jpeg|webp)'));
+      // Silmede `request.resource` yoktur; boyut/tür kontrolü yapılmaz (AUDIT C11).
+      allow delete: if isAdmin();
+    }
+
+    // Modül 4: sınav görselleri — quiz_media/{dosya}
+    match /quiz_media/{fileName} {
+      allow read: if isActive();
+      allow create, update: if isAdmin()
+        && sizeBelowMb(15)
+        && contentTypeMatches('image/(png|jpeg|webp|gif)');
+      allow delete: if isAdmin();
     }
   }
 }

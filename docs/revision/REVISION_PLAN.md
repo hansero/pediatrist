@@ -47,7 +47,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F1.4 | İstemci `callables.ts` yeniden yazımı, `AppError`, `useAsyncAction` | S | ✅ | C1 (temel) |
 | **F2** | **Yetkilendirme temeli** | | | |
 | F2.1 | `firestore.rules` yeniden yazımı + rules testleri | L | ✅ | C5, C7 (kural), S11, S12, C9 (davet) |
-| F2.2 | `storage.rules` yeniden yazımı + testler | S | ⬜ | C5, C11 (silme/MIME) |
+| F2.2 | `storage.rules` yeniden yazımı + testler | S | ✅ | C5, C11 (silme/MIME) |
 | F2.3 | Claim senkronu, `tokensValidAfter`, üye yönetimi korumaları, sunucu tarafı kayıt, davetler | L | ⬜ | C5, C9, S9 |
 | F2.4 | `ClinicSessionContext` yeniden yazımı (canlı profil, token yenileme) | M | ⬜ | C5 |
 | F2.5 | Tek kaynaklı CSP, header'lar, SSR bölgesi | S | ⬜ | C6, §7 bölge |
@@ -101,11 +101,18 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F2.1 (Firestore kuralları; C5, C7, C9 kural katmanında kapandı; rules 32 + 1 `it.fails`; e2e kayıt regresyon testi). Ayrıca `rev(CI)`: Playwright kurulumu önbellek + zaman sınırı + yeniden deneme (run #8, apt'de 29 dk asılı kalmıştı).
+- **Son tamamlanan adım:** F2.2 (Storage kuralları; C11 kapandı; artık hiç `it.fails` yok; kurallar ile yükleme sabitleri arası eşitleme testi).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F2.2 `storage.rules`. Yetki doküman üzerinden: `firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data` → status/role ve `tokensValidAfter`. `materials/{materialId}/{file}` için `create, update` (admin + boyut + MIME: pdf, video/*, image/*, pptx), `delete` (admin, **C11 kök nedeni:** silmede `request.resource` null), `read` aktif üye. `quiz_media/{file}`: okuma aktif üye, yazma admin + image/* + ≤15 MB, silme admin. `tests/rules/storage.test.ts`: C11 `it.fails` → `it`; ek testler (askıdaki üye, claim/doküman çelişkisi, silme, MIME, boyut, quiz_media). Not: Storage rules-unit-testing `firestore.get()` için Firestore emülatörünün de çalışması gerekir (`test:rules` zaten ikisini de başlatıyor). Test token'ları için `claimsOf` gerçek `auth_time` veriyor.
+- **Sıradaki iş:** F2.3 (L). Gerekirse WIP commit'leriyle bölünür:
+  1. `onClinicMemberCreated` → `syncUserClaims`. Claim senkronu; durum veya rol düşüşünde `revokeRefreshTokens` + `tokensValidAfter = floor(now/1000)` (epoch **saniye**).
+  2. `updateMemberAccess` korumaları: hedef Auth'ta var mı (`getUser`), kendini değiştirme yasak, son aktif admin düşürülemez. Askıya alma, rol düşürme ve cihaz sıfırlamada `tokensValidAfter` yazılır. Onay ile yeniden etkinleştirme ayrımı (`action`) gerekiyorsa şemaya eklenir.
+  3. `completeRegistration` callable'ı (idempotent): profil sunucuda yazılır, e-posta token'dan alınır. Davet kodu geçerliyse transaction içinde `used=true` ve doğrudan `active`, değilse `pending`. `consentVersion` alanı da eklenir. **Bu callable `defineCallable`'ın "member" erişimini kullanamaz** (profil henüz yok): ayrı bir guard gerekir (`requireAuth` + e-posta).
+  4. `createInvitation` / `revokeInvitation` (admin).
+  5. **Aynı adımda zorunlu:** `firestore.rules`'taki geçici `users` create kuralı kapatılır **ve** kayıt ekranı (`register/page.tsx`) `setDoc` yerine `createUserWithEmailAndPassword` → `completeRegistration` çağırır. Aksi halde kayıt kırılır; e2e `registration.spec.ts` bunu yakalar. Kayıt ekranının UX yenilemesi (KVKK onayı, e-posta doğrulama ekranı) F3.5'te.
+  6. Testler: functions (davetli/davetsiz kayıt, tekrar çağrı, son admin, kendini düşürme, olmayan uid, `tokensValidAfter` yazımı), rules (istemci `users` create artık reddedilir), e2e kayıt testi yeni akışla.
+  7. Yeni callable'lar önce `functions/src/shared/schemas.ts` → `CALLABLES`'a eklenir (kayıt defteri testi bunu zorunlu kılıyor).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
-- **Engeller / notlar:** N3 açık (§7). Kayıt create kuralı geçici (F2.3'te kapanacak).
+- **Engeller / notlar:** N3 açık (§7).
 
 ---
 
@@ -132,6 +139,7 @@ Bu kararlar bütün adımlar için geçerlidir. Değiştirmek için kullanıcı 
 | D15 | **Kabul edilmiş risk:** `uuid <11.1.1` (GHSA-w5hq-g745-h8pq, orta). Firebase-admin/functions zincirinden geliyor. Açık yalnızca v3/v5/v6 fonksiyonları `buf` parametresiyle çağrıldığında oluşuyor; zincir bunları kullanmıyor. Çözümü major geçiş gerektiriyor (firebase-admin 14 + firebase-functions 7). Bu geçiş F10.2 öncesinde yeniden değerlendirilir. | Major yükseltme riski > istismar edilebilirlik | Evet |
 | D16 | Major sürümler bu revizyonda sabit: Next 15, React 19, Firebase JS 11, firebase-admin 13, firebase-functions 6. Yükseltme (Next 16, Firebase 12+) revizyon sonrasında ayrı bir iştir. | Revizyonun kapsamını bağımlılık geçişiyle karıştırmamak | Evet |
 | D17 | Functions testleri `firebase-functions-test` olmadan yazılır: kök vitest + v2 callable'ın `.run()` kancası + emülatör. | `firebase-functions-test` jest'i zorunlu bağımlılık olarak getiriyor | Evet |
+| D19 | Sunumlar Storage'a **PDF olarak** yüklenir; pptx kabul edilmez. SVG de kabul edilmez. İzinli türler ve boyutlar `MATERIAL_UPLOAD` / `QUIZ_MEDIA_UPLOAD` sabitlerinde ve `storage.rules`'ta aynıdır (birim testiyle denetlenir). | Tarayıcı pptx'i görüntüleyemez, filigran uygulanamaz; SVG betik çalıştırabilir | Evet |
 | D18 | Emülatör ve testler `demo-pediatrist` proje kimliğiyle çalışır. `demo-` önekli projeler gerçek bir Firebase projesine bağlanamaz, yani yanlışlıkla prod'a yazma riski yoktur ve emülatörler çevrimdışı çalışabilir. | Güvenli test izolasyonu | Hayır |
 
 ---
@@ -402,10 +410,19 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - **Dosyalar:** `storage.rules`, `tests/rules/storage.test.ts`
 - **Yapılacaklar:**
   - Yetki `firestore.get(/databases/(default)/documents/users/$(request.auth.uid))` ile doküman üzerinden kontrol edilir (D3). Deploy sırasında cross-service IAM izni onaylanmalı; `DEPLOY.md`'ye not düşülür.
-  - `materials/{materialId}/{file}`: `read` aktif üye. `create, update` admin + boyut + MIME (pdf, video/*, image/*, pptx). `delete` admin.
+  - `materials/{materialId}/{file}`: `read` aktif üye. `create, update` admin + boyut + MIME (pdf, video/*, image/*; pptx yok, D19). `delete` admin.
   - `quiz_media/{file}`: `read` aktif üye. `create` admin + image/* + ≤15 MB. `delete` admin.
 - **`it.fails` → `it`:** `tests/rules/storage.test.ts` içindeki C11 testi bu adımda normal teste çevrilir.
 - **Doğrulama:** `npm run test:rules`
+- **✅ Uygulanan (2026-11-10) — plandan sapmalar:**
+  - Yetki Firestore `users/{uid}`'den `firestore.get` / `firestore.exists` ile okunuyor; `isActive` ve `isAdmin` Firestore kurallarıyla aynı mantıkta (`tokensValidAfter` dahil). Claim'lere bakılmıyor. Çapraz okumanın emülatörde gerçekten çalıştığı "aktif üye okur" testiyle kanıtlandı.
+  - **pptx kabul edilmiyor (D19):** tarayıcı görüntüleyemez, filigran uygulanamaz; sunumlar PDF olarak yüklenir. **SVG kabul edilmiyor** (içinde betik çalışabilir). Materyal: pdf, video (mp4/webm/quicktime), görsel (png/jpeg/webp), <150 MB. Sınav görseli: png/jpeg/webp/gif, <15 MB.
+  - Yol `materials/{materialId}/{fileName}` (tek seviye; iç içe yol yasak). Listelenmeyen yollar kapalı.
+  - **C11 kapandı:** `create, update` (boyut/tür kontrollü) ve `delete` (yalnızca admin) ayrıldı. Kök neden: silmede `request.resource` null olduğu için `request.resource.size` hata veriyordu.
+  - **Sapma önleme:** izinli türler ve boyutlar ortak sabitlerde (`MATERIAL_UPLOAD`, `QUIZ_MEDIA_UPLOAD`; F6 yükleme arayüzü `accept`/boyut kontrolü için kullanacak). `tests/unit/storageRulesSync.test.ts` kural dosyasındaki desenleri ve boyutları okuyup sabitlerle **iki yönlü** eşleştiriyor. Kuralda boyut 15→20 ve SVG eklenerek testin kırmızıya döndüğü doğrulandı.
+  - Testler: **rules 42 (sıfır `it.fails` kaldı)**, Storage'da 13 test: okuma, claim ile doküman çelişkisi, C5 (Storage), `tokensValidAfter`, admin/asistan yükleme, yasak türler, C11 silme, iç içe yol, sınav görseli türleri, 15 MB sınırı, tanımsız yollar. Unit 67.
+  - Deploy notu (F9.3 `DEPLOY.md`): Storage → Firestore çapraz erişimi için CLI, Storage servis hesabına IAM izni ister; onaylanmalıdır.
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 67, rules 42, functions 26, e2e 8.
 
 #### F2.3 Kimlik sunucu tarafı (L)
 - **Dosyalar:** `functions/src/authTriggers.ts` → `functions/src/members.ts`, `functions/src/index.ts`, `functions/test/members.test.ts`

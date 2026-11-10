@@ -65,6 +65,28 @@ export type MaterialCategory = (typeof MATERIAL_CATEGORIES)[number];
 export const MATERIAL_FILE_TYPES = ["pdf", "video", "image"] as const;
 export type MaterialFileType = (typeof MATERIAL_FILE_TYPES)[number];
 
+/**
+ * Storage'a yüklenebilen içerik türleri ve boyut sınırları. `storage.rules` ile AYNI olmalıdır
+ * (tests/unit/storageRulesSync.test.ts denetler). Sunumlar PDF olarak yüklenir (D19); SVG kabul edilmez.
+ */
+export const MATERIAL_UPLOAD = {
+  maxMb: 150,
+  contentTypes: {
+    "application/pdf": "pdf",
+    "video/mp4": "video",
+    "video/webm": "video",
+    "video/quicktime": "video",
+    "image/png": "image",
+    "image/jpeg": "image",
+    "image/webp": "image",
+  } as const satisfies Record<string, MaterialFileType>,
+} as const;
+
+export const QUIZ_MEDIA_UPLOAD = {
+  maxMb: 15,
+  contentTypes: ["image/png", "image/jpeg", "image/webp", "image/gif"] as const,
+} as const;
+
 // --- Denetim kaydı ---------------------------------------------------------
 
 export const AUDIT_SEVERITIES = ["INFO", "WARN", "CRITICAL"] as const;
