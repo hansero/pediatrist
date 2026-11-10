@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { initPediatristFirebase, isFirebaseConfigured } from "@/lib/firebase/client";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
+import type { ResidencyYear } from "@shared/constants";
 import { updateMemberAccess, invokeWithFallback } from "@/lib/firebase/callables";
 
 interface ClinicMemberRecord {
@@ -238,7 +239,7 @@ export default function AdminSecurityPage() {
                       style={{ width: "92px", padding: "0.3rem 0.45rem" }}
                       value={m.residencyYear}
                       onChange={(e) => {
-                        const yr = Number(e.target.value);
+                        const yr = Number(e.target.value) as ResidencyYear; // seçenekler yalnızca 1–4
                         void invokeWithFallback(
                           () => updateMemberAccess({ targetUid: m.uid, residencyYear: yr }),
                           () => ({ ok: true, targetUid: m.uid, role: m.role, status: m.status, residencyYear: yr })

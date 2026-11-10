@@ -190,9 +190,8 @@ export default function AttendancePage() {
       () =>
         verifyRealTimeAttendance({
           sessionId: liveSession.id,
-          dynamicCode: inputCode.trim().toUpperCase(),
-          clientDeviceSecret: getOrCreateClientDeviceSecret(),
-          webAuthnVerified: webAuthnOk,
+          code: inputCode,
+          deviceId: getOrCreateClientDeviceSecret(),
         }),
       () => ({
         ok: true,

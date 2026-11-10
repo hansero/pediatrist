@@ -4,3 +4,4 @@ export * from "./types";
 export * from "./schemas";
 export * from "./quizQuestion";
 export * from "./quizCsv";
+export * from "./issues";

@@ -44,7 +44,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F1.1 | `functions/src/shared`: sabitler, tipler, zod şemaları, `@shared` alias | M | ✅ | Tutarlılık tablosu |
 | F1.2 | Ortak CSV doğrulayıcı + birim testleri | S | ✅ | Tutarlılık (CSV) |
 | F1.3 | Functions: `guards.ts`, `validate.ts`, tüm callable'ların refactor'u | M | ✅ | C5 (kısmen), S8 |
-| F1.4 | İstemci `callables.ts` yeniden yazımı, `AppError`, `useAsyncAction` | S | ⬜ | C1 (temel) |
+| F1.4 | İstemci `callables.ts` yeniden yazımı, `AppError`, `useAsyncAction` | S | ✅ | C1 (temel) |
 | **F2** | **Yetkilendirme temeli** | | | |
 | F2.1 | `firestore.rules` yeniden yazımı + rules testleri | L | ⬜ | C5, C7 (kural), S11, S12, C9 (davet) |
 | F2.2 | `storage.rules` yeniden yazımı + testler | S | ⬜ | C5, C11 (silme/MIME) |
@@ -101,11 +101,13 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F1.1 (ortak sabitler, doküman tipleri, callable sözleşmeleri, `@shared` alias, tek zod kopyası yapılandırması, şema testleri).
+- **Son tamamlanan adım:** F1.4. **F1 fazı tamamlandı** (F1.1 ortak sözleşmeler, F1.2 ortak soru doğrulayıcı + CSV yazıcısı, F1.3 guard/validate/defineCallable, F1.4 istemci çağrı katmanı). Testler: unit 64, functions 26, rules 15 + 4 `it.fails`, e2e 6.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F1.2: CSV ayrıştırıcı + soru doğrulayıcısı `functions/src/shared/quizCsv.ts`'e taşınır (`src/lib/quiz-parser` buradan re-export eder veya importlar güncellenir). Tek `validateQuestion()` hem istemci CSV önizlemesinde hem `SaveQuizDraftRequest`'te kullanılır: `QuizQuestionInput.superRefine` veya `SaveQuizDraftRequest` üzerinde alanlar arası kurallar (Text Input ⇔ maxLength 1–2000, seçenekli ⇔ ≥2 seçenek, doğru cevap seçeneklerde, Single Choice tam 1 doğru, tekrarlı seçenek yok). Başlık adları `NINE_FIELD_CSV_HEADERS` ile doğrulanır. İstemcideki `evaluateClinicalQuizAttempt` silinir (kullanıldığı yer: `quizzes/page.tsx`, mock; o sayfa F5.2'de yeniden yazılacak, şimdilik derlenmesi için gerekirse çağrı yeri kaldırılır). CSV dışa aktarımı tek fonksiyon (`downloadCsv`, `;` ayırıcı, BOM, formül koruması); `downloadQuizLogsAsCsv` buna geçer. Testler: `tests/unit/quizParser.test.ts` güncellenir + başlık sırası hatası, tekrarlı seçenek, sunucu/istemci aynı sonucu verir.
+- **Sıradaki iş:** F2.1 `firestore.rules` yeniden yazımı + rules testleri (`tests/rules/firestore.test.ts`; C5, C7, C9 `it.fails` → `it`).
+- **⚠ F2.1 sıralama uyarısı:** D4, istemcinin `users` dokümanı oluşturmasını yasaklıyor, ancak sunucu tarafı kayıt (`completeRegistration`) **F2.3'te** geliyor ve kayıt ekranı (`register/page.tsx`) hâlâ `setDoc(users/{uid})` yapıyor. F2.1'de create kuralı **kapatılmamalı, sıkılaştırılmalı**: `request.auth.uid == uid`, `keys().hasOnly([uid,title,fullName,email,residencyYear,role,status,inviteCode,mfaEnabled,boundDeviceHash,createdAt])`, `role == 'user'`, `status == 'pending'`, `email == request.auth.token.email`, tip/aralık kontrolleri, `boundDeviceHash == null`. Tamamen kapatma F2.3'te `completeRegistration` ile birlikte yapılır ve kural testi o zaman güncellenir.
+- **F2.1 için diğer notlar:** Kurallar `tokensValidAfter` (epoch saniye) ile `request.auth.token.auth_time`'ı karşılaştırmalı (guards.ts ile aynı mantık). C7 için `questions_public` hekime kapatılır; mock sınav sayfası zaten Firestore'dan soru okumuyor, kırılacak bir akış yok. Gerçek akış F5.1'de `startQuizAttempt`'in soruları döndürmesiyle gelir.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
-- **Engeller / notlar:** N3 açık (§7). F1.3 ile F1.4 arka arkaya yapılmalı (bkz. F1.1 notu).
+- **Engeller / notlar:** N3 açık (§7).
 
 ---
 
@@ -336,6 +338,18 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `getOrCreateClientDeviceSecret` F4.2'de silinir.
   - `invokeWithFallback` `@deprecated` olarak işaretlenir. Modül fazlarında çağrı yerleri tek tek kaldırılır, F7.5'te tamamen silinir.
 - **Doğrulama:** typecheck + `tests/unit/callables.test.ts` (hata eşleme).
+- **✅ Uygulanan (2026-11-10) — plandan sapmalar:**
+  - **`callFunction(name, data)`:** tipler `CALLABLES`'tan. İstek **göndermeden önce** aynı şemayla doğrulanıyor (geçersiz istek ağa çıkmaz, sunucuyla birebir aynı Türkçe mesaj) ve normalize edilmiş hali gönderiliyor. Yanıt, yanıt şemasıyla doğrulanıyor; uyumsuzlukta `bad-response` (konsola ayrıntı yazılır). 11 adlandırılmış çağrı `bind(name)` ile üretiliyor. Eski dosyadaki uydurma yanıt alanları (`ok?`, `expiresAtMs?`, `secondsUntilRotation?`, `attemptId?`…) kalktı.
+  - **`src/lib/errors.ts`:** `AppError` + `toAppError` / `toUserMessage`. Sunucu mesajı yalnızca kullanıcıya uygun kodlarda gösteriliyor; `internal`/bilinmeyen kodlarda teknik mesaj **gösterilmiyor**. Ağ hataları `unavailable`. `formatIssues` istemci/sunucu ortak kullanım için `functions/src/shared/issues.ts`'e taşındı.
+  - **`src/hooks/useAsyncAction.ts`:** `pending` / `error` (Türkçe) / `data`, çift tıklama koruması, kaldırılmış bileşende state güncellenmez.
+  - **`invokeWithFallback` silinmedi**, `@deprecated` geçiş katmanı olarak kaldı (çağrı yerleri mock sayfalarda; F4–F7'de kalkacak, F7.5'te silinecek). Tipi gevşetildi (`fallbackFn: () => unknown`). Hatayı yutmadan önce artık **konsola yazıyor**. Bekçi yeni kullanımı engelliyor.
+  - `getOrCreateClientDeviceSecret`: `Math.random` yedeği ve sunucuda sahte değer döndürme kaldırıldı (`crypto.getRandomValues` zorunlu); `@deprecated`, F4.2'de WebAuthn ile değişecek.
+  - **Tiplerin yakaladığı uyumsuzluklar:** admin sayfasındaki kıdem yılı (`number` → `ResidencyYear`) ve yoklama sayfasının eski parametre adları (`dynamicCode`/`clientDeviceSecret`/`webAuthnVerified` → `code`/`deviceId`). İkisi de düzeltildi. **F1.3 ↔ istemci uyumu tamamlandı.**
+  - **Tek zod kopyası kanıtlandı (kontrol deneyiyle):** alias yokken ve istemci doğrudan `zod` import ettiğinde pakette **2** kopya, alias varken **1** kopya.
+  - Bekçinin `FALLBACK_*` deseni yeni `FALLBACK_MESSAGES` sabitini yakaladı (yanlış pozitif). Bekçi gevşetilmedi; sabit `DEFAULT_ERROR_MESSAGES` olarak yeniden adlandırıldı.
+  - Yeni devDependencies: `jsdom`, `@testing-library/react`, `@testing-library/dom` (hook testleri; F3.1 UI testleri de kullanacak). Dosya bazında `// @vitest-environment jsdom`.
+  - Testler (unit toplam 64): `errors.test.ts` (5), `callables.test.ts` (6: ağa çıkmadan ret, normalize gönderim, `bad-response`, sunucu hatası eşleme, `not-configured`, deprecated katmanın konsola yazması), `useAsyncAction.test.ts` (4).
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 64, functions 26, rules 15 + 4 `it.fails`, e2e 6, iki build.
 
 ---
 
