@@ -434,3 +434,9 @@
   color: var(--clinical-primary);
   font-weight: 600;
 }
+
+.user-pill-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

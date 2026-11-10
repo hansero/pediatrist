@@ -33,6 +33,7 @@ export const COLLECTIONS = {
   attendanceSecrets: "attendance_secrets",
   /** `attendance_meta/live`: tek canlı ders kilidi (F4.1); istemciye kapalı. */
   attendanceMeta: "attendance_meta",
+  webauthnChallenges: "webauthn_challenges",
   quizzes: "quizzes",
   quizQuestionsPublic: "questions_public",
   quizAnswerKeys: "quiz_answer_keys",
@@ -69,9 +70,11 @@ export interface MemberDoc<T> {
   inviteCode?: string | null;
   /** KVKK aydınlatma metni onayı (F3.5'te zorunlu). */
   consent?: { version: string; acceptedAt: T } | null;
-  boundDeviceHash?: string | null;
-  hasBoundDevice?: boolean;
-  webAuthnCredentialId?: string | null;
+  /**
+   * Yoklama cihazı: bu hesaba kayıtlı WebAuthn platform passkey'i (F4.2, D6). Yalnızca sunucu yazar;
+   * admin "cihaz sıfırla" ile silinir. Açık anahtar gizli değildir; özel anahtar cihazdan çıkmaz.
+   */
+  webauthn?: WebAuthnCredentialDoc<T> | null;
   /**
    * Bu zamandan (epoch SANİYE) önce açılmış oturumlar geçersizdir: askıya alma / rol düşürme / cihaz sıfırlama
    * anında yazılır ve `auth_time` ile karşılaştırılır (D3). F2.3'te `syncUserClaims` yazar.
@@ -100,8 +103,8 @@ export interface InvitationDoc<T> {
 
 export type AttendanceSessionStatus = "live" | "closed";
 export type AttendanceStatus = "present" | "excused";
-/** Sunucuda doğrulanmış yöntem. ("qr+webauthn" F4.2'de gerçek WebAuthn doğrulamasıyla gelir.) */
-export type AttendanceMethod = "qr+device_bound" | "qr+webauthn" | "admin_excused";
+/** Sunucuda doğrulanmış yöntem: `qr+webauthn` = projektör kodu + sunucuda doğrulanan passkey (kullanıcı doğrulamalı). */
+export type AttendanceMethod = "qr+webauthn" | "admin_excused";
 
 /** `attendance_sessions/{sessionId}` */
 export interface AttendanceSessionDoc<T> {
@@ -142,7 +145,6 @@ export interface AttendanceRecordDoc<T> {
   verifiedAt: T;
   method: AttendanceMethod;
   status: AttendanceStatus;
-  deviceHash?: string;
   excuseNote?: string;
   markedBy?: string;
 }
@@ -154,6 +156,31 @@ export interface AttendanceLogDoc<T> extends AttendanceRecordDoc<T> {
   lecturer: string;
   category: string;
   sessionStartedAt: T;
+}
+
+// --- WebAuthn (F4.2) -----------------------------------------------------------
+
+/** `users/{uid}.webauthn` */
+export interface WebAuthnCredentialDoc<T> {
+  /** base64url */
+  credentialId: string;
+  /** COSE açık anahtarı, base64url */
+  publicKey: string;
+  counter: number;
+  transports: string[];
+  /** Passkey bulut eşitlemeli mi (ör. iCloud Anahtar Zinciri)? */
+  backedUp: boolean;
+  createdAt: T;
+}
+
+/** `webauthn_challenges/{uid}_{purpose}`: tek kullanımlık, 2 dk geçerli; istemciye kapalı. */
+export interface WebAuthnChallengeDoc<T> {
+  uid: string;
+  purpose: "register" | "attendance";
+  challenge: string;
+  /** Yalnızca yoklama için: challenge bu derse bağlıdır. */
+  sessionId?: string;
+  expiresAt: T;
 }
 
 // --- Sınav ------------------------------------------------------------------

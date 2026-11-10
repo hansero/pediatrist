@@ -62,7 +62,7 @@ function toSession(
     mfaEnrolled: multiFactor(user).enrolledFactors.length > 0,
     emailVerified: user.emailVerified,
     mfaRequired: security.requireMfa,
-    hasBoundDevice: Boolean(profile.boundDeviceHash),
+    hasBoundDevice: Boolean(profile.webauthn?.credentialId),
   };
 }
 

@@ -79,6 +79,9 @@ export const revokeInvitation = bind("revokeInvitation");
 export const startLectureSession = bind("startLectureSession");
 export const endLectureSession = bind("endLectureSession");
 export const getProjectorCode = bind("getProjectorCode");
+export const beginDeviceRegistration = bind("beginDeviceRegistration");
+export const finishDeviceRegistration = bind("finishDeviceRegistration");
+export const beginAttendanceAssertion = bind("beginAttendanceAssertion");
 export const verifyRealTimeAttendance = bind("verifyRealTimeAttendance");
 export const markAttendanceExcused = bind("markAttendanceExcused");
 export const saveQuizDraft = bind("saveQuizDraft");
@@ -86,25 +89,6 @@ export const publishQuiz = bind("publishQuiz");
 export const closeQuiz = bind("closeQuiz");
 export const startQuizAttempt = bind("startQuizAttempt");
 export const submitQuizAttempt = bind("submitQuizAttempt");
-
-/**
- * Kişisel cihaz bağlama için yerel tarayıcıda rastgele sır üretir ve saklar.
- * Ham sır ekranda gösterilmez; sunucuda SHA-256 özeti (`boundDeviceHash`) tutulur.
- *
- * @deprecated F4.2'de WebAuthn passkey ile değiştirilecek (localStorage Safari'de 7 gün sonra silinebilir).
- */
-export function getOrCreateClientDeviceSecret(): string {
-  if (typeof window === "undefined") throw new Error("Cihaz sırrı yalnızca tarayıcıda üretilebilir.");
-  const storageKey = "pediatrist_device_secret_v1";
-  let existing = window.localStorage.getItem(storageKey);
-  if (!existing || existing.length < 16) {
-    const bytes = new Uint8Array(24);
-    window.crypto.getRandomValues(bytes);
-    existing = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-    window.localStorage.setItem(storageKey, existing);
-  }
-  return existing;
-}
 
 /**
  * @deprecated SESSİZ SAHTE BAŞARI (AUDIT C1). Yalnızca henüz yeniden yazılmamış mock sayfalarda duruyor.

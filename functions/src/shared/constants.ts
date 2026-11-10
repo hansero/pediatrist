@@ -37,6 +37,9 @@ export const ATTENDANCE_SLOT_MS = 15_000;
 export const ATTENDANCE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const ATTENDANCE_CODE_LENGTH = 6;
 
+/** WebAuthn tören (kayıt/yoklama) challenge'ının geçerlilik süresi (F4.2). */
+export const WEBAUTHN_CHALLENGE_TTL_MS = 2 * 60_000;
+
 export const LECTURE_CATEGORIES = [
   "Sabah Vaka & Makale Saati",
   "Çekirdek Eğitim Semineri",
@@ -120,6 +123,7 @@ export const LIMITS = {
   excuseNoteLength: 200,
   fileNameLength: 200,
   idLength: 128,
-  deviceIdLength: { min: 16, max: 256 },
+  /** WebAuthn yanıtındaki base64url alanlar (imza, authenticatorData, attestation) için üst sınır. */
+  webAuthnFieldLength: 16_384,
   tabSwitchCountMax: 999,
 } as const;

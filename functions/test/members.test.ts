@@ -108,10 +108,13 @@ describe("updateMemberAccess", () => {
   });
 
   it("cihaz sıfırlama: cihaz bağı silinir ve oturum iptal edilir", async () => {
-    await createMember("hedef", "user", "active", { boundDeviceHash: "f".repeat(64) });
+    await createMember("hedef", "user", "active", {
+      webauthn: { credentialId: "abc", publicKey: "def", counter: 3, transports: [], backedUp: false },
+    });
     await updateMemberAccess.run(callableRequest({ targetUid: "hedef", resetBoundDevice: true }, asAdmin()));
     const p = await profile("hedef");
-    expect(p).toMatchObject({ boundDeviceHash: null, status: "active" });
+    expect(p).toMatchObject({ status: "active" });
+    expect(p).not.toHaveProperty("webauthn");
     expect(p?.tokensValidAfter).toBeGreaterThan(0);
     expect(await auditActions()).toContain("MEMBER_DEVICE_RESET");
   });
@@ -189,7 +192,7 @@ describe("completeRegistration", () => {
       role: "user",
       status: "pending",
       inviteCode: null,
-      boundDeviceHash: null,
+      webauthn: null,
       consent: { version: KVKK_NOTICE_VERSION },
     });
     expect((await profile("yeni"))?.consent?.acceptedAt).toBeTruthy();

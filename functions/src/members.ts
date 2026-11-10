@@ -160,11 +160,8 @@ export const updateMemberAccess = defineCallable("updateMemberAccess", "admin", 
       updatedBy: actor.uid,
     };
     if (status === "active" && existing.status !== "active") payload.approvedBy = actor.uid;
-    if (resetDevice) {
-      payload.boundDeviceHash = null;
-      payload.hasBoundDevice = false;
-      payload.webAuthnCredentialId = null;
-    }
+    // Yoklama cihazı (passkey) bağı silinir; üye yeni telefonunu kaydedebilir (F4.2).
+    if (resetDevice) payload.webauthn = FieldValue.delete();
     if (revoke) payload.tokensValidAfter = nowSeconds();
 
     tx.set(userRef, payload, { merge: true });
@@ -265,7 +262,7 @@ export const completeRegistration = defineCallable("completeRegistration", "sign
       status,
       inviteCode: data.inviteCode ?? null,
       consent: { version: data.consentVersion, acceptedAt: FieldValue.serverTimestamp() },
-      boundDeviceHash: null,
+      webauthn: null,
       createdAt: FieldValue.serverTimestamp(),
       ...(invite ? { approvedBy: invite.data.invitedBy } : {}),
     });

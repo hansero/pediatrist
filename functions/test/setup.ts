@@ -24,4 +24,8 @@ process.env.METADATA_SERVER_DETECTION = "none";
 process.env.ENFORCE_APP_CHECK = "false";
 process.env.REQUIRE_EMAIL_VERIFIED = "false";
 
+// WebAuthn RP (F4.2): emülatör .env'iyle aynı değerler; yazılım doğrulayıcı bu kökeni kullanır.
+process.env.WEBAUTHN_RP_ID = "localhost";
+process.env.WEBAUTHN_ORIGINS = "http://localhost:3100,http://localhost:3000";
+
 if (getApps().length === 0) initializeApp({ projectId: PROJECT_ID });

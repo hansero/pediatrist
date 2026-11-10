@@ -2,6 +2,9 @@
 
 import React, { useState } from "react";
 import type { ClinicMemberSession } from "@/lib/auth/types";
+import Link from "next/link";
+import { DEVICE_PAGE } from "@/components/nav/navItems";
+import { Button } from "@/components/ui/Button";
 import { AttendanceSessionItem } from "./AdminLiveAttendanceProjector";
 
 interface DoctorRealTimeCheckInProps {
@@ -16,14 +19,11 @@ interface DoctorRealTimeCheckInProps {
     status: "present" | "excused" | "absent";
     verifiedAt: string;
   }>;
-  onVerifyAttendance: (
-    inputCode: string,
-    useRegisteredDevice: boolean,
-    webAuthnOk: boolean
-  ) => {
+  /** Kod + cihaz passkey imzasıyla sunucuda doğrulanır (F4.2); sonuç ancak sunucu yanıtından sonra gösterilir. */
+  onVerifyAttendance: (inputCode: string) => Promise<{
     ok: boolean;
     message: string;
-  };
+  }>;
 }
 
 /**
@@ -39,8 +39,7 @@ export function DoctorRealTimeCheckIn({
   onVerifyAttendance,
 }: DoctorRealTimeCheckInProps) {
   const [inputCode, setInputCode] = useState<string>("");
-  const [webAuthnVerified, setWebAuthnVerified] = useState<boolean>(true);
-  const [useRegisteredDevice, setUseRegisteredDevice] = useState<boolean>(true);
+  const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; message: string } | null>(null);
 
   const existingRecord = liveSession ? liveSession.records[session.uid] : undefined;
@@ -77,10 +76,16 @@ export function DoctorRealTimeCheckIn({
 
               <form
                 id="doctor-checkin-form"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  const res = onVerifyAttendance(inputCode, useRegisteredDevice, webAuthnVerified);
-                  setFeedback(res);
+                  if (pending) return;
+                  setPending(true);
+                  setFeedback(null);
+                  try {
+                    setFeedback(await onVerifyAttendance(inputCode));
+                  } finally {
+                    setPending(false);
+                  }
                 }}
               >
                 <div className="form-group">
@@ -122,32 +127,12 @@ export function DoctorRealTimeCheckIn({
                   />
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="checkin-device-select" className="form-label">
-                    Kişisel Telefon Eşleşme Durumu
-                  </label>
-                  <select
-                    id="checkin-device-select"
-                    className="form-select"
-                    value={useRegisteredDevice ? "registered" : "foreign"}
-                    onChange={(e) => setUseRegisteredDevice(e.target.value === "registered")}
-                  >
-                    <option value="registered">Kayıtlı Kişisel Telefonum (Doğrulandı ✓)</option>
-                    <option value="foreign">Farklı / Kayıtsız Cihaz Simülasyonu (Güvenlik Testi)</option>
-                  </select>
-                </div>
-
-                <div className="form-group" style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
-                  <input
-                    id="checkin-webauthn-checkbox"
-                    type="checkbox"
-                    checked={webAuthnVerified}
-                    onChange={(e) => setWebAuthnVerified(e.target.checked)}
-                  />
-                  <label htmlFor="checkin-webauthn-checkbox" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                    Biyometrik / Ekran Kilidi (FaceID • Parmak İzi) Onayı
-                  </label>
-                </div>
+                {!session.hasBoundDevice && (
+                  <div role="status" className="clinical-alert warning" style={{ marginBottom: "0.9rem" }}>
+                    Yoklama vermek için önce bu telefonu yoklama cihazı olarak kaydedin:{" "}
+                    <Link href={DEVICE_PAGE}>Yoklama cihazı</Link>
+                  </div>
+                )}
 
                 {feedback && (
                   <div
@@ -159,9 +144,15 @@ export function DoctorRealTimeCheckIn({
                   </div>
                 )}
 
-                <button id="submit-attendance-checkin-btn" type="submit" className="btn btn-primary">
-                  Yoklamaya Katıl ve İmzamı Doğrula
-                </button>
+                <Button
+                  id="submit-attendance-checkin-btn"
+                  type="submit"
+                  loading={pending}
+                  loadingText="Doğrulanıyor…"
+                  disabled={!session.hasBoundDevice}
+                >
+                  Yoklamaya katıl (yüz/parmak izi ile)
+                </Button>
               </form>
             </>
           ) : (
@@ -190,15 +181,14 @@ export function DoctorRealTimeCheckIn({
             }}
           >
             <li>
-              <strong>Hekim:</strong> {session.title} {session.fullName} ({session.residencyYear}. Yıl)
+              <strong>Hekim:</strong> {session.title} {session.fullName}
             </li>
             <li>
-              <strong>Kayıtlı Cihaz Durumu:</strong>{" "}
-              {session.hasBoundDevice ? "Doğrulandı ✓" : "İlk yoklamada bağlanacak"}
+              <strong>Kayıtlı Cihaz Durumu:</strong> {session.hasBoundDevice ? "Kayıtlı (passkey)" : "Kayıtlı değil"}
             </li>
             <li>
-              <strong>Vekaleten Yoklama Koruması:</strong> Her hesap yalnızca kendi birincil cihazı ile yoklama
-              verebilir; aynı cihazdan ikinci bir hesap adına yoklama gönderilemez.
+              <strong>Vekaleten yoklama koruması:</strong> Yoklama, hesaba kayıtlı telefonun yüz/parmak izi
+              doğrulamasıyla imzalanır; imza sunucuda doğrulanır.
             </li>
           </ul>
         </article>

@@ -276,6 +276,18 @@ describe("değiştirilemez kayıtlar, davetler, yapılandırma", () => {
     await assertFails(as(admin, SECOND_FACTOR).collection("attendance_meta").doc("live").set({ sessionId: "x" }));
     await assertFails(as(admin, SECOND_FACTOR).collection("attendance_secrets").doc("s1").get());
   });
+
+  it("WebAuthn challenge'ları kendi sahibine dahil istemciye kapalıdır (F4.2)", async () => {
+    await assertFails(
+      as(resident, SECOND_FACTOR).collection("webauthn_challenges").doc(`${resident.uid}_attendance`).get()
+    );
+    await assertFails(
+      as(resident, SECOND_FACTOR)
+        .collection("webauthn_challenges")
+        .doc(`${resident.uid}_attendance`)
+        .set({ challenge: "x" })
+    );
+  });
 });
 
 describe("MFA zorunluluğu (N8: config/security tek kaynak)", () => {

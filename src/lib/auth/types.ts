@@ -21,6 +21,6 @@ export interface ClinicMemberSession {
   emailVerified: boolean;
   /** Ortamda MFA zorunlu mu? (`config/security`, N8; kurallar ve sunucuyla aynı kaynak) */
   mfaRequired: boolean;
-  /** Ham cihaz kimliği UI'a hiç taşınmaz; yalnızca "kayıtlı cihaz var mı" bilgisi tutulur. */
+  /** Hesaba yoklama cihazı (passkey, F4.2) kayıtlı mı? Credential ayrıntısı UI'a taşınmaz. */
   hasBoundDevice: boolean;
 }

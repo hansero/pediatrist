@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import type { ClinicMemberSession } from "@/lib/auth/types";
-import { isActivePath, SECURITY_PAGE, visibleNavItems } from "./navItems";
+import { DEVICE_PAGE, isActivePath, SECURITY_PAGE, visibleNavItems } from "./navItems";
 
 interface AppShellProps {
   session: ClinicMemberSession;
@@ -78,9 +78,14 @@ function UserFooter({ session, onSignOut }: Pick<AppShellProps, "session" | "onS
           {session.title} {session.fullName}
         </div>
         <div className="user-pill-meta">{memberRoleLabel(session)}</div>
-        <Link href={SECURITY_PAGE} className="user-pill-link">
-          Hesap güvenliği
-        </Link>
+        <div className="user-pill-links">
+          <Link href={SECURITY_PAGE} className="user-pill-link">
+            Hesap güvenliği
+          </Link>
+          <Link href={DEVICE_PAGE} className="user-pill-link">
+            Yoklama cihazı
+          </Link>
+        </div>
       </div>
       {signOut.error && (
         <p role="alert" className="ui-field-error">

@@ -16,5 +16,6 @@ export {
   verifyRealTimeAttendance,
   markAttendanceExcused,
 } from "./attendanceService";
+export { beginDeviceRegistration, finishDeviceRegistration, beginAttendanceAssertion } from "./webauthn";
 export { closeExpiredLecturesJob } from "./scheduled";
 export { saveQuizDraft, publishQuiz, closeQuiz, startQuizAttempt, submitQuizAttempt } from "./quizService";

@@ -10,7 +10,7 @@ export interface AttendanceRecordItem {
   title: string;
   residencyYear: number | null;
   verifiedAt: string;
-  method: "qr+webauthn" | "qr+device_bound" | "admin_excused";
+  method: "qr+webauthn" | "admin_excused";
   status: "present" | "excused";
   excuseNote?: string;
 }

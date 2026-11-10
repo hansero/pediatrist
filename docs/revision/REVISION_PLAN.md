@@ -59,7 +59,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F3.5 | Kayıt, KVKK onayı, e-posta doğrulama, bekleme/askı ekranları | M | ✅ | C9, Kullanılabilirlik |
 | **F4** | **Yoklama modülü (gerçek)** | | | |
 | F4.1 | Backend sağlamlaştırma (transaction, kilit, süre dolumu, zamanlayıcı) | M | ✅ | S3, S4, S5, S10 |
-| F4.2 | WebAuthn passkey ile cihaz bağlama | L | ⬜ | S1, C2 (biyometrik) |
+| F4.2 | WebAuthn passkey ile cihaz bağlama | L | ✅ | S1, C2 (biyometrik) |
 | F4.3 | Admin: ders başlat/bitir + projektör kiosk sayfası (QR, wake lock) | M | ⬜ | C2, C8 (projektör) |
 | F4.4 | Hekim: QR deep-link ile yoklama + kişisel geçmiş | M | ⬜ | C2 |
 | F4.5 | Ders/katılımcı raporları + CSV | M | ⬜ | C2, Kullanılabilirlik |
@@ -101,15 +101,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F4.1. Yoklama backend'i transaction'larla sağlamlaştırıldı (sayaç geçişleri, tek canlı ders kilidi `attendance_meta/live`, beklenen katılımcılar, süre dolumu zamanlayıcısı `closeExpiredLecturesJob`). Testler: unit 180, rules 49, functions 58, e2e 46 (+2 ekran boyutuna özel atlanan).
+- **Son tamamlanan adım:** F4.2. Yoklama cihazı = WebAuthn platform passkey'i (sunucuda imza, UV, köken, sayaç, tek kullanımlık ve derse bağlı challenge); `localStorage` cihaz sırrı ve sahte biyometrik/simülasyon arayüzü kaldırıldı; `/account/device`. Testler: unit 181, rules 50, functions 72, e2e 50 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **Kullanıcıya sorulacak (D-kaydı gerektirir):** `REQUIRE_EMAIL_VERIFIED` hâlâ functions parametresi ve kurallarda uygulanmıyor; MFA gibi `config/security.requireEmailVerified` tek kaynağına taşınması önerildi (yanıt bekleniyor).
-- **Sıradaki iş:** F4.2 (L) WebAuthn passkey ile cihaz bağlama (D6, S1):
-  - `@simplewebauthn/server` (functions) + `@simplewebauthn/browser` (istemci); sürümler en az 2 haftalık ve kilitli.
-  - Callable'lar: `getPasskeyRegistrationOptions` / `verifyPasskeyRegistration` (kayıt, hesap güvenliği sayfasından), `getAttendanceAssertionOptions` + `verifyRealTimeAttendance` içinde assertion doğrulama. Challenge'lar `webauthn_challenges/{uid}` (kısa ömürlü, istemciye kapalı).
-  - RP ID: `NEXT_PUBLIC_WEBAUTHN_RP_ID` (emülatörde `localhost`); sunucu tarafında da aynı değer (tek kaynak kararı gerekebilir; D-kaydı kontrol et).
-  - `method: "qr+webauthn"` yalnızca sunucu assertion'ı doğrularsa; `localStorage` cihaz sırrı (`getOrCreateClientDeviceSecret`) kaldırılır; `boundDeviceHash` yerine `webAuthnCredentialId` + public key.
-  - e2e: Playwright CDP sanal doğrulayıcı (`WebAuthn.addVirtualAuthenticator`).
+- **Kullanıcıya sorulacak (D-kaydı gerektirir):** `REQUIRE_EMAIL_VERIFIED` → `config/security.requireEmailVerified` tek kaynağı önerisi (yanıt bekleniyor).
+- **Sıradaki iş:** F4.3 (M) admin: ders başlat/bitir + projektör kiosk sayfası:
+  - `src/app/(protected)/attendance/projector/[sessionId]/page.tsx` (veya `/attendance/projektor`): tam ekran (Fullscreen API), Screen Wake Lock, büyük monospace kod (~15–20vw), QR kod (`qrcode`; içerik: `/attendance?s=<sessionId>&c=<kod>` deep-link, F4.4 kullanır), `Countdown` ile yenilenmeye kalan süre; `getProjectorCode`'u `msUntilRotation`'a göre zamanlayarak çağırır; `useIdleExempt()`.
+  - Admin ders başlatma formu `Field`/`Button` ile (süre sınırı `LIMITS.lectureMinutes`), canlı ders kartı ve "Dersi bitir" (`ConfirmDialog`); canlı ders Firestore'dan dinlenir (`attendance_sessions where status == live`), `CLINIC_ROSTER` ve `INITIAL_SESSIONS` mock'ları bu ekrandan kalkar; denetim/rapor kısmı F4.5.
+  - `AdminLiveAttendanceProjector.tsx` allowlist'ten düşer (F4.3).
+  - e2e: admin ders başlatır → projektör sayfası kod ve QR gösterir → kod sunucudaki ile aynı (`computeSlotCode` e2e yardımcısında aynı HMAC) → dersi bitir.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -763,6 +762,40 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - **RP ID:** `NEXT_PUBLIC_WEBAUTHN_RP_ID` (emülatörde `localhost`, prod'da hosting domaini).
 - `localStorage` sırrı, `webAuthnVerified` checkbox'ı ve "cihaz simülasyonu" seçimi **silinir**.
 - **Testler:** functions testi (geçersiz imza, tekrar kullanılan challenge, sayaç geri gitmesi) ve Playwright CDP `WebAuthn.addVirtualAuthenticator` ile e2e.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - Bağımlılıklar: `@simplewebauthn/server` **14.0.3** (functions; 14.1.0 o gün 4 günlüktü, kural gereği bir önceki), `@simplewebauthn/browser` **14.0.0**. Üretim `npm audit` değişmedi (D15 zinciri).
+  - **Sunucu `functions/src/webauthn.ts`:**
+    - `beginDeviceRegistration` / `finishDeviceRegistration` / `beginAttendanceAssertion` (hepsi "member").
+    - Kayıt: `platform` doğrulayıcı, **`userVerification: "required"`**, `attestation: "none"`, ES256 + RS256; hesap başına tek cihaz.
+    - Credential `users/{uid}.webauthn = {credentialId, publicKey (COSE, base64url), counter, transports, backedUp, createdAt}`.
+    - Challenge'lar `webauthn_challenges/{uid}_{register|attendance}`: 2 dk, **tek kullanımlık** (transaction'da okunup silinir), yoklama challenge'ı **derse bağlı**.
+    - Denetim: `ATTENDANCE_DEVICE_REGISTERED`, `…_REGISTRATION_REJECTED`, `…_ASSERTION_REJECTED` (CRITICAL), `…_CHALLENGE_EXPIRED_OR_REUSED`.
+  - **`verifyRealTimeAttendance` sözleşmesi `{sessionId, code, assertion}`.** İmza aynı transaction'da doğrulanır: credential kimliği eşleşmesi, köken, RP, UV, imza, sayaç. Doğrulayıcı sayacı güncellenir; yöntem **`qr+webauthn`**.
+    - `deviceId`, `hashDeviceId`, `boundDeviceHash`, "aynı cihazdan ikinci hesap" sorgusu ve `qr+device_bound` türü **kaldırıldı**.
+    - Admin "cihaz sıfırla" `webauthn` alanını siler (oturum iptali F2.3'teki gibi).
+  - **Plandan sapma, RP ID tek kaynak sunucuda:** `WEBAUTHN_RP_ID` ve `WEBAUTHN_ORIGINS` functions parametreleri (`config.ts`; emülatör `.env.demo-pediatrist`: `localhost`, `http://localhost:3100,http://localhost:3000`). İstemci RP bilmez, seçenekleri sunucu üretir; `NEXT_PUBLIC_WEBAUTHN_RP_ID` kaldırıldı. Parametre yoksa cihaz işlemleri `failed-precondition` ile reddedilir.
+  - **Bulunan kural:** Firestore transaction'da bütün okumalar yazmalardan önce olmalı. Challenge'ı "oku + sil" yardımcısı bu yüzden diğer okumalardan sonra çağrılır (yorumda belirtildi).
+  - **İstemci:**
+    - `src/lib/webauthn.ts`: `passkeySupport`, `registerAttendanceDevice`, `checkInWithPasskey`.
+    - `src/lib/errors.ts`: tarayıcı WebAuthn hataları (kütüphane `ERROR_*` kodları ve DOMException adları) Türkçe; adı benzeyen sıradan hatalar etkilenmez.
+    - `/account/device` sayfası (destek kontrolü, adımlar, kayıt, durum çipi, eşitlenmiş passkey notu); kenar çubuğunda "Yoklama cihazı" bağlantısı (`DEVICE_PAGE`).
+    - Oturumda `hasBoundDevice` artık `webauthn` alanından.
+  - **Sahte verili yoklama sayfası (F4.4'te yeniden yazılacak):**
+    - Sahte "cihaz simülasyonu" seçimi ve "biyometrik onay" kutusu silindi.
+    - Yoklama artık `checkInWithPasskey` ile **beklenen ve hatası gösterilen gerçek çağrı** (`invokeWithFallback` bu işlemde kalktı).
+    - Cihaz kayıtlı değilse yönlendirme var.
+    - "Kamera ile tara" sahte düğmesi F4.4'te (QR deep-link) kaldırılacak.
+  - `getOrCreateClientDeviceSecret` (localStorage) silindi. Seed'de `boundDeviceHash` kaldırıldı, kapanmış seed dersinin kayıtları `qr+webauthn`.
+  - Testler:
+    - **Yazılım doğrulayıcı** `functions/test/softAuthenticator.ts` (yalnızca test): P-256, gerçek ES256 imzalar, `none` attestation, küçük bir CBOR kodlayıcı. İmza bozma, UV'siz, yanlış köken ve sayaç geri alma seçenekleri var.
+    - functions +14 (toplam 72):
+      - kayıt seçenekleri, kayıt ve saklama, tek cihaz, tek kullanımlık challenge (geçersiz deneme tüketir), UV'siz kayıt, süresi dolmuş challenge, RP ayarı yoksa red, bekleyen üye;
+      - yoklamada cihazsız üye, bozuk imza, UV'siz imza, oltalama kökeni, başka hekimin telefonu, tekrar oynatma, sayaç geri alma, başka dersin challenge'ı, admin sıfırlama ve yeni kayıt, aynı imzayla eşzamanlı iki istek (biri geçer, sayaç 1).
+    - **Mutasyon:** UV şartı kapatılınca ve challenge silinmeyince 6 test düşüyor.
+    - rules +1 (`webauthn_challenges` sahibine dahil kapalı); unit: sözleşme (imzasız/yanlış tür/aşırı uzun imza reddi), WebAuthn hata eşlemesi.
+    - **e2e `device.spec.ts`** (Chromium CDP sanal doğrulayıcı, iki ekran boyutu): kayıt sunucuda doğrulanır ve doğrulayıcıda credential oluşur → admin sıfırlar → oturum kapanır, alan silinir → yeniden giriş ve yeniden kayıt; UV verilmezse Türkçe hata ve kayıt yok. Yardımcılar: `deleteField`, `hasField` (seed hesabını başlangıç durumuna getirir).
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 181, rules 50, functions 72, e2e 50 (+2 ekran boyutuna özel atlanan), next build.
+  - **Kapsam notu:** arayüzden uçtan uca yoklama (kod + passkey) e2e'si F4.4'te (hekim ekranı gerçek veriye geçince). İmza doğrulaması functions testlerinde gerçek kriptografiyle sınanıyor.
 
 #### F4.3 Admin ve projektör (M)
 - **Dosyalar:**

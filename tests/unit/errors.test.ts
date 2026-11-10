@@ -53,3 +53,17 @@ describe("Firebase Auth hataları", () => {
     expect(toUserMessage(authErr("auth/internal-error"))).toBe(APP_ERROR_MESSAGES.internal);
   });
 });
+
+describe("WebAuthn (passkey) tarayıcı hataları (F4.2)", () => {
+  it("kütüphane kodu ve DOMException adı Türkçe mesaja çevrilir; ilgisiz hatalar etkilenmez", () => {
+    const lib = (code: string, name: string) => Object.assign(new Error("x"), { code, name });
+    expect(toUserMessage(lib("ERROR_CEREMONY_ABORTED", "AbortError"))).toContain("iptal edildi");
+    expect(toAppError(lib("ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED", "InvalidStateError")).code).toBe(
+      "already-exists"
+    );
+    expect(toUserMessage(lib("ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY", "NotAllowedError"))).toContain("yüz/parmak izi");
+    expect(toUserMessage(new DOMException("x", "NotSupportedError"))).toContain("desteklemiyor");
+    // Adı benzeyen ama WebAuthn olmayan sıradan hata genel mesaja düşer.
+    expect(toAppError(Object.assign(new Error("x"), { name: "NotAllowedError" })).code).toBe("internal");
+  });
+});

@@ -4,7 +4,9 @@ import * as crypto from "crypto";
 import { auditIn, writeAuditLog } from "./auditLogger";
 import { defineCallable } from "./callable";
 import { ATTENDANCE_CODE_ALPHABET, ATTENDANCE_CODE_LENGTH, ATTENDANCE_SLOT_MS } from "./shared/constants";
-import { COLLECTIONS, type AttendanceLiveLockDoc, type AttendanceStatus } from "./shared/types";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
+import { COLLECTIONS, type AttendanceLiveLockDoc, type AttendanceStatus, type MemberDoc } from "./shared/types";
+import { consumeChallenge, verifyAttendanceAssertion } from "./webauthn";
 
 /**
  * MODÜL 3 — DERS KATILIM KONTROLÜ (Sunucu Tarafı)
@@ -14,7 +16,8 @@ import { COLLECTIONS, type AttendanceLiveLockDoc, type AttendanceStatus } from "
  *     yalnızca sunucuda (`attendance_secrets`, istemciye kapalı) üretilir.
  *  2. Projektör ekranı (yalnızca Admin) `getProjectorCode` ile 15 sn'lik güncel kodu alır.
  *     Kod / anahtar hiçbir zaman hekim istemcisine gönderilmez.
- *  3. Hekim `verifyRealTimeAttendance` ile kodu + kişisel cihaz kimliğini gönderir.
+ *  3. Hekim `beginAttendanceAssertion` ile challenge alır, telefonunun passkey'iyle (Face ID / parmak izi) imzalar
+ *     ve `verifyRealTimeAttendance` ile kod + imzayı gönderir (F4.2).
  *  4. Admin `endLectureSession` ile yoklamayı kapatır; süre dolunca zamanlayıcı (`closeExpiredLectures`)
  *     veya bir sonraki ders başlatma isteği kapatır.
  *  Her kayıt `attendance_logs` koleksiyonuna da yazılır → ders ve katılımcı bazlı dashboard.
@@ -32,11 +35,6 @@ export function computeSlotCode(secret: string, sessionId: string, slot: number)
     out += ATTENDANCE_CODE_ALPHABET[digest[i] % ATTENDANCE_CODE_ALPHABET.length];
   }
   return out;
-}
-
-function hashDeviceId(deviceId: string): string {
-  // Cihaz kimliği veritabanında ham haliyle değil, tek yönlü özet olarak tutulur.
-  return crypto.createHash("sha256").update(`pediatrist-device:${deviceId}`).digest("hex");
 }
 
 const sessions = () => getFirestore().collection(COLLECTIONS.attendanceSessions);
@@ -179,32 +177,31 @@ export const getProjectorCode = defineCallable("getProjectorCode", "admin", asyn
 type VerifyOutcome =
   | { kind: "recorded"; alreadyRecorded: boolean }
   | { kind: "no-session" }
-  | { kind: "device-mismatch" }
-  | { kind: "invalid-code" }
-  | { kind: "same-device" };
+  | { kind: "no-device" }
+  | { kind: "challenge-expired" }
+  | { kind: "assertion-invalid" }
+  | { kind: "invalid-code" };
 
 /**
- * Hekim: kodu ve kişisel cihaz bağını doğrular, katılım kaydını yazar (F4.1: tek TRANSACTION).
- * Durum geçişleri: kayıt yok → katıldı (katılan +1); mazeretli → katıldı (katılan +1, mazeretli −1);
- * zaten katıldı → değişiklik yok. Aynı anda gelen iki istekten sayaç yalnızca bir kez artar.
- * Reddedilen girişimlerin denetim kaydı transaction dışında yazılır (transaction reddedildiğinde geri alınır).
+ * Hekim: projektör kodunu ve bu cihazın passkey imzasını doğrular, katılım kaydını yazar (F4.1 + F4.2: tek TRANSACTION).
+ * - İmza (WebAuthn, kullanıcı doğrulamalı) sunucuda doğrulanır; challenge tek kullanımlıktır ve bu derse bağlıdır.
+ *   Aynı imzayla ikinci istek reddedilir (tekrar oynatma). Doğrulayıcı sayacı geri giderse (kopyalanmış anahtar) reddedilir.
+ * - Durum geçişleri: kayıt yok → katıldı (+1); mazeretli → katıldı (katılan +1, mazeretli −1); zaten katıldı → değişiklik yok.
+ * - Reddedilen girişimlerin denetim kaydı transaction dışında yazılır (transaction'daki kayıt geri alınırdı).
  */
 export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance", "member", async (data, actor) => {
   const db = getFirestore();
   const { uid, email: actorEmail } = actor;
-  const deviceHash = hashDeviceId(data.deviceId);
   const sessionRef = sessions().doc(data.sessionId);
-  const recordsCol = sessionRef.collection(COLLECTIONS.attendanceRecords);
-  const recordRef = recordsCol.doc(uid);
+  const recordRef = sessionRef.collection(COLLECTIONS.attendanceRecords).doc(uid);
   const userRef = db.collection(COLLECTIONS.users).doc(uid);
 
   const outcome = await db.runTransaction<VerifyOutcome>(async (tx) => {
-    const [sessionSnap, secretSnap, userSnap, recordSnap, sameDevice] = await Promise.all([
+    const [sessionSnap, secretSnap, userSnap, recordSnap] = await Promise.all([
       tx.get(sessionRef),
       tx.get(secrets().doc(data.sessionId)),
       tx.get(userRef),
       tx.get(recordRef),
-      tx.get(recordsCol.where("deviceHash", "==", deviceHash)),
     ]);
     const session = sessionSnap.data();
     if (
@@ -216,11 +213,21 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
       return { kind: "no-session" };
     }
 
-    // Kişisel cihaz bağı (ham cihaz kimliği saklanmaz, hata mesajında da gösterilmez).
-    const boundDeviceHash = userSnap.data()?.boundDeviceHash as string | null | undefined;
-    if (boundDeviceHash && boundDeviceHash !== deviceHash) return { kind: "device-mismatch" };
+    // 1) Cihaz imzası (tek kullanımlık challenge burada tüketilir).
+    const profile = (userSnap.data() ?? {}) as Partial<MemberDoc<Timestamp>>;
+    const credential = profile.webauthn;
+    const expectedChallenge = await consumeChallenge(tx, uid, "attendance", data.sessionId);
+    if (!credential) return { kind: "no-device" };
+    if (!expectedChallenge) return { kind: "challenge-expired" };
+    const newCounter = await verifyAttendanceAssertion(
+      data.assertion as unknown as AuthenticationResponseJSON,
+      expectedChallenge,
+      credential
+    );
+    if (newCounter === null) return { kind: "assertion-invalid" };
+    tx.update(userRef, { "webauthn.counter": newCounter });
 
-    // Kod (bir önceki pencere ağ gecikmesi toleransı olarak kabul edilir).
+    // 2) Projektör kodu (bir önceki pencere ağ gecikmesi toleransı olarak kabul edilir).
     const secret = String(secretSnap.data()!.hmacSecret);
     const slot = Math.floor(Date.now() / ATTENDANCE_SLOT_MS);
     const given = Buffer.from(data.code);
@@ -229,25 +236,19 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
     );
     if (!valid) return { kind: "invalid-code" };
 
-    // Aynı fiziksel cihazdan başka hekim adına yoklama.
-    if (sameDevice.docs.some((d) => d.id !== uid)) return { kind: "same-device" };
-
     const previous = recordSnap.data()?.status as AttendanceStatus | undefined;
     if (previous === "present") return { kind: "recorded", alreadyRecorded: true };
 
-    const profile = userSnap.data() ?? {};
     const record = {
       uid,
       fullName: profile.fullName ?? actorEmail,
       title: profile.title ?? "",
       residencyYear: profile.residencyYear ?? null,
       verifiedAt: FieldValue.serverTimestamp(),
-      // Yalnızca sunucunun doğruladığı yöntem yazılır (istemci beyanı kabul edilmez; WebAuthn → F4.2).
-      method: "qr+device_bound",
-      deviceHash,
+      // Yöntem yalnızca sunucunun doğruladığı şeyi yansıtır: kod + kullanıcı doğrulamalı passkey imzası.
+      method: "qr+webauthn",
       status: "present",
     };
-    if (!boundDeviceHash) tx.set(userRef, { boundDeviceHash: deviceHash }, { merge: true });
     tx.set(recordRef, record);
     tx.set(db.collection(COLLECTIONS.attendanceLogs).doc(`${data.sessionId}_${uid}`), {
       ...record,
@@ -272,44 +273,38 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
     return { kind: "recorded", alreadyRecorded: false };
   });
 
+  const rejected = async (action: string, severity: "WARN" | "CRITICAL" = "WARN") =>
+    writeAuditLog({
+      actorUid: uid,
+      actorEmail,
+      action,
+      resourceType: "attendance",
+      resourceId: data.sessionId,
+      severity,
+    });
+
   switch (outcome.kind) {
     case "recorded":
       return { verified: true as const, alreadyRecorded: outcome.alreadyRecorded };
     case "no-session":
       throw new HttpsError("failed-precondition", NO_LIVE_SESSION);
-    case "device-mismatch":
-      await writeAuditLog({
-        actorUid: uid,
-        actorEmail,
-        action: "ATTENDANCE_DEVICE_MISMATCH_BLOCKED",
-        resourceType: "attendance",
-        resourceId: data.sessionId,
-        severity: "WARN",
-      });
+    case "no-device":
       throw new HttpsError(
         "failed-precondition",
-        "Bu cihaz hesabınıza kayıtlı değil. Cihaz değişikliği için Admin'e başvurun."
+        "Yoklama vermek için önce bu telefonu yoklama cihazı olarak kaydedin (Hesap › Yoklama cihazı)."
+      );
+    case "challenge-expired":
+      await rejected("ATTENDANCE_DEVICE_CHALLENGE_EXPIRED_OR_REUSED");
+      throw new HttpsError("deadline-exceeded", "Cihaz doğrulamasının süresi doldu. Lütfen tekrar deneyin.");
+    case "assertion-invalid":
+      await rejected("ATTENDANCE_DEVICE_ASSERTION_REJECTED", "CRITICAL");
+      throw new HttpsError(
+        "permission-denied",
+        "Cihaz doğrulaması başarısız. Hesabınıza kayıtlı telefonla tekrar deneyin; cihaz değiştiyse eğitim sorumlusuna başvurun."
       );
     case "invalid-code":
-      await writeAuditLog({
-        actorUid: uid,
-        actorEmail,
-        action: "ATTENDANCE_EXPIRED_OR_INVALID_CODE",
-        resourceType: "attendance",
-        resourceId: data.sessionId,
-        severity: "WARN",
-      });
+      await rejected("ATTENDANCE_EXPIRED_OR_INVALID_CODE");
       throw new HttpsError("deadline-exceeded", "Kod geçersiz veya süresi doldu. Projektördeki güncel kodu girin.");
-    case "same-device":
-      await writeAuditLog({
-        actorUid: uid,
-        actorEmail,
-        action: "ATTENDANCE_MULTI_ACCOUNT_SAME_DEVICE_BLOCKED",
-        resourceType: "attendance",
-        resourceId: data.sessionId,
-        severity: "CRITICAL",
-      });
-      throw new HttpsError("already-exists", "Bu cihazdan bu derse başka bir hesap ile yoklama verilmiş.");
   }
 });
 

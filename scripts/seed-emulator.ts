@@ -132,7 +132,6 @@ async function main() {
         residencyYear: u.residencyYear,
         role: u.role,
         status: u.status,
-        boundDeviceHash: null,
         createdAt: Timestamp.fromMillis(now - 30 * 86_400_000),
         ...(u.status !== "pending" ? { approvedBy: admin.uid, updatedAt: FieldValue.serverTimestamp() } : {}),
       });
@@ -224,7 +223,7 @@ async function main() {
       residencyYear: u.residencyYear,
       verifiedAt: Timestamp.fromMillis(startedAtMs + r.minuteOffset * 60_000),
       ...(r.status === "present"
-        ? { method: "qr+device_bound", status: "present" }
+        ? { method: "qr+webauthn", status: "present" }
         : { method: "admin_excused", status: "excused", excuseNote: r.excuseNote ?? "", markedBy: admin.uid }),
     };
     batch.set(sessionRef.collection("records").doc(u.uid), record);

@@ -191,13 +191,61 @@ export const GetProjectorCodeResponse = z.object({
   endsAtMs: z.number(),
 });
 
+// --- WebAuthn (F4.2, D6) ------------------------------------------------------------
+// Tarayıcının ürettiği JSON (`@simplewebauthn/browser`) biçimce doğrulanır; kriptografik doğrulama sunucuda.
+
+const b64url = (label: string) =>
+  z
+    .string({ error: `${label} eksik.` })
+    .min(1, { error: `${label} eksik.` })
+    .max(LIMITS.webAuthnFieldLength, { error: `${label} çok uzun.` })
+    .regex(/^[A-Za-z0-9_-]+={0,2}$/, { error: `${label} geçersiz.` });
+
+const webAuthnBase = {
+  id: b64url("Kimlik bilgisi"),
+  rawId: b64url("Kimlik bilgisi"),
+  type: z.literal("public-key", { error: "Kimlik bilgisi türü geçersiz." }),
+  clientExtensionResults: z.record(z.string(), z.unknown()),
+  authenticatorAttachment: z.enum(["platform", "cross-platform"]).optional(),
+};
+
+export const WebAuthnRegistrationResponse = z.looseObject({
+  ...webAuthnBase,
+  response: z.looseObject({
+    clientDataJSON: b64url("İstemci verisi"),
+    attestationObject: b64url("Doğrulayıcı verisi"),
+    transports: z.array(z.string().max(32)).max(10).optional(),
+  }),
+});
+
+export const WebAuthnAuthenticationResponse = z.looseObject({
+  ...webAuthnBase,
+  response: z.looseObject({
+    clientDataJSON: b64url("İstemci verisi"),
+    authenticatorData: b64url("Doğrulayıcı verisi"),
+    signature: b64url("İmza"),
+    userHandle: b64url("Kullanıcı tanıtıcısı").optional(),
+  }),
+});
+
+/** Sunucunun ürettiği tören seçenekleri; istemci olduğu gibi tarayıcıya verir. */
+const WebAuthnOptionsResponse = z.object({
+  options: z.looseObject({ challenge: z.string().min(16) }),
+});
+
+export const BeginDeviceRegistrationRequest = z.object({});
+export const BeginDeviceRegistrationResponse = WebAuthnOptionsResponse;
+export const FinishDeviceRegistrationRequest = z.object({ response: WebAuthnRegistrationResponse });
+export const FinishDeviceRegistrationResponse = z.object({ registered: z.literal(true), backedUp: z.boolean() });
+
+export const BeginAttendanceAssertionRequest = z.object({ sessionId: docId("Oturum") });
+export const BeginAttendanceAssertionResponse = WebAuthnOptionsResponse;
+
 export const VerifyRealTimeAttendanceRequest = z.object({
   sessionId: docId("Oturum"),
   code: attendanceCode,
-  deviceId: z
-    .string({ error: "Cihaz kimliği zorunludur." })
-    .min(LIMITS.deviceIdLength.min, { error: "Cihaz kimliği geçersiz." })
-    .max(LIMITS.deviceIdLength.max, { error: "Cihaz kimliği geçersiz." }),
+  /** Bu cihazın passkey'iyle (kullanıcı doğrulamalı) imzalanmış challenge (F4.2). */
+  assertion: WebAuthnAuthenticationResponse,
 });
 export const VerifyRealTimeAttendanceResponse = z.object({
   verified: z.literal(true),
@@ -282,6 +330,9 @@ export const CALLABLES = {
   startLectureSession: { request: StartLectureSessionRequest, response: StartLectureSessionResponse },
   endLectureSession: { request: EndLectureSessionRequest, response: EndLectureSessionResponse },
   getProjectorCode: { request: GetProjectorCodeRequest, response: GetProjectorCodeResponse },
+  beginDeviceRegistration: { request: BeginDeviceRegistrationRequest, response: BeginDeviceRegistrationResponse },
+  finishDeviceRegistration: { request: FinishDeviceRegistrationRequest, response: FinishDeviceRegistrationResponse },
+  beginAttendanceAssertion: { request: BeginAttendanceAssertionRequest, response: BeginAttendanceAssertionResponse },
   verifyRealTimeAttendance: { request: VerifyRealTimeAttendanceRequest, response: VerifyRealTimeAttendanceResponse },
   markAttendanceExcused: { request: MarkAttendanceExcusedRequest, response: MarkAttendanceExcusedResponse },
   saveQuizDraft: { request: SaveQuizDraftRequest, response: SaveQuizDraftResponse },

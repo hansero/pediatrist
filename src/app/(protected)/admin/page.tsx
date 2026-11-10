@@ -133,7 +133,7 @@ export default function AdminSecurityPage() {
             residencyYear: Number(data.residencyYear ?? 1),
             role: data.role === "admin" ? "admin" : "user",
             status: data.status === "active" || data.status === "suspended" ? data.status : "pending",
-            hasBoundDevice: Boolean(data.boundDeviceHash),
+            hasBoundDevice: Boolean(data.webauthn?.credentialId),
           };
         });
         setMembers(liveUsers);

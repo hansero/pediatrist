@@ -22,6 +22,9 @@ export const NAV_ITEMS: NavItem[] = [
 /** Hesap güvenliği (MFA kurulumu) sayfası; MFA zorunluyken kaydı olmayan üye buraya yönlendirilir. */
 export const SECURITY_PAGE = "/account/security";
 
+/** Yoklama cihazı (passkey) kaydı sayfası (F4.2). */
+export const DEVICE_PAGE = "/account/device";
+
 export function visibleNavItems(role: Role): NavItem[] {
   return NAV_ITEMS.filter((item) => !item.adminOnly || role === "admin");
 }

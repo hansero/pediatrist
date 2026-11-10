@@ -80,30 +80,48 @@ describe("StartLectureSessionRequest", () => {
 });
 
 describe("VerifyRealTimeAttendanceRequest", () => {
-  const deviceId = "d".repeat(32);
+  /** Biçimce geçerli passkey yanıtı (imza doğrulaması sunucuda; F4.2). */
+  const assertion = {
+    id: "Y3JlZA",
+    rawId: "Y3JlZA",
+    type: "public-key",
+    clientExtensionResults: {},
+    response: { clientDataJSON: "e30", authenticatorData: "AAAA", signature: "MEUC" },
+  };
   it("kodu büyük harfe çevirir ve alfabe dışı karakteri reddeder", () => {
-    expect(VerifyRealTimeAttendanceRequest.parse({ sessionId: "s1", code: " k9p4x2 ", deviceId }).code).toBe("K9P4X2");
-    expect(VerifyRealTimeAttendanceRequest.safeParse({ sessionId: "s1", code: "K9P4X0", deviceId }).success).toBe(
+    expect(VerifyRealTimeAttendanceRequest.parse({ sessionId: "s1", code: " k9p4x2 ", assertion }).code).toBe("K9P4X2");
+    expect(VerifyRealTimeAttendanceRequest.safeParse({ sessionId: "s1", code: "K9P4X0", assertion }).success).toBe(
       false
     );
-    expect(VerifyRealTimeAttendanceRequest.safeParse({ sessionId: "s1", code: "K9P4X", deviceId }).success).toBe(false);
+    expect(VerifyRealTimeAttendanceRequest.safeParse({ sessionId: "s1", code: "K9P4X", assertion }).success).toBe(
+      false
+    );
   });
   it("eski takma adları (dynamicCode, clientDeviceSecret) kabul etmez", () => {
     const r = VerifyRealTimeAttendanceRequest.safeParse({
       sessionId: "s1",
       dynamicCode: "K9P4X2",
-      clientDeviceSecret: deviceId,
+      clientDeviceSecret: "d".repeat(32),
     });
     expect(r.success).toBe(false);
   });
-  it("kendi beyanına dayalı 'webAuthnVerified' bayrağını sunucuya taşımaz", () => {
+  it("kendi beyanına dayalı 'webAuthnVerified' bayrağını sunucuya taşımaz; imzasız istek geçmez (F4.2)", () => {
     const out = VerifyRealTimeAttendanceRequest.parse({
       sessionId: "s1",
       code: "K9P4X2",
-      deviceId,
+      assertion,
       webAuthnVerified: true,
     });
     expect(out).not.toHaveProperty("webAuthnVerified");
+    expect(VerifyRealTimeAttendanceRequest.safeParse({ sessionId: "s1", code: "K9P4X2" }).success).toBe(false);
+    const badType = { ...assertion, type: "password" };
+    expect(
+      VerifyRealTimeAttendanceRequest.safeParse({ sessionId: "s1", code: "K9P4X2", assertion: badType }).success
+    ).toBe(false);
+    const huge = { ...assertion, response: { ...assertion.response, signature: "A".repeat(20_000) } };
+    expect(
+      VerifyRealTimeAttendanceRequest.safeParse({ sessionId: "s1", code: "K9P4X2", assertion: huge }).success
+    ).toBe(false);
   });
 });
 

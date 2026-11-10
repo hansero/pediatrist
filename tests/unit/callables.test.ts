@@ -16,7 +16,14 @@ const { AppError } = await import("@/lib/errors");
 const { CALLABLES } = await import("@shared/schemas");
 const { KVKK_NOTICE_VERSION } = await import("@shared/consent");
 
-const DEVICE = "d".repeat(32);
+/** Biçimce geçerli bir passkey yanıtı (kriptografik doğrulama sunucuda; burada yalnızca sözleşme). */
+const ASSERTION = {
+  id: "Y3JlZA",
+  rawId: "Y3JlZA",
+  type: "public-key" as const,
+  clientExtensionResults: {},
+  response: { clientDataJSON: "e30", authenticatorData: "AAAA", signature: "MEUC" },
+};
 
 beforeEach(() => {
   serverImpl.mockReset();
@@ -35,12 +42,12 @@ describe("callFunction", () => {
 
   it("normalize edilmiş isteği gönderir ve doğrulanmış yanıtı döndürür", async () => {
     serverImpl.mockResolvedValue({ data: { verified: true, alreadyRecorded: false } });
-    const res = await verifyRealTimeAttendance({ sessionId: " s1 ", code: " k9p4x2 ", deviceId: DEVICE });
+    const res = await verifyRealTimeAttendance({ sessionId: " s1 ", code: " k9p4x2 ", assertion: ASSERTION });
     expect(res).toEqual({ verified: true, alreadyRecorded: false });
     expect(serverImpl).toHaveBeenCalledWith("verifyRealTimeAttendance", {
       sessionId: "s1",
       code: "K9P4X2",
-      deviceId: DEVICE,
+      assertion: ASSERTION,
     });
   });
 

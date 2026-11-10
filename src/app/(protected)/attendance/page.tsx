@@ -9,14 +9,14 @@ import {
 import { DoctorRealTimeCheckIn } from "@/components/attendance/DoctorRealTimeCheckIn";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 import type { ClinicMemberSession } from "@/lib/auth/types";
+import { toUserMessage } from "@/lib/errors";
 import {
   startLectureSession,
   endLectureSession,
-  verifyRealTimeAttendance,
   markAttendanceExcused,
   invokeWithFallback,
-  getOrCreateClientDeviceSecret,
 } from "@/lib/firebase/callables";
+import { checkInWithPasskey } from "@/lib/webauthn";
 
 const CLINIC_ROSTER: ClinicRosterMember[] = [
   {
@@ -163,73 +163,43 @@ export default function AttendancePage() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleVerifyAttendance = (inputCode: string, useRegisteredDevice: boolean, webAuthnOk: boolean) => {
+  // F4.2: kod + passkey imzası sunucuda doğrulanır; başarı yalnızca sunucu yanıtından sonra gösterilir.
+  // (Bu sayfanın geri kalanı F4.4'te gerçek veriye geçirilecek.)
+  const handleVerifyAttendance = async (inputCode: string) => {
     if (!liveSession) {
-      return {
-        ok: false,
-        message: "Şu anda aktif bir ders yoklaması bulunmuyor.",
-      };
+      return { ok: false, message: "Şu anda aktif bir ders yoklaması bulunmuyor." };
     }
-
-    if (!useRegisteredDevice) {
-      return {
-        ok: false,
-        message:
-          "Bu cihaz hesabınıza kayıtlı birincil cihaz değil. Cihaz değişikliği için Eğitim Sorumlusuna (Admin) başvurun.",
-      };
-    }
-
-    if (inputCode.trim().toUpperCase() !== liveSession.hmacSlotCode) {
-      return {
-        ok: false,
-        message:
-          "Girilen yoklama kodu geçersiz veya 15 saniyelik süresi doldu. Lütfen projektördeki güncel kodu girin.",
-      };
-    }
-
-    const nowTime = new Date().toTimeString().split(" ")[0];
-    void invokeWithFallback(
-      () =>
-        verifyRealTimeAttendance({
-          sessionId: liveSession.id,
-          code: inputCode,
-          deviceId: getOrCreateClientDeviceSecret(),
-        }),
-      () => ({
-        ok: true,
-        status: "present" as const,
-        verifiedAt: nowTime,
-        fullName: activeSession.fullName,
-        residencyYear: activeSession.residencyYear,
-      })
-    );
-
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === liveSession.id
-          ? {
-              ...s,
-              records: {
-                ...s.records,
-                [activeSession.uid]: {
-                  uid: activeSession.uid,
-                  fullName: activeSession.fullName,
-                  title: activeSession.title,
-                  residencyYear: activeSession.residencyYear,
-                  verifiedAt: nowTime,
-                  method: webAuthnOk ? "qr+webauthn" : "qr+device_bound",
-                  status: "present",
+    try {
+      const result = await checkInWithPasskey(liveSession.id, inputCode.trim());
+      const nowTime = new Date().toTimeString().split(" ")[0];
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === liveSession.id
+            ? {
+                ...s,
+                records: {
+                  ...s.records,
+                  [activeSession.uid]: {
+                    uid: activeSession.uid,
+                    fullName: activeSession.fullName,
+                    title: activeSession.title,
+                    residencyYear: activeSession.residencyYear,
+                    verifiedAt: nowTime,
+                    method: "qr+webauthn",
+                    status: "present",
+                  },
                 },
-              },
-            }
-          : s
-      )
-    );
-
-    return {
-      ok: true,
-      message: `Yoklama başarıyla doğrulandı (${activeSession.title} ${activeSession.fullName} • Saat: ${nowTime}).`,
-    };
+              }
+            : s
+        )
+      );
+      return {
+        ok: true,
+        message: result.alreadyRecorded ? "Bu derse katılımınız zaten kayıtlı." : "Yoklamanız alındı.",
+      };
+    } catch (err) {
+      return { ok: false, message: toUserMessage(err) };
+    }
   };
 
   const personalAttendanceHistory = sessions.map((s) => {

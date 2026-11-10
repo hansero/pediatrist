@@ -75,3 +75,21 @@ export async function listOobCodes(): Promise<Array<{ email: string; requestType
     ((await res.json()) as { oobCodes?: Array<{ email: string; requestType: string; oobLink: string }> }).oobCodes ?? []
   );
 }
+
+/** Dokümandan tek bir alanı siler (diğer alanlara dokunmaz). Testlerin seed hesabını başlangıç durumuna getirmesi için. */
+export async function deleteField(path: string, field: string): Promise<void> {
+  const res = await fetch(`${BASE}/${path}?updateMask.fieldPaths=${encodeURIComponent(field)}`, {
+    method: "PATCH",
+    headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+    body: JSON.stringify({ fields: {} }),
+  });
+  if (!res.ok) throw new Error(`Alan silinemedi: ${path}.${field} (HTTP ${res.status})`);
+}
+
+/** Dokümanda alan var mı? (iç içe değerleri çözmeden) */
+export async function hasField(path: string, field: string): Promise<boolean> {
+  const res = await fetch(`${BASE}/${path}`, { headers: { Authorization: "Bearer owner" } });
+  if (!res.ok) return false;
+  const doc = (await res.json()) as { fields?: Record<string, unknown> };
+  return Boolean(doc.fields && field in doc.fields);
+}
