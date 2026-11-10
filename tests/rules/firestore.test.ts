@@ -1,12 +1,12 @@
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
+import firebase from "firebase/compat/app";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 import { claimsOf, createRulesEnv, member, seedMembers } from "./helpers";
 
 /**
- * Firestore güvenlik kuralları.
- *
- * `it.fails`: AUDIT.md'deki BİLİNEN açıkları belgeler. Açık var oldukça bu testler "geçer";
- * açık kapatılınca kırmızıya döner ve `it` olarak değiştirilmelidir (bkz. ilgili plan adımı).
+ * Firestore güvenlik kuralları (F2.1). Yetkinin kaynağı `users/{uid}` dokümanıdır (D3);
+ * testlerde token claim'leri bilerek dokümanla ÇELİŞTİRİLİR ki kuralların claim'e değil
+ * dokümana baktığı kanıtlansın.
  */
 const admin = member("t-admin", "admin", "active");
 const resident = member("t-res", "user", "active");
@@ -14,7 +14,10 @@ const other = member("t-other", "user", "active");
 const pending = member("t-pending", "user", "pending");
 
 let env: RulesTestEnvironment;
-const as = (m: ReturnType<typeof member>) => env.authenticatedContext(m.uid, claimsOf(m)).firestore();
+const ctx = (m: ReturnType<typeof member>, extraClaims: Record<string, unknown> = {}) =>
+  env.authenticatedContext(m.uid, { ...claimsOf(m), ...extraClaims });
+const as = (m: ReturnType<typeof member>, extraClaims: Record<string, unknown> = {}) => ctx(m, extraClaims).firestore();
+const serverTime = () => firebase.firestore.FieldValue.serverTimestamp();
 
 beforeAll(async () => {
   env = await createRulesEnv();
@@ -25,11 +28,21 @@ afterAll(async () => {
 beforeEach(async () => {
   await env.clearFirestore();
   await seedMembers(env, [admin, resident, other, pending]);
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    const db = ctx.firestore();
+  await env.withSecurityRulesDisabled(async (c) => {
+    const db = c.firestore();
     await db.collection("materials").doc("m1").set({ title: "Materyal", status: "published" });
+    await db.collection("materials").doc("m1").collection("progress").doc(other.uid).set({ uid: other.uid });
     await db.collection("attendance_logs").doc(`s1_${resident.uid}`).set({ uid: resident.uid, sessionId: "s1" });
     await db.collection("attendance_logs").doc(`s1_${other.uid}`).set({ uid: other.uid, sessionId: "s1" });
+    await db.collection("attendance_sessions").doc("live1").set({ status: "live", title: "Canlı" });
+    await db.collection("attendance_sessions").doc("old1").set({ status: "closed", title: "Geçmiş" });
+    await db
+      .collection("attendance_sessions")
+      .doc("old1")
+      .collection("records")
+      .doc(resident.uid)
+      .set({ uid: resident.uid });
+    await db.collection("attendance_sessions").doc("old1").collection("records").doc(other.uid).set({ uid: other.uid });
     await db
       .collection("quiz_answer_keys")
       .doc("q1")
@@ -38,84 +51,275 @@ beforeEach(async () => {
       .set({ correctAnswers: ["A"] });
     await db.collection("quizzes").doc("q1").set({ title: "Sınav", status: "published" });
     await db.collection("quizzes").doc("q1").collection("questions_public").doc("q_001").set({ questionText: "?" });
+    await db.collection("quizzes").doc("draft1").set({ title: "Taslak", status: "draft" });
     await db.collection("invitations").doc("i1").set({ code: "DAVET", email: "x@example.test", used: false });
     await db.collection("quiz_attempts").doc(`q1_${other.uid}`).set({ uid: other.uid, quizId: "q1", score: 80 });
+    await db.collection("audit_logs").doc("a1").set({ action: "X" });
+    await db.collection("clinic_members").doc(resident.uid).set({ status: "active" });
   });
 });
 
-describe("kimlik ve üyelik durumu", () => {
+describe("kimlik ve üyelik durumu (doküman yetkinin kaynağıdır)", () => {
   it("oturum açmamış kullanıcı materyal okuyamaz", async () => {
     await assertFails(env.unauthenticatedContext().firestore().collection("materials").doc("m1").get());
   });
 
-  it("onay bekleyen kullanıcı materyal okuyamaz", async () => {
-    await assertFails(as(pending).collection("materials").doc("m1").get());
+  it("onay bekleyen kullanıcı, token'ında 'active' claim olsa da materyal okuyamaz", async () => {
+    await assertFails(as(pending, { status: "active" }).collection("materials").doc("m1").get());
   });
 
   it("aktif üye materyal okuyabilir", async () => {
     await assertSucceeds(as(resident).collection("materials").doc("m1").get());
   });
 
-  it("kullanıcı kendi profilinde rol veya durum değiştiremez", async () => {
+  it("C5: askıya alınmış üye, eski 'active' claim'li token'la materyal okuyamaz", async () => {
+    await env.withSecurityRulesDisabled(async (c) => {
+      await c.firestore().collection("users").doc(resident.uid).update({ status: "suspended" });
+    });
+    await assertFails(as(resident).collection("materials").doc("m1").get());
+  });
+
+  it("claim'de admin yazsa da dokümanda 'user' olan kullanıcı admin verisini okuyamaz", async () => {
+    await assertFails(as(resident, { role: "admin" }).collection("audit_logs").doc("a1").get());
+  });
+
+  it("profili olmayan oturum hiçbir modül verisini okuyamaz", async () => {
+    await assertFails(
+      env.authenticatedContext("hayalet", { status: "active" }).firestore().collection("materials").doc("m1").get()
+    );
+  });
+
+  it("tokensValidAfter'dan önce açılmış oturum reddedilir, sonrası kabul edilir", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    await seedMembers(env, [resident], { tokensValidAfter: now });
+    await assertFails(
+      as(resident, { auth_time: now - 60 })
+        .collection("materials")
+        .doc("m1")
+        .get()
+    );
+    await assertSucceeds(
+      as(resident, { auth_time: now + 5 })
+        .collection("materials")
+        .doc("m1")
+        .get()
+    );
+  });
+
+  it("kendi profilini durumu ne olursa olsun okur; başkasınınkini okuyamaz", async () => {
+    await assertSucceeds(as(pending).collection("users").doc(pending.uid).get());
+    await assertFails(as(resident).collection("users").doc(other.uid).get());
+    await assertSucceeds(as(admin).collection("users").doc(other.uid).get());
+  });
+
+  it("hiç kimse (admin dahil) profil güncelleyemez; yetki değişikliği yalnızca Cloud Functions ile", async () => {
     await assertFails(as(resident).collection("users").doc(resident.uid).update({ role: "admin" }));
     await assertFails(as(pending).collection("users").doc(pending.uid).update({ status: "active" }));
+    await assertFails(as(admin).collection("users").doc(other.uid).update({ status: "suspended" }));
+    await assertFails(as(admin).collection("users").doc(other.uid).delete());
   });
 
-  it("istemci kendini admin olarak kaydedemez", async () => {
-    const db = env.authenticatedContext("t-new", {}).firestore();
-    await assertFails(db.collection("users").doc("t-new").set({ uid: "t-new", role: "admin", status: "active" }));
+  it("kaldırılan 'clinic_members' koleksiyonu kapalıdır", async () => {
+    await assertFails(as(resident).collection("clinic_members").doc(resident.uid).get());
+  });
+});
+
+describe("kayıt sırasında profil oluşturma (geçici kural; F2.3'te kaldırılacak)", () => {
+  const uid = "t-new";
+  const email = "yeni@example.test";
+  const db = () => env.authenticatedContext(uid, { email }).firestore();
+  const valid = () => ({
+    uid,
+    title: "Asistan Dr.",
+    fullName: "Yeni Asistan",
+    email,
+    residencyYear: 1,
+    role: "user",
+    status: "pending",
+    inviteCode: null,
+    mfaEnabled: false,
+    boundDeviceHash: null,
+    createdAt: serverTime(),
   });
 
-  it.fails("C5 (F2.1): askıya alınmış üye, eski 'active' claim'li token'la materyal okuyamaz", async () => {
-    await env.withSecurityRulesDisabled(async (ctx) => {
-      await ctx.firestore().collection("users").doc(resident.uid).update({ status: "suspended" });
-    });
-    // Token hâlâ askıya almadan önceki claim'leri taşıyor (ID token 1 saat geçerli).
-    await assertFails(as(resident).collection("materials").doc("m1").get());
+  it("kayıt ekranının yazdığı biçimle bekleyen profil oluşturulabilir", async () => {
+    await assertSucceeds(db().collection("users").doc(uid).set(valid()));
+  });
+
+  it("kendini admin veya aktif olarak kaydedemez", async () => {
+    await assertFails(
+      db()
+        .collection("users")
+        .doc(uid)
+        .set({ ...valid(), role: "admin" })
+    );
+    await assertFails(
+      db()
+        .collection("users")
+        .doc(uid)
+        .set({ ...valid(), status: "active" })
+    );
+  });
+
+  it("ek alan, başkasının e-postası, başka uid veya istemci zamanı kabul edilmez", async () => {
+    await assertFails(
+      db()
+        .collection("users")
+        .doc(uid)
+        .set({ ...valid(), approvedBy: "x" })
+    );
+    await assertFails(
+      db()
+        .collection("users")
+        .doc(uid)
+        .set({ ...valid(), boundDeviceHash: "f".repeat(64) })
+    );
+    await assertFails(
+      db()
+        .collection("users")
+        .doc(uid)
+        .set({ ...valid(), email: "baskasi@example.test" })
+    );
+    await assertFails(
+      db()
+        .collection("users")
+        .doc("baskasi")
+        .set({ ...valid(), uid: "baskasi" })
+    );
+    await assertFails(
+      db()
+        .collection("users")
+        .doc(uid)
+        .set({ ...valid(), createdAt: firebase.firestore.Timestamp.fromMillis(0) })
+    );
+  });
+
+  it("geçersiz ünvan / kıdem yılı / ad reddedilir", async () => {
+    await assertFails(
+      db()
+        .collection("users")
+        .doc(uid)
+        .set({ ...valid(), title: "Başhekim" })
+    );
+    await assertFails(
+      db()
+        .collection("users")
+        .doc(uid)
+        .set({ ...valid(), residencyYear: 9 })
+    );
+    await assertFails(
+      db()
+        .collection("users")
+        .doc(uid)
+        .set({ ...valid(), fullName: "x" })
+    );
   });
 });
 
 describe("kişisel veri izolasyonu", () => {
-  it("asistan yalnızca kendi yoklama logunu okur", async () => {
+  it("asistan yalnızca kendi yoklama logunu okur; filtresiz liste reddedilir", async () => {
     await assertSucceeds(as(resident).collection("attendance_logs").doc(`s1_${resident.uid}`).get());
     await assertFails(as(resident).collection("attendance_logs").doc(`s1_${other.uid}`).get());
-  });
-
-  it("asistan filtresiz yoklama logu listeleyemez, kendi uid filtresiyle listeleyebilir", async () => {
     await assertFails(as(resident).collection("attendance_logs").get());
     await assertSucceeds(as(resident).collection("attendance_logs").where("uid", "==", resident.uid).get());
+  });
+
+  it("asistan yalnızca canlı dersi görür; geçmiş ders ve başkasının kaydı admin'e özel", async () => {
+    await assertSucceeds(as(resident).collection("attendance_sessions").doc("live1").get());
+    await assertFails(as(resident).collection("attendance_sessions").doc("old1").get());
+    await assertSucceeds(as(resident).doc(`attendance_sessions/old1/records/${resident.uid}`).get());
+    await assertFails(as(resident).doc(`attendance_sessions/old1/records/${other.uid}`).get());
+    await assertSucceeds(as(admin).collection("attendance_sessions").doc("old1").get());
+    await assertSucceeds(as(admin).collection("attendance_logs").get());
   });
 
   it("asistan başkasının sınav girişimini okuyamaz", async () => {
     await assertFails(as(resident).collection("quiz_attempts").doc(`q1_${other.uid}`).get());
   });
-
-  it("admin bütün yoklama loglarını listeleyebilir", async () => {
-    await assertSucceeds(as(admin).collection("attendance_logs").get());
-  });
 });
 
 describe("sınav gizliliği", () => {
-  it("asistan cevap anahtarını okuyamaz", async () => {
+  it("asistan cevap anahtarını ve arşivi okuyamaz", async () => {
     await assertFails(as(resident).collection("quiz_answer_keys").doc("q1").collection("items").doc("q_001").get());
+    await assertFails(as(resident).collection("quiz_question_archive").get());
   });
 
-  it.fails("C7 (F2.1/F5.1): asistan sınava başlamadan yayındaki soruları okuyamaz", async () => {
+  it("C7: asistan yayındaki sınavın sorularını doğrudan okuyamaz (sorular startQuizAttempt ile gelir)", async () => {
     await assertFails(as(resident).collection("quizzes").doc("q1").collection("questions_public").doc("q_001").get());
+    await assertSucceeds(as(admin).collection("quizzes").doc("q1").collection("questions_public").doc("q_001").get());
+  });
+
+  it("asistan yayındaki sınavı görür, taslağı göremez; yalnızca durum filtreli liste", async () => {
+    await assertSucceeds(as(resident).collection("quizzes").doc("q1").get());
+    await assertFails(as(resident).collection("quizzes").doc("draft1").get());
+    await assertSucceeds(as(resident).collection("quizzes").where("status", "==", "published").get());
+    await assertFails(as(resident).collection("quizzes").get());
   });
 });
 
-describe("değiştirilemez kayıtlar ve davetler", () => {
-  it("hiçbir istemci (admin dahil) denetim kaydı yazamaz", async () => {
+describe("materyal okuma ilerlemesi", () => {
+  const progress = (uid: string, overrides: Record<string, unknown> = {}) => ({
+    uid,
+    secondsSpent: 120,
+    lastPage: 2,
+    completed: false,
+    updatedAt: serverTime(),
+    ...overrides,
+  });
+  const ref = (m: ReturnType<typeof member>, uid = m.uid) => as(m).doc(`materials/m1/progress/${uid}`);
+
+  it("aktif üye kendi ilerlemesini tanımlı alanlarla yazar ve okur", async () => {
+    await assertSucceeds(ref(resident).set(progress(resident.uid)));
+    await assertSucceeds(ref(resident).get());
+  });
+
+  it("ek alan, yanlış tip, negatif süre veya istemci zamanı reddedilir", async () => {
+    await assertFails(ref(resident).set(progress(resident.uid, { score: 100 })));
+    await assertFails(ref(resident).set(progress(resident.uid, { completed: "evet" })));
+    await assertFails(ref(resident).set(progress(resident.uid, { secondsSpent: -1 })));
+    await assertFails(
+      ref(resident).set(progress(resident.uid, { updatedAt: firebase.firestore.Timestamp.fromMillis(0) }))
+    );
+  });
+
+  it("başkası adına yazamaz, başkasınınkini okuyamaz; bekleyen kullanıcı yazamaz", async () => {
+    await assertFails(ref(resident, other.uid).set(progress(other.uid)));
+    await assertFails(ref(resident, other.uid).get());
+    await assertFails(ref(pending).set(progress(pending.uid)));
+  });
+
+  it("admin bütün materyallerin ilerlemesini tek sorguda (collectionGroup) okur; asistan okuyamaz", async () => {
+    await assertSucceeds(as(admin).collectionGroup("progress").get());
+    await assertFails(as(resident).collectionGroup("progress").get());
+  });
+});
+
+describe("değiştirilemez kayıtlar, davetler, yapılandırma", () => {
+  it("hiçbir istemci (admin dahil) denetim kaydı yazamaz; yalnızca admin okur", async () => {
     await assertFails(as(admin).collection("audit_logs").add({ action: "FAKE" }));
     await assertFails(as(resident).collection("audit_logs").add({ action: "FAKE" }));
+    await assertSucceeds(as(admin).collection("audit_logs").doc("a1").get());
+    await assertFails(as(resident).collection("audit_logs").doc("a1").get());
   });
 
-  it("asistan yoklama oturumu oluşturamaz", async () => {
+  it("istemci yoklama oturumu, sınav veya materyal yazamaz (admin dahil)", async () => {
     await assertFails(as(resident).collection("attendance_sessions").doc("x").set({ status: "live" }));
+    await assertFails(as(admin).collection("attendance_sessions").doc("x").set({ status: "live" }));
+    await assertFails(as(admin).collection("quizzes").doc("x").set({ status: "published" }));
+    await assertFails(as(admin).collection("materials").doc("x").set({ title: "x" }));
   });
 
-  it.fails("C9 (F2.1): asistan davet kodlarını okuyamaz", async () => {
+  it("C9: asistan davet kodlarını okuyamaz; admin okur", async () => {
     await assertFails(as(resident).collection("invitations").doc("i1").get());
+    await assertSucceeds(as(admin).collection("invitations").doc("i1").get());
+  });
+
+  it("aktif üye hesaplayıcı notlarını okur, admin bile doğrudan yazamaz (F7.4: callable)", async () => {
+    await assertSucceeds(as(resident).collection("calculators_config").doc("c1").get());
+    await assertFails(as(admin).collection("calculators_config").doc("c1").set({ clinicalProtocolNote: "x" }));
+  });
+
+  it("tanımlanmamış koleksiyonlar varsayılan olarak kapalıdır", async () => {
+    await assertFails(as(admin).collection("baska_bir_sey").doc("x").get());
   });
 });

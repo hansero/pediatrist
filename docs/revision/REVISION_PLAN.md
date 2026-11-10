@@ -46,7 +46,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F1.3 | Functions: `guards.ts`, `validate.ts`, tüm callable'ların refactor'u | M | ✅ | C5 (kısmen), S8 |
 | F1.4 | İstemci `callables.ts` yeniden yazımı, `AppError`, `useAsyncAction` | S | ✅ | C1 (temel) |
 | **F2** | **Yetkilendirme temeli** | | | |
-| F2.1 | `firestore.rules` yeniden yazımı + rules testleri | L | ⬜ | C5, C7 (kural), S11, S12, C9 (davet) |
+| F2.1 | `firestore.rules` yeniden yazımı + rules testleri | L | ✅ | C5, C7 (kural), S11, S12, C9 (davet) |
 | F2.2 | `storage.rules` yeniden yazımı + testler | S | ⬜ | C5, C11 (silme/MIME) |
 | F2.3 | Claim senkronu, `tokensValidAfter`, üye yönetimi korumaları, sunucu tarafı kayıt, davetler | L | ⬜ | C5, C9, S9 |
 | F2.4 | `ClinicSessionContext` yeniden yazımı (canlı profil, token yenileme) | M | ⬜ | C5 |
@@ -101,13 +101,11 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F1.4. **F1 fazı tamamlandı** (F1.1 ortak sözleşmeler, F1.2 ortak soru doğrulayıcı + CSV yazıcısı, F1.3 guard/validate/defineCallable, F1.4 istemci çağrı katmanı). Testler: unit 64, functions 26, rules 15 + 4 `it.fails`, e2e 6.
+- **Son tamamlanan adım:** F2.1 (Firestore kuralları; C5, C7, C9 kural katmanında kapandı; rules 32 + 1 `it.fails`; e2e kayıt regresyon testi). Ayrıca `rev(CI)`: Playwright kurulumu önbellek + zaman sınırı + yeniden deneme (run #8, apt'de 29 dk asılı kalmıştı).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F2.1 `firestore.rules` yeniden yazımı + rules testleri (`tests/rules/firestore.test.ts`; C5, C7, C9 `it.fails` → `it`).
-- **⚠ F2.1 sıralama uyarısı:** D4, istemcinin `users` dokümanı oluşturmasını yasaklıyor, ancak sunucu tarafı kayıt (`completeRegistration`) **F2.3'te** geliyor ve kayıt ekranı (`register/page.tsx`) hâlâ `setDoc(users/{uid})` yapıyor. F2.1'de create kuralı **kapatılmamalı, sıkılaştırılmalı**: `request.auth.uid == uid`, `keys().hasOnly([uid,title,fullName,email,residencyYear,role,status,inviteCode,mfaEnabled,boundDeviceHash,createdAt])`, `role == 'user'`, `status == 'pending'`, `email == request.auth.token.email`, tip/aralık kontrolleri, `boundDeviceHash == null`. Tamamen kapatma F2.3'te `completeRegistration` ile birlikte yapılır ve kural testi o zaman güncellenir.
-- **F2.1 için diğer notlar:** Kurallar `tokensValidAfter` (epoch saniye) ile `request.auth.token.auth_time`'ı karşılaştırmalı (guards.ts ile aynı mantık). C7 için `questions_public` hekime kapatılır; mock sınav sayfası zaten Firestore'dan soru okumuyor, kırılacak bir akış yok. Gerçek akış F5.1'de `startQuizAttempt`'in soruları döndürmesiyle gelir.
+- **Sıradaki iş:** F2.2 `storage.rules`. Yetki doküman üzerinden: `firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data` → status/role ve `tokensValidAfter`. `materials/{materialId}/{file}` için `create, update` (admin + boyut + MIME: pdf, video/*, image/*, pptx), `delete` (admin, **C11 kök nedeni:** silmede `request.resource` null), `read` aktif üye. `quiz_media/{file}`: okuma aktif üye, yazma admin + image/* + ≤15 MB, silme admin. `tests/rules/storage.test.ts`: C11 `it.fails` → `it`; ek testler (askıdaki üye, claim/doküman çelişkisi, silme, MIME, boyut, quiz_media). Not: Storage rules-unit-testing `firestore.get()` için Firestore emülatörünün de çalışması gerekir (`test:rules` zaten ikisini de başlatıyor). Test token'ları için `claimsOf` gerçek `auth_time` veriyor.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
-- **Engeller / notlar:** N3 açık (§7).
+- **Engeller / notlar:** N3 açık (§7). Kayıt create kuralı geçici (F2.3'te kapanacak).
 
 ---
 
@@ -386,6 +384,19 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Admin her şeyi okuyabilir; istemci yazımları hep reddedilir.
 - **`it.fails` → `it`:** `tests/rules/firestore.test.ts` içindeki C5, C7 ve C9 testleri bu adımda normal teste çevrilir.
 - **Doğrulama:** `npm run test:rules`
+- **✅ Uygulanan (2026-11-10) — plandan sapmalar:**
+  - `isActive()` = profil var + `status == 'active'` + `auth_time > tokensValidAfter` (yoksa 0); `isAdmin()` = `isActive()` + `role == 'admin'`. Claim'lere hiç bakılmıyor (testlerde claim'ler bilerek dokümanla çelişecek şekilde verildi).
+  - **C5, C7, C9 kural katmanında kapandı;** üç `it.fails` testi `it`'e çevrildi. C7'nin ikinci yarısı (teslim edilen girişimdeki `gradedReport` sınav kapanmadan doğru cevapları içeriyor) kuralla çözülemez → F5.1 `revealPolicy` (kural dosyasında not var).
+  - **`users` create kuralı kapatılmadı, sıkılaştırıldı** (F1.4 devir uyarısı): yalnızca kendi uid'i, `hasOnly`/`hasAll` alan listesi, `role == 'user'`, `status == 'pending'`, `email == token.email`, ünvan listesi, ad 2–120, kıdem 1–4, davet kodu null/≤64, `mfaEnabled == false`, `boundDeviceHash == null`, `createdAt == request.time`. **F2.3'te `completeRegistration` ile birlikte tamamen kapatılacak.** `users` update/delete herkese (admin dahil) kapalı.
+  - `clinic_members` kaldırıldı (varsayılan kapalı). `invitations`: yalnızca admin okur.
+  - Materyal ilerlemesi: sahibi + aktif, `hasOnly`/`hasAll` 5 alan, tip ve aralık kontrolleri, `updatedAt == request.time`, silme yok. Admin için `match /{path=**}/progress/{uid}` collectionGroup okuma kuralı.
+  - **`calculators_config` yazımı admin'e de kapalı** → F7.4'te callable (denetim kaydı için). F7.4 metni buna göre güncellendi.
+  - Henüz kullanılmayan koleksiyonlar (`stats`, `quiz_attempt_drafts`, `webauthn_challenges`, `attendance_meta`) tanımlanmadı (varsayılan kapalı); ilgili adımlarda eklenecek.
+  - **MFA / e-posta doğrulaması kurallarda yok:** kurallar functions parametrelerini okuyamaz. Zorunluluk callable'larda (`guards.ts`). F3.4'te gerçek MFA gelince salt-okuma veriler için kurallara `sign_in_second_factor` eklenip eklenmeyeceği değerlendirilecek (emülatör kuralları ayrı tutulmalı).
+  - **Test aracı bulgusu:** `@firebase/util` sahte token'ında `iat` verilmezse `auth_time` = 0 (1970) oluyor ve yeni kural her aktif kullanıcıyı reddediyordu. Kural doğru, gerçek token'larda `auth_time` her zaman oturum açma anı. Çözüm: `tests/rules/helpers.ts → claimsOf` gerçek `iat`/`auth_time` veriyor. Önce `sessionNotRevoked()` geçici olarak devre dışı bırakılıp sorun yalıtıldı.
+  - Testler: **rules 32 + 1 `it.fails`** (C11 → F2.2). Kapsam: doküman ile claim çelişkisi, profilsiz oturum, `tokensValidAfter`, kendi profilini okuma, profil güncelleme yasağı, geçici kayıt kuralı (geçerli biçim, admin/aktif, ek alan, başka e-posta/uid, istemci zamanı, ünvan/kıdem/ad), kişisel veri izolasyonu (yoklama logu, canlı/geçmiş ders, kayıtlar, girişimler), sınav gizliliği (anahtar, arşiv, sorular, taslak, filtreli liste), ilerleme şeması ve collectionGroup, denetim kaydı, istemci yazımları, davetler, hesaplayıcı notları, tanımsız koleksiyon.
+  - **E2E kayıt regresyon testi** (`e2e/registration.spec.ts`) + `e2e/fixtures/emulator.ts` (emülatör REST'iyle profil doğrulama). Gerçek kayıt ekranı sıkılaştırılmış kuralla çalışıyor ve profil `pending` olarak doğru alanlarla oluşuyor. Not: sayfadaki boş `role="alert"` Next.js'in rota duyurucusu, hata değil. E2E toplam 8.
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 64, functions 26, rules 32 + 1, e2e 8, next build.
 
 #### F2.2 Storage kuralları (S)
 - **Dosyalar:** `storage.rules`, `tests/rules/storage.test.ts`
@@ -724,7 +735,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - **Dosyalar:** `src/app/(protected)/calculators/page.tsx`, `src/lib/pediatrics/index.ts`, `functions/src/calculatorsService.ts` (opsiyonel)
 - **Yapılacaklar:**
   - D8 uygulanır: kartlar "Yakında" olarak gösterilir. "Maksimum doz güvenlik kilidi aktif" gibi çalışmayan özellik iddiaları kaldırılır; bunlar "planlanan" olarak etiketlenir.
-  - Admin protokol notu `calculators_config/{id}` dokümanına kaydedilir. Bu, admin-only kural ve `updatedBy`/`updatedAt` alanlarıyla doğrudan yazım veya callable ile yapılır.
+  - Admin protokol notu `calculators_config/{id}` dokümanına **callable ile** kaydedilir (`updateCalculatorConfig`; F2.1'de kural admin yazımını da kapattı, denetim kaydı için).
   - Katalogdaki statik tanımlar ürün metadata'sıdır (mock değildir) ve kalabilir.
 
 #### F7.5 Fallback temizliği (S)

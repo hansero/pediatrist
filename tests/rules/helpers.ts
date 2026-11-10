@@ -36,16 +36,29 @@ export interface TestMember {
 
 export const member = (uid: string, role: Role, status: Status): TestMember => ({ uid, role, status });
 
+/**
+ * Gerçekçi token: `@firebase/util` sahte token'ında `iat` verilmezse `auth_time` 0 (1970) olur;
+ * gerçek Firebase token'larında `auth_time` her zaman oturum açma anıdır. Kurallar `auth_time`'ı
+ * `tokensValidAfter` ile karşılaştırdığı için (F2.1) burada gerçek zaman verilir.
+ */
 export function claimsOf(m: TestMember) {
-  return { role: m.role, status: m.status, residencyYear: 2 };
+  const now = Math.floor(Date.now() / 1000);
+  return { role: m.role, status: m.status, residencyYear: 2, iat: now, auth_time: now };
 }
 
 /** users/{uid} dokümanını kurallar devre dışıyken yazar. */
-export async function seedMembers(env: RulesTestEnvironment, members: TestMember[]) {
+export async function seedMembers(
+  env: RulesTestEnvironment,
+  members: TestMember[],
+  extra: Record<string, unknown> = {}
+) {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     for (const m of members) {
-      await db.collection("users").doc(m.uid).set({ uid: m.uid, role: m.role, status: m.status, residencyYear: 2 });
+      await db
+        .collection("users")
+        .doc(m.uid)
+        .set({ uid: m.uid, role: m.role, status: m.status, residencyYear: 2, ...extra });
     }
   });
 }

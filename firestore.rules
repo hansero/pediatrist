@@ -1,161 +1,197 @@
 rules_version = '2';
+
+// Pediatrist — Firestore güvenlik kuralları (REVISION_PLAN F2.1)
+//
+// İlkeler:
+//  - Yetkinin TEK kaynağı `users/{uid}` dokümanıdır (D3). Custom claims yalnızca önbellektir;
+//    askıya alınan / rolü düşürülen bir üyenin elindeki eski token kuralları geçemez (AUDIT C5).
+//  - `tokensValidAfter` (epoch saniye) ile oturum iptali: bu andan önce açılmış oturumlar geçersizdir.
+//    Aynı mantık Cloud Functions tarafında `functions/src/guards.ts` içindedir.
+//  - İstemci hiçbir koleksiyona doğrudan yazamaz; bütün yazımlar Cloud Functions (Admin SDK) üzerindendir.
+//    İki istisna: kayıt sırasında kendi profilini oluşturma (F2.3'te sunucuya taşınıp kaldırılacak) ve
+//    kendi materyal okuma ilerlemesi.
+//  - Listelenmeyen her yol varsayılan olarak kapalıdır.
 service cloud.firestore {
   match /databases/{database}/documents {
-    // =========================================================================
-    // ZERO-TRUST YARDIMCI GÜVENLİK FONKSİYONLARI
-    // =========================================================================
-    function isAuthenticated() {
+
+    // ===================================================================================
+    // Yardımcılar
+    // ===================================================================================
+    function signedIn() {
       return request.auth != null;
     }
 
-    function userDocExists() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
     }
 
-    function userDocData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function profilePath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
-    function isActiveMember() {
-      return isAuthenticated() && (
-        request.auth.token.status == 'active' ||
-        (userDocExists() && userDocData().status == 'active')
-      );
+    function profile() {
+      return get(profilePath()).data;
+    }
+
+    // Oturum, profildeki iptal zamanından (tokensValidAfter) SONRA açılmış olmalı.
+    function sessionNotRevoked() {
+      return request.auth.token.auth_time > profile().get('tokensValidAfter', 0);
+    }
+
+    function isActive() {
+      return signedIn() && exists(profilePath()) && profile().status == 'active' && sessionNotRevoked();
     }
 
     function isAdmin() {
-      return isActiveMember() && (
-        request.auth.token.role == 'admin' ||
-        (userDocExists() && userDocData().role == 'admin')
-      );
+      return isActive() && profile().role == 'admin';
     }
 
-    function isOwner(uid) {
-      return isAuthenticated() && request.auth.uid == uid;
-    }
-
-    // =========================================================================
-    // KULLANICI PROFİLLERİ (/users/{uid} ve /clinic_members/{uid})
-    // =========================================================================
+    // ===================================================================================
+    // Üyeler
+    // ===================================================================================
     match /users/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
-      // Yeni kayıt olan kullanıcı yalnızca 'user' rolü ve 'pending' (onay bekliyor) statüsüyle oluşabilir
-      allow create: if request.auth != null
-                    && request.auth.uid == uid
-                    && request.resource.data.role == 'user'
-                    && request.resource.data.status == 'pending';
-      // Rol, kıdem ve onay durumu güncellemeleri yalnızca Admin veya Cloud Functions tarafından yapılır
-      allow update, delete: if isAdmin();
+      // Kendi profilini durumu ne olursa olsun okuyabilir (onay bekleme / askı ekranı için).
+      allow read: if isSelf(uid) || isAdmin();
+
+      // GEÇİCİ (F2.3'te kaldırılacak): kayıt ekranı kendi profilini oluşturur. D4'e göre profil
+      // sunucuda `completeRegistration` ile yazılacak; o zamana kadar alanlar sıkı biçimde sınırlanır.
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly([
+             'uid', 'title', 'fullName', 'email', 'residencyYear', 'role', 'status',
+             'inviteCode', 'mfaEnabled', 'boundDeviceHash', 'createdAt'])
+        && request.resource.data.keys().hasAll([
+             'uid', 'title', 'fullName', 'email', 'residencyYear', 'role', 'status', 'createdAt'])
+        && request.resource.data.uid == uid
+        && request.resource.data.role == 'user'
+        && request.resource.data.status == 'pending'
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.title in ['Asistan Dr.', 'Uzm. Dr.', 'Doç. Dr.', 'Prof. Dr.']
+        && request.resource.data.fullName is string
+        && request.resource.data.fullName.size() >= 2
+        && request.resource.data.fullName.size() <= 120
+        && request.resource.data.residencyYear in [1, 2, 3, 4]
+        && (!('inviteCode' in request.resource.data)
+            || request.resource.data.inviteCode == null
+            || (request.resource.data.inviteCode is string && request.resource.data.inviteCode.size() <= 64))
+        && request.resource.data.get('mfaEnabled', false) == false
+        && request.resource.data.get('boundDeviceHash', null) == null
+        && request.resource.data.createdAt == request.time;
+
+      // Rol, durum, kıdem, cihaz bağı yalnızca Cloud Functions ile değişir.
+      allow update, delete: if false;
     }
 
-    match /clinic_members/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
-      allow write: if isAdmin();
-    }
-
-    // =========================================================================
-    // KURUMSAL DAVETLER (/invitations/{inviteId})
-    // =========================================================================
+    // Davet kodları: yalnızca admin görür (AUDIT C9). Oluşturma/kullanma Cloud Functions ile (F2.3).
     match /invitations/{inviteId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
-    // =========================================================================
-    // MODÜL 1: EĞİTİM MATERYALLERİ (/materials/{materialId})
-    // =========================================================================
+    // ===================================================================================
+    // Modül 1: Eğitim materyalleri
+    // ===================================================================================
     match /materials/{materialId} {
-      allow read: if isActiveMember();
-      allow write: if isAdmin();
+      allow read: if isActive();
+      allow write: if false; // F6.1: createMaterial / updateMaterial / deleteMaterial
 
+      // Kişisel okuma ilerlemesi: yalnızca sahibi, yalnızca tanımlı alanlarla yazar.
       match /progress/{uid} {
-        allow read: if isOwner(uid) || isAdmin();
-        allow write: if isOwner(uid)
-                      && request.resource.data.uid == request.auth.uid;
+        allow read: if (isSelf(uid) && isActive()) || isAdmin();
+        allow create, update: if isSelf(uid) && isActive()
+          && request.resource.data.keys().hasOnly(['uid', 'secondsSpent', 'lastPage', 'completed', 'updatedAt'])
+          && request.resource.data.keys().hasAll(['uid', 'secondsSpent', 'lastPage', 'completed', 'updatedAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.secondsSpent is int
+          && request.resource.data.secondsSpent >= 0
+          && request.resource.data.secondsSpent <= 604800
+          && request.resource.data.lastPage is int
+          && request.resource.data.lastPage >= 0
+          && request.resource.data.lastPage <= 10000
+          && request.resource.data.completed is bool
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if false;
       }
     }
 
-    // =========================================================================
-    // MODÜL 2: PEDİATRİ HESAPLAYICI PROTOKOL YAPILANDIRMASI (/calculators_config/{calcId})
-    // =========================================================================
-    match /calculators_config/{calcId} {
-      allow read: if isActiveMember();
-      allow write: if isAdmin();
+    // Admin okunma raporu: bütün materyallerin ilerleme kayıtları (collectionGroup sorgusu).
+    match /{path=**}/progress/{uid} {
+      allow read: if isAdmin();
     }
 
-    // =========================================================================
-    // MODÜL 3: DERS KATILIM KONTROLÜ (/attendance_sessions/{sessionId})
-    // =========================================================================
+    // ===================================================================================
+    // Modül 2: Hesaplayıcı protokol notları
+    // ===================================================================================
+    match /calculators_config/{calcId} {
+      allow read: if isActive();
+      allow write: if false; // F7.4: callable (denetim kaydı ile)
+    }
+
+    // ===================================================================================
+    // Modül 3: Ders katılım kontrolü
+    // ===================================================================================
     match /attendance_sessions/{sessionId} {
-      // Hekim yalnızca canlı dersi görebilir (bekleme ekranı / yoklama formu); geçmiş dersler Admin'e özel
-      allow read: if isAdmin() || (isActiveMember() && resource.data.status == 'live');
-      // Ders başlatma / bitirme yalnızca Cloud Functions (startLectureSession / endLectureSession)
+      // Hekim yalnızca canlı dersi görür; geçmiş dersler admin'e özel.
+      allow read: if isAdmin() || (isActive() && resource.data.status == 'live');
       allow write: if false;
 
       match /records/{uid} {
-        allow read: if isOwner(uid) || isAdmin();
-        // Katılım kaydı yalnızca Cloud Function (verifyRealTimeAttendance / markAttendanceExcused) yazar
+        allow read: if (isSelf(uid) && isActive()) || isAdmin();
         allow write: if false;
       }
     }
 
-    // Ders & katılımcı bazlı dashboard için düz katılım logu
+    // Ders ve katılımcı bazlı raporlar için düz katılım logu.
     match /attendance_logs/{logId} {
-      allow read: if isAdmin() || (isActiveMember() && resource.data.uid == request.auth.uid);
+      allow read: if isAdmin() || (isActive() && resource.data.uid == request.auth.uid);
       allow write: if false;
     }
 
+    // HMAC anahtarları istemciye tamamen kapalıdır (admin dahil).
     match /attendance_secrets/{sessionId} {
-      // Kriptografik HMAC anahtarları istemciye tamamen kapalıdır (Admin dahil)
       allow read, write: if false;
     }
 
-    // =========================================================================
-    // MODÜL 4: ONLINE QUIZ & KLİNİK VAKA DEĞERLENDİRME (/quizzes/{quizId})
-    // =========================================================================
-    function quizStatus(quizId) {
-      return get(/databases/$(database)/documents/quizzes/$(quizId)).data.status;
-    }
-
+    // ===================================================================================
+    // Modül 4: Online sınav
+    // ===================================================================================
     match /quizzes/{quizId} {
-      // Taslaklar yalnızca Admin'e görünür; hekim yayındaki / kapanmış sınavın başlık bilgisini görür
-      allow read: if isAdmin() || (isActiveMember() && resource.data.status in ['published', 'closed']);
-      // Taslak / yayın / kapatma yalnızca Cloud Functions (saveQuizDraft / publishQuiz / closeQuiz)
+      // Taslaklar yalnızca admin'e görünür; hekim yayındaki / kapanmış sınavın başlık bilgisini görür.
+      allow read: if isAdmin() || (isActive() && resource.data.status in ['published', 'closed']);
       allow write: if false;
 
-      // 1–7. alanlar yalnızca sınav YAYINDAYKEN hekime açılır
+      // Sorular hekime DOĞRUDAN açılmaz (AUDIT C7): sınava başlamadan okunup süre sınırı atlatılabiliyordu.
+      // Hekim soruları `startQuizAttempt` yanıtıyla alır (F5.1).
       match /questions_public/{questionId} {
-        allow read: if isAdmin() || (isActiveMember() && quizStatus(quizId) == 'published');
+        allow read: if isAdmin();
         allow write: if false;
       }
     }
 
-    // 8. (Doğru Seçenek) ve 9. (Feedback_Text) alanlar hekime her zaman kapalıdır
+    // 8. (doğru seçenek) ve 9. (feedback) alanlar hekime her zaman kapalı.
     match /quiz_answer_keys/{quizId}/{document=**} {
       allow read: if isAdmin();
       allow write: if false;
     }
 
-    // Kayıp Önleyici 9 Alanlı Soru Arşivi
     match /quiz_question_archive/{archiveId} {
       allow read: if isAdmin();
       allow write: if false;
     }
 
-    // Sınav Girişimleri (Kişisel İzolasyon)
+    // Hekim yalnızca kendi girişimlerini okur (liste sorgusu `where uid == auth.uid` içermeli).
+    // Not: girişimdeki karne (gradedReport) sınav kapanmadan doğru cevapları içerebilir; bu F5.1'de
+    // `revealPolicy` ile sunucu tarafında çözülür.
     match /quiz_attempts/{attemptId} {
-      // Hekim YALNIZCA kendi girişimlerini okur; Admin tüm hekimlerin loglarını okur
-      allow read: if isAdmin() || (isActiveMember() && resource.data.uid == request.auth.uid);
-      // Başlatma / teslim / puanlama yalnızca Cloud Functions (startQuizAttempt / submitQuizAttempt)
+      allow read: if isAdmin() || (isActive() && resource.data.uid == request.auth.uid);
       allow write: if false;
     }
 
-    // =========================================================================
-    // DEĞİŞTİRİLEMEZ SİBER GÜVENLİK DENETİM KAYITLARI (/audit_logs/{logId})
-    // =========================================================================
+    // ===================================================================================
+    // Değiştirilemez denetim kayıtları
+    // ===================================================================================
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      allow write: if false; // Yalnızca Cloud Functions Admin SDK yazabilir, kimse silemez
+      allow write: if false;
     }
   }
 }
