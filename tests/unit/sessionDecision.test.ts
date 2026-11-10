@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SIGN_OUT_MESSAGES, evaluateSession } from "@/lib/auth/sessionDecision";
+import { SIGN_OUT_MESSAGES, SIGN_OUT_TONES, evaluateSession } from "@/lib/auth/sessionDecision";
 
 const now = 1_800_000_000;
 const token = (overrides = {}) => ({ authTimeSeconds: now, claimRole: "user", claimStatus: "active", ...overrides });
@@ -53,6 +53,12 @@ describe("evaluateSession", () => {
   });
 
   it("her oturum kapatma nedeninin Türkçe mesajı vardır", () => {
-    expect(Object.keys(SIGN_OUT_MESSAGES).sort()).toEqual(["askida", "hareketsizlik", "oturum-sonlandi"]);
+    expect(Object.keys(SIGN_OUT_MESSAGES).sort()).toEqual([
+      "askida",
+      "hareketsizlik",
+      "mfa-kuruldu",
+      "oturum-sonlandi",
+    ]);
+    expect(Object.keys(SIGN_OUT_TONES).sort()).toEqual(Object.keys(SIGN_OUT_MESSAGES).sort());
   });
 });

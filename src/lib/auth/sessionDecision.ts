@@ -1,12 +1,21 @@
 import type { MemberStatus, Role } from "@shared/constants";
 
 /** Oturumu sonlandırma nedeni → giriş ekranında gösterilir (`/login?neden=...`). */
-export type SignOutReason = "askida" | "oturum-sonlandi" | "hareketsizlik";
+export type SignOutReason = "askida" | "oturum-sonlandi" | "hareketsizlik" | "mfa-kuruldu";
 
 export const SIGN_OUT_MESSAGES: Record<SignOutReason, string> = {
   askida: "Üyeliğiniz askıya alındı. Ayrıntı için eğitim sorumlusuyla iletişime geçin.",
   "oturum-sonlandi": "Oturumunuz güvenlik nedeniyle sonlandırıldı. Lütfen yeniden giriş yapın.",
   hareketsizlik: "Uzun süre işlem yapılmadığı için oturumunuz kapatıldı. Lütfen yeniden giriş yapın.",
+  "mfa-kuruldu": "İki aşamalı doğrulama etkinleştirildi. Lütfen Authenticator kodunuzla yeniden giriş yapın.",
+};
+
+/** Giriş ekranındaki bildirimin tonu: olumlu sonuçlar `success`, diğerleri `warning`. */
+export const SIGN_OUT_TONES: Record<SignOutReason, "success" | "warning"> = {
+  askida: "warning",
+  "oturum-sonlandi": "warning",
+  hareketsizlik: "warning",
+  "mfa-kuruldu": "success",
 };
 
 export interface ProfileSnapshot {

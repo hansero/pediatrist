@@ -283,3 +283,103 @@
   gap: var(--space-4);
   max-width: 560px;
 }
+
+/* Giriş / sıfırlama / hesap güvenliği (F3.4) */
+.auth-brand {
+  border-bottom-color: var(--border-subtle);
+}
+
+.auth-title {
+  font-size: 1.2rem;
+}
+
+.auth-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-hint {
+  margin-bottom: var(--space-3);
+}
+
+.auth-links {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  font-size: 0.86rem;
+}
+
+.auth-links a,
+.user-pill-link {
+  color: var(--clinical-primary);
+  font-weight: 600;
+}
+
+.user-pill-link {
+  display: inline-block;
+  margin-top: var(--space-2);
+  font-size: 0.78rem;
+  color: var(--focus-ring-on-dark);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.totp-input {
+  font-size: 1.25rem;
+  letter-spacing: 0.2em;
+  text-align: center;
+  max-width: 14rem;
+}
+
+.setup-steps {
+  padding-left: var(--space-5);
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.totp-setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.totp-setup img {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.totp-key {
+  display: inline-block;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface-subtle);
+  border-radius: var(--radius-sm);
+  word-break: break-all;
+  user-select: all;
+}
+
+.factor-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.factor-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}

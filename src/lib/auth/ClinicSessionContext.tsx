@@ -54,6 +54,7 @@ function toSession(user: User, profile: MemberDoc<Timestamp>, mfaVerified: boole
     status: profile.status === "active" || profile.status === "suspended" ? profile.status : "pending",
     mfaVerified,
     mfaEnrolled: multiFactor(user).enrolledFactors.length > 0,
+    emailVerified: user.emailVerified,
     hasBoundDevice: Boolean(profile.boundDeviceHash),
   };
 }

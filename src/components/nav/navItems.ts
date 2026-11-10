@@ -19,6 +19,9 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "admin", href: "/admin", label: "Üyeler ve Güvenlik", adminOnly: true },
 ];
 
+/** Hesap güvenliği (MFA kurulumu) sayfası; MFA zorunluyken kaydı olmayan üye buraya yönlendirilir. */
+export const SECURITY_PAGE = "/account/security";
+
 export function visibleNavItems(role: Role): NavItem[] {
   return NAV_ITEMS.filter((item) => !item.adminOnly || role === "admin");
 }

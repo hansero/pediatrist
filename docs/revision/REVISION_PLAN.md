@@ -55,7 +55,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F3.1 | Tasarım token'ları, kontrast/odak, `next/font`, UI primitifleri | L | ✅ | Tutarlılık, Erişilebilirlik |
 | F3.2 | Korumalı layout: `next/link`, aktif menü, mobil çekmece, hata/404/yükleniyor | M | ✅ | Kullanılabilirlik |
 | F3.3 | `SessionGuard` yeniden yazımı (uyarı, muafiyet, odak tuzağı) | S | ✅ | C8 (temel) |
-| F3.4 | Giriş: gerçek hata yönetimi, şifre sıfırlama, gerçek TOTP MFA | L | ⬜ | C4 |
+| F3.4 | Giriş: gerçek hata yönetimi, şifre sıfırlama, gerçek TOTP MFA | L | ✅ | C4 |
 | F3.5 | Kayıt, KVKK onayı, e-posta doğrulama, bekleme/askı ekranları | M | ⬜ | C9, Kullanılabilirlik |
 | **F4** | **Yoklama modülü (gerçek)** | | | |
 | F4.1 | Backend sağlamlaştırma (transaction, kilit, süre dolumu, zamanlayıcı) | M | ⬜ | S3, S4, S5, S10 |
@@ -101,15 +101,15 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F3.3. `IdleContext` (ref tabanlı tek zamanlayıcı, sekmeler arası, muafiyet), `SessionGuard` uyarı diyalogu ve gerçek nedenli çıkış, sınav/projektör muafiyeti, bekleyen ekranına çıkış düğmesi. Testler: unit 158, rules 40, functions 44, e2e 30.
+- **Son tamamlanan adım:** F3.4. Gerçek giriş (sahte TOTP silindi, C4 kapandı), TOTP ikinci adımı ve `/account/security` kurulumu, `/reset`, MFA zorunluluğu yönlendirmesi, Türkçe Auth hataları. Emülatörün TOTP desteklemediği doğrulandı (D5 güncellendi). Testler: unit 177, rules 40, functions 44, e2e 38.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F3.4 (L) giriş ve gerçek TOTP MFA (AUDIT C4):
-  - `src/app/(auth)/login/page.tsx`: sahte 6 hane adımı silinir. `signInWithEmailAndPassword` → `auth/multi-factor-auth-required` yakalanır → `getMultiFactorResolver` + `TotpMultiFactorGenerator.assertionForSignIn`.
-  - İlk girişte TOTP kaydı (`TotpMultiFactorGenerator.generateSecret` → QR + elle anahtar → `enroll`); zorunluluk `REQUIRE_MFA` / `NEXT_PUBLIC_REQUIRE_MFA` ile (emülatörde kapalı).
-  - Sunucu: `guards.ts` zaten `REQUIRE_MFA` ile `sign_in_second_factor` kontrol ediyor (F1.3); kurallarda admin yolları için değerlendirilir.
-  - Şifremi unuttum (`sendPasswordResetEmail`), `autoComplete` (username, current-password, one-time-code), `inputMode="numeric"`, `Field` + `Button` primitifleri, Türkçe Auth hataları (`src/lib/errors.ts` → `AUTH_ERRORS` genişletilir).
-  - **Ön kontrol:** Auth emülatörü TOTP MFA'yı destekliyor mu? Desteklemiyorsa: e2e MFA kapalı akışı test eder, MFA akışı birim testinde SDK çağrıları sahte (yalnızca testte) olarak sınanır ve staging kontrol listesine (F10.2) eklenir. Karar §3'e D-kaydı olarak yazılır.
-  - e2e `loginAs` yardımcısı sahte TOTP adımını artık atlamalı.
+- **Kullanıcı kararı bekleyen:** **N8** (MFA'nın kurallarda da zorunlu olması; önerilen `config/security` tek kaynak çözümü D5'i değiştirir). Karar gelmeden uygulanmaz.
+- **Sıradaki iş:** F3.5 (M) kayıt, KVKK onayı, e-posta doğrulama, bekleme/askı ekranları:
+  - Kayıt formu `Field`/`Button` ile; şifre politikası ipucu ve tekrar alanı; `autoComplete` (`email`, `new-password`).
+  - KVKK aydınlatma metni + açık rıza onay kutusu; `completeRegistration` `consentVersion`'ı zorunlu yapar (F2.3'te isteğe bağlı bırakıldı); metin ve sürüm `functions/src/shared/` sabiti.
+  - Kayıttan sonra `sendEmailVerification`; `REQUIRE_EMAIL_VERIFIED` açıkken doğrulanmamış etkin üye için ekran (hesap güvenliği sayfasındaki `VerifyEmail` yeniden kullanılabilir).
+  - `/pending` sayfası canlı dinlesin (onaylanınca kendiliğinden panele geçsin) veya korumalı alandaki `PendingNotice` ile birleştirilsin; "Custom Claims: status = pending" gibi teknik metin silinir.
+  - Askıdaki üye zaten girişte `?neden=askida` ile çıkarılıyor; girişte askıdaki hesabın mesajı doğrulanır.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -125,7 +125,7 @@ Bu kararlar bütün adımlar için geçerlidir. Değiştirmek için kullanıcı 
 | D2 | Ortak kod `functions/src/shared/` altında durur. Next tarafı `@shared/*` alias'ı ile import eder. | Functions deploy'u yalnızca `functions/` klasörünü yükler; ortak kod orada olmalı. | Evet |
 | D3 | Yetkinin tek kaynağı `users/{uid}` dokümanıdır. Claim'ler önbellektir. Anında iptal `tokensValidAfter` (saniye) ile `request.auth.token.auth_time` karşılaştırılarak yapılır. | AUDIT C5 | Hayır |
 | D4 | Kayıt, istemcide `createUserWithEmailAndPassword` ve ardından `completeRegistration` callable'ı ile yapılır. Profil dokümanını sunucu yazar. İşlem idempotenttir: profil eksikse girişte tekrar çağrılır. İstemcinin `users` koleksiyonuna doğrudan `create` izni kaldırılır. | AUDIT C9, S11. Blocking function Identity Platform gerektirir ve emülatörde daha zordur. | Evet |
-| D5 | MFA, Identity Platform TOTP ile gerçek olarak uygulanır. Zorunluluk `REQUIRE_MFA` parametresiyle yönetilir: staging/prod'da `true`, emülatörde `false`. Bunun sebebi, Auth emülatörünün TOTP desteğinin sınırlı olmasıdır (F3.4'te doğrulanacak). Sahte TOTP adımı tamamen silinir. | AUDIT C4 | Evet (MFA'sız devam seçilirse ekran ve iddialar tamamen kaldırılır) |
+| D5 | MFA, Identity Platform TOTP ile gerçek olarak uygulanır. Zorunluluk `REQUIRE_MFA` parametresiyle yönetilir: staging/prod'da `true`, emülatörde `false`. Bunun sebebi, Auth emülatörünün TOTP'yi desteklememesidir (F3.4'te doğrulandı: kayıt isteği `Missing phoneEnrollmentInfo` ile reddediliyor; emülatör yalnızca SMS faktörünü tanıyor). Sahte TOTP adımı tamamen silinir. | AUDIT C4 | Evet (MFA'sız devam seçilirse ekran ve iddialar tamamen kaldırılır) |
 | D6 | Yoklama cihaz bağlama WebAuthn platform passkey'leri ile yapılır (`@simplewebauthn/server` + `@simplewebauthn/browser`). `localStorage` sırrı kaldırılır. e2e testlerinde Playwright CDP sanal doğrulayıcısı kullanılır. | AUDIT S1, C2 | Evet |
 | D7 | Sınav sonucunun gösterimi her sınav için `revealPolicy` ile belirlenir: `after_close` (varsayılan; sınav kapanana kadar yalnızca puan ve doğru/yanlış görünür) veya `immediate` (anında tam karne). Doğru cevaplar istemci paketine hiçbir koşulda girmez. | AUDIT C7. Plan.MD'deki "anında karne" isteği korunur, varsayılan güvenli seçenektir. | Evet |
 | D8 | Hesaplayıcı formül motoru bu revizyonun kapsamı dışındadır. Sayfa dürüst bir "Yakında" durumu gösterir. Admin protokol notları `calculators_config`'e gerçekten kaydedilir. Formül motoru ayrı bir faz olarak (F11, opsiyonel) eklenebilir. | Klinik risk; doğrulama ve referans değer testleri gerektirir. | Evet |
@@ -624,6 +624,40 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `REQUIRE_MFA` açıkken MFA kaydı olmayan kullanıcı bu sayfaya yönlendirilir.
 - **Not:** Auth emülatörünün TOTP desteği bu adımda doğrulanır. Desteklenmiyorsa MFA akışı staging'de manuel test edilir ve test senaryosu F10.3'e yazılır. e2e bu durumda `REQUIRE_MFA=false` ile koşar.
 - **Doğrulama:** e2e `auth.spec.ts` (giriş, yanlış şifre mesajı, şifre sıfırlama e-postası emülatörde görünür).
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **Emülatör TOTP desteği denendi (betikle, gerçek SDK):**
+    - Doğrulanmamış e-postayla kayıt `auth/unverified-email` ile reddediliyor (Identity Platform ile aynı davranış).
+    - E-posta doğrulanınca `generateSecret` → `auth/invalid-argument: Missing phoneEnrollmentInfo`. **Emülatör TOTP desteklemiyor.**
+    - Şifre sıfırlama e-postası emülatörde çalışıyor (`/emulator/v1/projects/{id}/oobCodes`).
+    - Sonuç D5'e işlendi: e2e MFA kapalı (`NEXT_PUBLIC_REQUIRE_MFA=false`); TOTP akışı birim testleri (SDK yalnızca testte sahte) + staging (F10.3).
+  - **`src/lib/auth/mfa.ts`:**
+    - `isMfaRequired` (güvenli varsayılan: yalnızca açık `"false"` kapatır, N5 ile aynı).
+    - `normalizeTotpCode`: 6 hane değilse sunucuya gitmeden Türkçe hata.
+    - `mfaResolverFrom`, `totpHint` (hesapta yalnızca SMS varsa açık hata), `completeTotpSignIn`.
+    - `startTotpEnrollment` (anahtar 4'lü gruplu, `otpauth://` issuer "Pediatrist"), `finishTotpEnrollment`, `enrolledFactors`, `unenrollFactor`.
+  - **Giriş sayfası yeniden yazıldı:**
+    - Sahte 6 hane adımı silindi (C4 kapandı).
+    - `auth/multi-factor-auth-required` → ikinci adım; kodu Identity Platform doğrular.
+    - İkinci adım oturumu dolarsa (`invalid/missing-multi-factor-session`) ilk adıma dönüp açıklıyor.
+    - `Field` / `Button` / `Alert`, `autoComplete` (username, current-password, one-time-code), `inputMode` (email, numeric), "Şifremi unuttum" ve "Üyelik başvurusu yap" bağlantıları.
+    - Etiketler sadeleşti: "E-posta", "Şifre", "Giriş yap".
+  - **Plandan sapma, girişten sonra tam sayfa geçişi** (`src/lib/navigation.ts → hardNavigate`). İstemci tarafı geçişte (`router.replace`) klavye odağının başlangıç noktası eski formda kalıyor ve Tab "İçeriğe geç"e gitmiyordu (e2e buldu). Tam geçiş ayrıca formun durumunu bellekten atıyor.
+  - **`/reset`:** `sendPasswordResetEmail`; hesap varlığını sızdırmamak için kayıtsız adreste de aynı nötr mesaj. Geçersiz adres, çok deneme ve ağ hataları gösteriliyor.
+  - **`/account/security`** (korumalı):
+    - Durum çipi (Etkin/Kapalı).
+    - E-posta doğrulanmamışsa önce doğrulama: "Doğrulama e-postası gönder" + "Doğruladım" (`reload` + token yenileme → oturum bağlamı güncellenir).
+    - Kurulum: yerelde üretilen QR (`qrcode` 1.5.4, `data:` URL; anahtar hiçbir sunucuya gitmez) + elle anahtar + kod → `enroll` → **oturum kapatılır** (`?neden=mfa-kuruldu`, olumlu tonla). Sunucu `sign_in_second_factor` istediği için kayıttan sonra yeni girişte kurulumun gerçekten çalıştığı da kanıtlanıyor.
+    - Kayıtlı yöntemler listesi; MFA zorunluyken "Kaldır" yok (kaybolan telefon → admin, bkz. F7.1); zorunlu değilken `ConfirmDialog` ile kaldırma.
+    - **Emülatörde kurulum düğmesi yerine dürüst açıklama** (ilk ekran görüntüsünde genel "Beklenmeyen hata" çıkıyordu).
+  - **Zorunluluk:** `REQUIRE_MFA` açıkken, kaydı olmayan **etkin** üye korumalı alanda yalnızca `/account/security`'yi kullanabilir (`SECURITY_PAGE`, `navItems.ts`). Asıl zorunluluk sunucuda (`guards.ts`, F1.3). Kenar çubuğuna "Hesap güvenliği" bağlantısı eklendi.
+  - Oturum: `ClinicMemberSession.emailVerified`. `SignOutReason` + `mfa-kuruldu`; `SIGN_OUT_TONES` (giriş bildirimi `success`/`warning`).
+  - `src/lib/errors.ts`: MFA, yeniden giriş gereksinimi, doğrulanmamış e-posta, eylem bağlantısı ve eksik alan için 15 yeni Türkçe Auth hata eşlemesi.
+  - Bağımlılık: `qrcode` 1.5.4 (+ `@types/qrcode` 1.5.5). Üretim `npm audit` değişmedi (yalnızca D15'teki 8 orta seviye `uuid` zinciri).
+  - Testler:
+    - `tests/unit/auth/mfa.test.ts` (9), `LoginPage.test.tsx` (6: otomatik doldurma, yanlış şifre, MFA adımı odağı, yanlış/doğru kod, eksik kod sunucuya gitmez, ikinci adım süresi dolunca dönüş, olumlu bildirim), `AccountSecurityPage.test.tsx` (5: QR/anahtar, biçim, kayıt + nedenli çıkış, sunucu reddi, e-posta doğrulama ön koşulu, emülatör açıklaması, zorunlu modda kaldırma yok).
+    - `e2e/auth.spec.ts` (4×2): sahte adım yok; yanlış şifre Türkçe; sıfırlama e-postası emülatöre düşüyor ve kayıtsız adreste nötr mesaj; hesap güvenliği sayfası menüden açılıyor.
+    - e2e `loginAs` artık hedef sayfanın yüklenmesini bekliyor (`expectSuccess`). Önceden sahte TOTP adımı bu beklemeyi dolaylı sağlıyordu; kaldırılınca 5 test yarış nedeniyle düştü, düzeltildi.
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 177, e2e 38 (+2 ekran boyutuna özel atlanan), next build. Giriş hatası ve hesap güvenliği sayfası ekran görüntüsüyle kontrol edildi.
 
 #### F3.5 Kayıt, KVKK ve durum ekranları (M)
 - **Dosyalar:** `src/app/(auth)/register/page.tsx`, `src/app/(auth)/pending/page.tsx`, `src/app/(auth)/verify-email/page.tsx`, `src/app/(public)/kvkk/page.tsx`
@@ -836,6 +870,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Admin yapma işlemi isim yazarak onay ister.
   - Kendi satırında rol ve durum işlemleri devre dışıdır.
   - Seçimler etiketli `Field` bileşeniyle yapılır.
+  - **(F3.4'ten) "İki aşamalı doğrulamayı sıfırla"** (telefonunu kaybeden üye): Admin SDK ile faktörleri silen `resetMemberMfa` callable'ı + oturum iptali (`tokensValidAfter`) + denetim kaydı; `ConfirmDialog` ile. MFA zorunluyken üye kendi faktörünü kaldıramaz.
   - Davetler: oluşturma (e-posta, rol, kıdem, son kullanma), listeleme, iptal.
 
 #### F7.2 Denetim kaydı görüntüleyici (S)
@@ -934,7 +969,8 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 #### F10.3 UAT senaryoları (S)
 `docs/revision/UAT_SCENARIOS.md`: gerçek hekimler ve eğitim sorumlusu için Türkçe adım adım senaryolar, beklenen sonuçlar ve hata bildirme şablonu.
 - Kayıt ve onay
-- MFA kurulumu
+- MFA kurulumu (emülatörde test edilemiyor, D5): e-posta doğrulama → QR ile kurulum → otomatik çıkış → kodla giriş; yanlış kod; 30 sn eski kod; ikinci adımda 5 dk bekleyip süre dolması; Authenticator kaybı → admin sıfırlaması (F7.1); kurulum sonrası callable'ların çalışması (`sign_in_second_factor`)
+- Şifre sıfırlama e-postasının gerçek gönderimi ve Firebase eylem sayfası (dil Türkçe)
 - Telefonla yoklama (iOS Safari + Android Chrome)
 - Projektör (salon arkasından okunabilirlik)
 - Sınav (yenileme dayanıklılığı, görsel)
@@ -992,5 +1028,6 @@ Denetimde (AUDIT.md) olmayan, uygulama çalıştırılınca ortaya çıkan sorun
 | N5 | `defineBoolean(...).value()` ortam değişkeni yoksa **`false`** döner (`firebase-functions/lib/params/types.js` → `process.env[name] === "true"`); `default: true` yalnızca deploy sırasında kullanılır. `.value()` ile okunsaydı, değişkeni eksik bir ortamda App Check/MFA/e-posta zorunlulukları **sessizce kapanırdı**. | Güvenlik | ✅ F1.3: `guards.ts → isEnforced()` yalnızca açıkça `"false"` değerinde kapatır; testle doğrulandı |
 | N6 | İstemci, şemanın isteğe bağlı alanlar için ürettiği `undefined` değerleri gönderiyordu; Firebase SDK'sı bunları **`null`**'a çeviriyor ve `.optional()` alanlar `null`'ı reddettiği için sunucu `invalid-argument` ("Geçersiz değer") dönüyordu. Örnek: boş davet kodu ile kayıt. | İsteğe bağlı alanı olan her callable | ✅ F2.3: `callFunction` → `stripUndefined`; birim testi + e2e kayıt testleri |
 | N7 | zod 4 ilk nesne doğrulamasında `new Function("")` ile `eval` iznini yokluyor. Üretim CSP'sinde (`'unsafe-eval'` yok) hata yakalanıyor ama tarayıcı her sayfada `securitypolicyviolation` raporluyordu; F2.5 e2e CSP bekçisi buldu. | Gürültülü CSP raporları; ileride rapor toplayıcı (report-to) bağlanınca sahte alarm. | ✅ F2.5: `functions/src/shared/zod.ts` → `jitless: true`; doğrudan `zod` importu ESLint ile yasak |
+| N8 | **MFA yalnızca callable'larda zorunlu, Firestore/Storage kurallarında değil.** Kurallar ortam parametresi okuyamıyor ve emülatör TOTP desteklemediği için kurallara `sign_in_second_factor` şartı koşulsuz eklenemiyor. Sonuç: şifresi ele geçirilmiş bir hesap, arayüzü atlayıp SDK ile **okuma** yapabilir (admin hesabıysa üye listesi, denetim kayıtları, sınav anahtarları). Bütün yazmalar zaten callable'da ve MFA istiyor. | Güvenlik (okuma) | ⬜ **Kullanıcı kararı bekliyor** (D5 ile ilgili). Önerilen çözüm: tek kaynaklı `config/security {requireMfa}` dokümanı (istemciye kapalı; prod/staging'de `true`, seed'de `false`, **yoksa `true`**). Kurallar `isActive()` içinde okur (istek başına +1 doküman okuması), `guards.ts` ve istemci de aynı dokümandan okur → `REQUIRE_MFA` parametresi ve `NEXT_PUBLIC_REQUIRE_MFA` kalkar. Alternatif: yalnızca admin yolları için kural şartı. |
 | N4 | Storage emülatörü başlarken "Unexpected rules runtime error" uyarısı veriyor; içerik yalnızca ortamın `JAVA_TOOL_OPTIONS` satırı. | Yok | ✅ F0.4'te doğrulandı: Storage kuralları doğru değerlendiriliyor (aktif kullanıcıya izin, bekleyene `storage/unauthorized`). Uyarı zararsız. |
 

@@ -16,6 +16,8 @@ export interface ClinicMemberSession {
   mfaVerified: boolean;
   /** Hesapta kayıtlı ikinci faktör var mı? (`multiFactor(user).enrolledFactors`) */
   mfaEnrolled: boolean;
+  /** E-posta doğrulandı mı? (Identity Platform, TOTP kaydından önce bunu şart koşar.) */
+  emailVerified: boolean;
   /** Ham cihaz kimliği UI'a hiç taşınmaz; yalnızca "kayıtlı cihaz var mı" bilgisi tutulur. */
   hasBoundDevice: boolean;
 }

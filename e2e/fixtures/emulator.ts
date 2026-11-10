@@ -66,3 +66,12 @@ export async function readDocument(path: string): Promise<Record<string, unknown
     ])
   );
 }
+
+/** Auth emülatörünün gönderdiği e-posta eylem kodları (şifre sıfırlama, e-posta doğrulama). */
+export async function listOobCodes(): Promise<Array<{ email: string; requestType: string; oobLink: string }>> {
+  const { auth } = firebaseJson.emulators;
+  const res = await fetch(`http://${auth.host}:${auth.port}/emulator/v1/projects/demo-pediatrist/oobCodes`);
+  return (
+    ((await res.json()) as { oobCodes?: Array<{ email: string; requestType: string; oobLink: string }> }).oobCodes ?? []
+  );
+}

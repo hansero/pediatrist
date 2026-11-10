@@ -84,7 +84,7 @@ function codeFromFirebase(raw: string): AppErrorCode {
   }
 }
 
-/** Firebase Auth hata kodları → Türkçe (kayıt ve giriş; giriş akışı F3.4'te genişletilir). */
+/** Firebase Auth hata kodları → Türkçe (kayıt, giriş, şifre sıfırlama, TOTP; F2.3, F3.4). */
 const AUTH_ERRORS: Record<string, [AppErrorCode, string]> = {
   "auth/email-already-in-use": [
     "already-exists",
@@ -107,6 +107,43 @@ const AUTH_ERRORS: Record<string, [AppErrorCode, string]> = {
   "auth/network-request-failed": [
     "unavailable",
     "Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.",
+  ],
+  "auth/missing-email": ["invalid-argument", "E-posta adresinizi girin."],
+  "auth/missing-password": ["invalid-argument", "Şifrenizi girin."],
+  // İki aşamalı doğrulama (TOTP, F3.4)
+  "auth/invalid-verification-code": [
+    "invalid-argument",
+    "Doğrulama kodu hatalı veya süresi geçmiş. Uygulamadaki güncel kodu girin.",
+  ],
+  "auth/missing-code": ["invalid-argument", "6 haneli doğrulama kodunu girin."],
+  "auth/code-expired": ["deadline-exceeded", "Doğrulama kodunun süresi doldu. Uygulamadaki güncel kodu girin."],
+  "auth/invalid-multi-factor-session": [
+    "deadline-exceeded",
+    "Doğrulama süresi doldu. Lütfen e-posta ve şifrenizle yeniden giriş yapın.",
+  ],
+  "auth/missing-multi-factor-session": [
+    "deadline-exceeded",
+    "Doğrulama süresi doldu. Lütfen e-posta ve şifrenizle yeniden giriş yapın.",
+  ],
+  "auth/requires-recent-login": [
+    "unauthenticated",
+    "Güvenliğiniz için bu işlemden önce yeniden giriş yapmanız gerekiyor.",
+  ],
+  "auth/unverified-email": [
+    "failed-precondition",
+    "İki aşamalı doğrulamayı kurmadan önce e-posta adresinizi doğrulamanız gerekiyor.",
+  ],
+  "auth/second-factor-already-in-use": ["already-exists", "Bu doğrulama yöntemi hesabınızda zaten kayıtlı."],
+  "auth/maximum-second-factor-count-exceeded": [
+    "resource-exhausted",
+    "Hesabınızda kayıtlı doğrulama yöntemi sayısı sınıra ulaştı.",
+  ],
+  "auth/unsupported-first-factor": ["failed-precondition", "Bu giriş yöntemi iki aşamalı doğrulamayla kullanılamıyor."],
+  "auth/multi-factor-info-not-found": ["not-found", "Doğrulama yöntemi bulunamadı. Sayfayı yenileyip tekrar deneyin."],
+  "auth/expired-action-code": ["deadline-exceeded", "Bağlantının süresi dolmuş. Yeni bir bağlantı isteyin."],
+  "auth/invalid-action-code": [
+    "invalid-argument",
+    "Bağlantı geçersiz veya daha önce kullanılmış. Yeni bir bağlantı isteyin.",
   ],
 };
 

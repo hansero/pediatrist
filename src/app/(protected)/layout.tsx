@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AppShell } from "@/components/nav/AppShell";
 import { SessionGuard } from "@/components/security/SessionGuard";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { ClinicSessionProvider, useClinicSession } from "@/lib/auth/ClinicSessionContext";
+import { isMfaRequired } from "@/lib/auth/mfa";
+import { SECURITY_PAGE } from "@/components/nav/navItems";
 
 /**
  * Oturum yok → giriş; hesap açık ama profil yok (ör. kayıt sırasında sekme kapandı) → kayıt ekranı,
@@ -32,6 +34,7 @@ function Redirect({ to }: { to: string }) {
  */
 function ClinicShell({ children }: { children: React.ReactNode }) {
   const { session, phase, error, signOutUser } = useClinicSession();
+  const pathname = usePathname();
 
   if (phase === "signingOut") {
     return (
@@ -62,6 +65,12 @@ function ClinicShell({ children }: { children: React.ReactNode }) {
 
   if (phase === "needsProfile" || phase === "signedOut" || !session) {
     return <Redirect to={phase === "needsProfile" ? "/register" : "/login"} />;
+  }
+
+  // MFA zorunluysa (D5) kaydı olmayan etkin üye yalnızca hesap güvenliği sayfasını kullanabilir.
+  // Asıl zorunluluk sunucudadır (`guards.ts` → REQUIRE_MFA); bu yönlendirme kullanıcıyı kuruluma götürür.
+  if (session.status === "active" && isMfaRequired() && !session.mfaEnrolled && pathname !== SECURITY_PAGE) {
+    return <Redirect to={SECURITY_PAGE} />;
   }
 
   return (

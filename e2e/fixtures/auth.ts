@@ -2,23 +2,25 @@ import { expect, type Page } from "@playwright/test";
 import { SEED_PASSWORD } from "../../scripts/fixtures/seed-data";
 
 /**
- * Seed hesaplarıyla arayüz üzerinden giriş.
- *
- * Not: Mevcut giriş akışındaki ikinci adım sahte bir TOTP ekranıdır (AUDIT C4). F3.4'te gerçek
- * MFA'ya geçilince bu yardımcı güncellenir; o zamana kadar akışı olduğu gibi sürer.
+ * Seed hesaplarıyla arayüz üzerinden giriş (F3.4: sahte TOTP adımı kaldırıldı).
+ * Emülatör TOTP'yi desteklemediği için e2e MFA zorunluluğu kapalı koşar (`NEXT_PUBLIC_REQUIRE_MFA=false`, D5);
+ * MFA akışı birim testlerinde ve staging'de sınanır.
  * N3: gönder butonu hydration tamamlanana kadar devre dışıdır; etkinleşmesi beklenir.
  */
-export async function loginAs(page: Page, email: string, password: string = SEED_PASSWORD) {
+export async function loginAs(
+  page: Page,
+  email: string,
+  password: string = SEED_PASSWORD,
+  { expectSuccess = true }: { expectSuccess?: boolean } = {}
+) {
   await page.goto("/login");
-  const submit = page.getByRole("button", { name: "İki Aşamalı Doğrulamaya Geç" });
+  const submit = page.getByRole("button", { name: "Giriş yap" });
   await expect(submit).toBeEnabled();
-  await page.getByLabel("Kurumsal Hekim E-Postası").fill(email);
-  await page.getByLabel("Klinik Oturum Şifresi").fill(password);
+  await page.getByLabel("E-posta").fill(email);
+  await page.getByLabel("Şifre").fill(password);
   await submit.click();
-  const totp = page.getByLabel("6 Haneli Doğrulama Kodu (Authenticator)");
-  await totp.waitFor();
-  await totp.fill("123456");
-  await page.getByRole("button", { name: "Doğrula ve Kliniğe Giriş Yap" }).click();
+  // Başarılı girişte tam sayfa geçişi olur; çağıran test giriş sayfasında kalmış olmamalı.
+  if (expectSuccess) await page.waitForURL((url) => !url.pathname.startsWith("/login"));
 }
 
 export const ACCOUNTS = {

@@ -17,6 +17,7 @@ const session = (status: "active" | "pending"): ClinicMemberSession => ({
   status,
   mfaVerified: false,
   mfaEnrolled: false,
+  emailVerified: true,
   hasBoundDevice: false,
 });
 
