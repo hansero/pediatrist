@@ -17,18 +17,10 @@ import { AppError } from "@/lib/errors";
  * Gerçek TOTP iki aşamalı doğrulama (F3.4, AUDIT C4, D5). Identity Platform TOTP; Authenticator
  * uygulamaları (Google Authenticator, Microsoft Authenticator, 1Password vb.) ile çalışır.
  *
- * Not: Firebase Auth emülatörü TOTP'yi desteklemez (F3.4'te denendi: `Missing phoneEnrollmentInfo`).
- * Emülatörde zorunluluk kapalıdır (`NEXT_PUBLIC_REQUIRE_MFA=false`); bu akış birim testleri ve staging'de
- * elle sınanır (REVISION_PLAN F10.3).
+ * Zorunluluk: Firestore `config/security.requireMfa` (N8; kurallar, sunucu ve istemci aynı kaynağı okur).
+ * Not: Firebase Auth emülatörü TOTP'yi desteklemez (F3.4'te denendi: `Missing phoneEnrollmentInfo`);
+ * emülatör seed'i `requireMfa: false` yazar. Bu akış birim testleri ve staging'de elle sınanır (F10.3).
  */
-
-/**
- * İstemcide MFA zorunlu mu? Güvenli varsayılan: yalnızca açıkça `"false"` ise kapalı
- * (sunucudaki `guards.ts → isEnforced` ile aynı mantık, N5). Sunucu zorunluluğu `REQUIRE_MFA` ile ayrıca uygular.
- */
-export function isMfaRequired(value: string | undefined = process.env.NEXT_PUBLIC_REQUIRE_MFA): boolean {
-  return value?.trim().toLowerCase() !== "false";
-}
 
 export const TOTP_ISSUER = "Pediatrist";
 export const TOTP_CODE_RE = /^\d{6}$/;

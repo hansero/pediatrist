@@ -15,7 +15,6 @@ import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 import {
   enrolledFactors,
   finishTotpEnrollment,
-  isMfaRequired,
   startTotpEnrollment,
   unenrollFactor,
   type EnrolledFactorView,
@@ -40,7 +39,6 @@ const dateFormat = new Intl.DateTimeFormat("tr-TR", { dateStyle: "long", timeSty
  */
 export default function AccountSecurityPage() {
   const { session, signOutUser } = useClinicSession();
-  const required = isMfaRequired();
   const [factors, setFactors] = useState<EnrolledFactorView[]>([]);
 
   useEffect(() => {
@@ -49,6 +47,7 @@ export default function AccountSecurityPage() {
   }, [session?.mfaEnrolled]);
 
   if (!session) return null;
+  const required = session.mfaRequired;
 
   return (
     <>

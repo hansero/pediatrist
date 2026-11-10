@@ -1,7 +1,10 @@
 import { defineBoolean } from "firebase-functions/params";
 
 /**
- * Çalışma zamanı güvenlik parametreleri (D5, D13).
+ * Çalışma zamanı güvenlik parametreleri (D13).
+ *
+ * MFA zorunluluğu burada DEĞİL: kurallar da uygulayabilsin diye tek kaynağı Firestore `config/security`
+ * dokümanıdır (N8, D20; `shared/security.ts`).
  *
  * Varsayılanlar GÜVENLİ taraftadır (true). Emülatörde `functions/.env.demo-pediatrist`
  * ile kapatılır. Gerçek projede deploy sırasında değer sorulursa `true` bırakılmalıdır.
@@ -13,11 +16,6 @@ import { defineBoolean } from "firebase-functions/params";
 export const ENFORCE_APP_CHECK = defineBoolean("ENFORCE_APP_CHECK", {
   default: true,
   description: "Callable'larda geçerli App Check token'ı zorunlu olsun mu?",
-});
-
-export const REQUIRE_MFA = defineBoolean("REQUIRE_MFA", {
-  default: true,
-  description: "Aktif üyeler için ikinci faktör (TOTP) ile oturum açma zorunlu olsun mu?",
 });
 
 export const REQUIRE_EMAIL_VERIFIED = defineBoolean("REQUIRE_EMAIL_VERIFIED", {

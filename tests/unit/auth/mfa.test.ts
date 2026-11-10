@@ -24,14 +24,16 @@ const { AppError } = await import("@/lib/errors");
 
 beforeEach(() => vi.clearAllMocks());
 
-describe("isMfaRequired (güvenli varsayılan)", () => {
-  it("yalnızca açıkça 'false' kapatır", () => {
-    expect(mfa.isMfaRequired(undefined)).toBe(true);
-    expect(mfa.isMfaRequired("")).toBe(true);
-    expect(mfa.isMfaRequired("true")).toBe(true);
-    expect(mfa.isMfaRequired("hayir")).toBe(true);
-    expect(mfa.isMfaRequired("false")).toBe(false);
-    expect(mfa.isMfaRequired(" FALSE ")).toBe(false);
+describe("parseSecurityConfig (N8, güvenli varsayılan)", () => {
+  it("yalnızca boolean false MFA'yı kapatır; doküman yoksa veya değer bozuksa zorunlu", async () => {
+    const { parseSecurityConfig } = await import("@shared/security");
+    expect(parseSecurityConfig(undefined).requireMfa).toBe(true);
+    expect(parseSecurityConfig(null).requireMfa).toBe(true);
+    expect(parseSecurityConfig({}).requireMfa).toBe(true);
+    expect(parseSecurityConfig({ requireMfa: "false" }).requireMfa).toBe(true);
+    expect(parseSecurityConfig({ requireMfa: 0 }).requireMfa).toBe(true);
+    expect(parseSecurityConfig({ requireMfa: true }).requireMfa).toBe(true);
+    expect(parseSecurityConfig({ requireMfa: false }).requireMfa).toBe(false);
   });
 });
 

@@ -37,6 +37,7 @@ function session(role: "admin" | "user"): ClinicMemberSession {
     mfaVerified: false,
     mfaEnrolled: false,
     emailVerified: true,
+    mfaRequired: true,
     hasBoundDevice: false,
   };
 }

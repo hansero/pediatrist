@@ -7,7 +7,6 @@ import { SessionGuard } from "@/components/security/SessionGuard";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { ClinicSessionProvider, useClinicSession } from "@/lib/auth/ClinicSessionContext";
-import { isMfaRequired } from "@/lib/auth/mfa";
 import { SECURITY_PAGE } from "@/components/nav/navItems";
 
 /**
@@ -67,9 +66,9 @@ function ClinicShell({ children }: { children: React.ReactNode }) {
     return <Redirect to={phase === "needsProfile" ? "/register" : "/login"} />;
   }
 
-  // MFA zorunluysa (D5) kaydı olmayan etkin üye yalnızca hesap güvenliği sayfasını kullanabilir.
-  // Asıl zorunluluk sunucudadır (`guards.ts` → REQUIRE_MFA); bu yönlendirme kullanıcıyı kuruluma götürür.
-  if (session.status === "active" && isMfaRequired() && !session.mfaEnrolled && pathname !== SECURITY_PAGE) {
+  // MFA zorunluysa (`config/security`, N8) kaydı olmayan etkin üye yalnızca hesap güvenliği sayfasını kullanabilir.
+  // Asıl zorunluluk kurallarda ve sunucudadır; bu yönlendirme kullanıcıyı kuruluma götürür.
+  if (session.status === "active" && session.mfaRequired && !session.mfaEnrolled && pathname !== SECURITY_PAGE) {
     return <Redirect to={SECURITY_PAGE} />;
   }
 

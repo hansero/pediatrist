@@ -1,6 +1,7 @@
 import { HttpsError, type CallableRequest } from "firebase-functions/v2/https";
 import { getFirestore, type Timestamp } from "firebase-admin/firestore";
-import { ENFORCE_APP_CHECK, REQUIRE_EMAIL_VERIFIED, REQUIRE_MFA } from "./config";
+import { ENFORCE_APP_CHECK, REQUIRE_EMAIL_VERIFIED } from "./config";
+import { parseSecurityConfig, SECURITY_CONFIG, type SecurityConfigDoc } from "./shared/security";
 import { COLLECTIONS, type MemberDoc } from "./shared/types";
 
 /**
@@ -56,8 +57,14 @@ export function requireSignedIn(request: CallableRequest<unknown>): SignedInCont
 /** Aktif üye: doküman `active`, oturum iptal zamanından sonra açılmış, (zorunluysa) e-posta doğrulanmış ve MFA'lı. */
 export async function requireActive(request: CallableRequest<unknown>): Promise<MemberContext> {
   const auth = requireAuth(request);
-  const snap = await getFirestore().collection(COLLECTIONS.users).doc(auth.uid).get();
+  const db = getFirestore();
+  // Profil ve ortam güvenlik ayarı tek gidişte (N8: MFA zorunluluğunun tek kaynağı `config/security`).
+  const [snap, configSnap] = await db.getAll(
+    db.collection(COLLECTIONS.users).doc(auth.uid),
+    db.collection(SECURITY_CONFIG.collection).doc(SECURITY_CONFIG.doc)
+  );
   const profile = snap.data() as MemberDoc<Timestamp> | undefined;
+  const security = parseSecurityConfig(configSnap.data() as SecurityConfigDoc | undefined);
 
   if (!profile) {
     throw new HttpsError("permission-denied", "Üyelik kaydınız bulunamadı.");
@@ -77,7 +84,7 @@ export async function requireActive(request: CallableRequest<unknown>): Promise<
   if (isEnforced(REQUIRE_EMAIL_VERIFIED) && auth.token.email_verified !== true) {
     throw new HttpsError("permission-denied", "Devam etmek için e-posta adresinizi doğrulamanız gerekiyor.");
   }
-  if (isEnforced(REQUIRE_MFA) && !auth.token.firebase?.sign_in_second_factor) {
+  if (security.requireMfa && !auth.token.firebase?.sign_in_second_factor) {
     throw new HttpsError("permission-denied", "Bu işlem için iki aşamalı doğrulama ile giriş yapmanız gerekiyor.");
   }
 

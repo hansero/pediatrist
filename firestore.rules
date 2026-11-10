@@ -37,8 +37,30 @@ service cloud.firestore {
       return request.auth.token.auth_time > profile().get('tokensValidAfter', 0);
     }
 
+    // Ortam güvenlik ayarı (N8, D20): `config/security`. Doküman yoksa veya `requireMfa` açıkça false
+    // değilse MFA ZORUNLU (güvenli varsayılan). Aynı doküman guards.ts ve istemci tarafından da okunur.
+    function securityConfigPath() {
+      return /databases/$(database)/documents/config/security;
+    }
+
+    function mfaRequired() {
+      return !exists(securityConfigPath()) || get(securityConfigPath()).data.get('requireMfa', true) != false;
+    }
+
+    // Oturum ikinci faktörle (TOTP) açıldı mı?
+    function hasSecondFactor() {
+      return request.auth.token.get('firebase', {}).get('sign_in_second_factor', null) != null;
+    }
+
+    function mfaSatisfied() {
+      return !mfaRequired() || hasSecondFactor();
+    }
+
+    // Etkin üye: profil `active`, oturum iptal edilmemiş ve (zorunluysa) ikinci faktörle açılmış.
+    // Not: kendi profilini okuma (`isSelf`) MFA istemez; oturum bağlamı ve MFA kurulum sayfası buna dayanır.
     function isActive() {
-      return signedIn() && exists(profilePath()) && profile().status == 'active' && sessionNotRevoked();
+      return signedIn() && exists(profilePath()) && profile().status == 'active' && sessionNotRevoked()
+        && mfaSatisfied();
     }
 
     function isAdmin() {
@@ -55,6 +77,13 @@ service cloud.firestore {
       // Profil SUNUCUDA oluşturulur (`completeRegistration`, D4); rol, durum, kıdem ve cihaz bağı yalnızca
       // Cloud Functions ile değişir. İstemci hiçbir koşulda profil yazamaz.
       allow create, update, delete: if false;
+    }
+
+    // Ortam güvenlik ayarları (N8, D20): oturum açmış herkes okur (istemci MFA kurulumuna yönlendirme için);
+    // yalnızca Admin SDK / konsoldan yazılır.
+    match /config/security {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
     // Davet kodları: yalnızca admin görür (AUDIT C9). Oluşturma/kullanma Cloud Functions ile (F2.3).

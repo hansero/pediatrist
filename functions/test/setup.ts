@@ -19,9 +19,9 @@ process.env.METADATA_SERVER_DETECTION = "none";
 
 // Testler emülatör çalışma ortamında değil vitest sürecinde koşar; `.env.demo-pediatrist` yüklenmez.
 // guards.ts güvenli varsayılan kullandığı için (değişken yoksa zorunluluk AÇIK) burada kapatılır;
-// koruyucu testleri bunları tek tek açar (`withEnforced`).
+// koruyucu testleri bunları tek tek açar (`withEnforced`). MFA zorunluluğu parametre değil,
+// `config/security` dokümanıdır (N8); `helpers.ts → resetEmulators/setSecurityConfig`.
 process.env.ENFORCE_APP_CHECK = "false";
-process.env.REQUIRE_MFA = "false";
 process.env.REQUIRE_EMAIL_VERIFIED = "false";
 
 if (getApps().length === 0) initializeApp({ projectId: PROJECT_ID });

@@ -4,7 +4,16 @@ import { startQuizAttempt } from "../src/quizService";
 import { startLectureSession } from "../src/attendanceService";
 import { isEnforced } from "../src/guards";
 import { ENFORCE_APP_CHECK } from "../src/config";
-import { asAdmin, asMember, callableRequest, createMember, errorOf, resetEmulators, withEnforced } from "./helpers";
+import {
+  asAdmin,
+  asMember,
+  callableRequest,
+  createMember,
+  errorOf,
+  resetEmulators,
+  setSecurityConfig,
+  withEnforced,
+} from "./helpers";
 
 /**
  * guards.ts: yetkinin kaynağı `users/{uid}` dokümanıdır (D3). Testler, iş mantığına ulaşmadan önce
@@ -72,8 +81,8 @@ describe("parametreyle yönetilen zorunluluklar", () => {
     expect(res.sessionId).toBeTruthy();
   });
 
-  it("MFA zorunluysa ikinci faktörsüz oturum reddedilir", async () => {
-    withEnforced("REQUIRE_MFA");
+  it("MFA zorunluysa (config/security) ikinci faktörsüz oturum reddedilir", async () => {
+    await setSecurityConfig({ requireMfa: true });
     await createMember("u1", "user", "active");
     const noMfa = await errorOf(startQuizAttempt.run(callableRequest({ quizId: "q1" }, asMember("u1"))));
     expect(noMfa).toEqual({ code: "permission-denied", message: expect.stringContaining("iki aşamalı") });
@@ -84,6 +93,17 @@ describe("parametreyle yönetilen zorunluluklar", () => {
     expect((await errorOf(startQuizAttempt.run(callableRequest({ quizId: "q1" }, mfa)))).code).toBe(
       "failed-precondition"
     );
+  });
+
+  it("güvenli varsayılan: config/security yoksa veya değer bozuksa MFA zorunlu; yalnızca açık false kapatır", async () => {
+    await createMember("u1", "user", "active");
+    const attempt = () => errorOf(startQuizAttempt.run(callableRequest({ quizId: "q1" }, asMember("u1"))));
+    await setSecurityConfig(null);
+    expect((await attempt()).message).toContain("iki aşamalı");
+    await setSecurityConfig({ requireMfa: "false" });
+    expect((await attempt()).message).toContain("iki aşamalı");
+    await setSecurityConfig({ requireMfa: false });
+    expect((await attempt()).code).toBe("failed-precondition");
   });
 
   it("e-posta doğrulaması zorunluysa doğrulanmamış hesap reddedilir", async () => {

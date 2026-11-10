@@ -62,3 +62,18 @@ export async function seedMembers(
     }
   });
 }
+
+/**
+ * `config/security` (N8, D20). Emülatör değeri `requireMfa: false` (Auth emülatörü TOTP desteklemiyor, D5);
+ * `null` dokümanı siler (yoksa MFA zorunlu: güvenli varsayılan).
+ */
+export async function seedSecurityConfig(env: RulesTestEnvironment, config: { requireMfa?: unknown } | null) {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const ref = ctx.firestore().collection("config").doc("security");
+    if (config === null) await ref.delete();
+    else await ref.set(config);
+  });
+}
+
+/** İkinci faktörle (TOTP) açılmış oturumun token alanı. */
+export const SECOND_FACTOR = { firebase: { sign_in_provider: "password", sign_in_second_factor: "totp" } };

@@ -1,7 +1,7 @@
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
 import firebase from "firebase/compat/app";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
-import { claimsOf, createRulesEnv, member, seedMembers } from "./helpers";
+import { claimsOf, createRulesEnv, member, seedMembers, seedSecurityConfig, SECOND_FACTOR } from "./helpers";
 
 /**
  * Firestore güvenlik kuralları (F2.1). Yetkinin kaynağı `users/{uid}` dokümanıdır (D3);
@@ -28,6 +28,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await env.clearFirestore();
   await seedMembers(env, [admin, resident, other, pending]);
+  await seedSecurityConfig(env, { requireMfa: false });
   await env.withSecurityRulesDisabled(async (c) => {
     const db = c.firestore();
     await db.collection("materials").doc("m1").set({ title: "Materyal", status: "published" });
@@ -268,5 +269,58 @@ describe("değiştirilemez kayıtlar, davetler, yapılandırma", () => {
 
   it("tanımlanmamış koleksiyonlar varsayılan olarak kapalıdır", async () => {
     await assertFails(as(admin).collection("baska_bir_sey").doc("x").get());
+  });
+});
+
+describe("MFA zorunluluğu (N8: config/security tek kaynak)", () => {
+  const materials = (db: ReturnType<typeof as>) => db.collection("materials").doc("m1").get();
+
+  it("zorunluyken ikinci faktörsüz oturum veri okuyamaz; TOTP ile açılmış oturum okur", async () => {
+    await seedSecurityConfig(env, { requireMfa: true });
+    await assertFails(materials(as(resident)));
+    await assertSucceeds(materials(as(resident, SECOND_FACTOR)));
+  });
+
+  it("şifresi çalınmış admin hesabı MFA'sız üye listesini, denetim kayıtlarını ve davetleri okuyamaz", async () => {
+    await seedSecurityConfig(env, { requireMfa: true });
+    await assertFails(as(admin).collection("users").doc(resident.uid).get());
+    await assertFails(as(admin).collection("audit_logs").get());
+    await assertFails(as(admin).collection("invitations").get());
+    await assertFails(as(admin).collection("quiz_answer_keys").doc("q1").get());
+    await assertSucceeds(as(admin, SECOND_FACTOR).collection("audit_logs").get());
+  });
+
+  it("kendi profilini okuma MFA istemez (oturum bağlamı ve MFA kurulum sayfası için)", async () => {
+    await seedSecurityConfig(env, { requireMfa: true });
+    await assertSucceeds(as(resident).collection("users").doc(resident.uid).get());
+  });
+
+  it("güvenli varsayılan: doküman yoksa veya değer bozuksa zorunlu; yalnızca boolean false kapatır", async () => {
+    await seedSecurityConfig(env, null);
+    await assertFails(materials(as(resident)));
+    await seedSecurityConfig(env, { requireMfa: "false" });
+    await assertFails(materials(as(resident)));
+    await seedSecurityConfig(env, { requireMfa: false });
+    await assertSucceeds(materials(as(resident)));
+  });
+
+  it("config/security: oturum açmış herkes okur, kimse yazamaz", async () => {
+    await assertSucceeds(as(pending).collection("config").doc("security").get());
+    await assertFails(env.unauthenticatedContext().firestore().collection("config").doc("security").get());
+    await assertFails(as(admin, SECOND_FACTOR).collection("config").doc("security").set({ requireMfa: false }));
+    await assertFails(as(admin, SECOND_FACTOR).collection("config").doc("other").get());
+  });
+
+  it("MFA'sız oturum kendi okuma ilerlemesini de yazamaz", async () => {
+    await seedSecurityConfig(env, { requireMfa: true });
+    const progress = (db: ReturnType<typeof as>) =>
+      db
+        .collection("materials")
+        .doc("m1")
+        .collection("progress")
+        .doc(resident.uid)
+        .set({ uid: resident.uid, secondsSpent: 1, lastPage: 1, completed: false, updatedAt: serverTime() });
+    await assertFails(progress(as(resident)));
+    await assertSucceeds(progress(as(resident, SECOND_FACTOR)));
   });
 });

@@ -46,6 +46,7 @@ function session(overrides: Partial<ClinicMemberSession> = {}): ClinicMemberSess
     mfaVerified: false,
     mfaEnrolled: false,
     emailVerified: true,
+    mfaRequired: true,
     hasBoundDevice: false,
     ...overrides,
   };

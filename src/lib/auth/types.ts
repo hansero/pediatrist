@@ -18,6 +18,8 @@ export interface ClinicMemberSession {
   mfaEnrolled: boolean;
   /** E-posta doğrulandı mı? (Identity Platform, TOTP kaydından önce bunu şart koşar.) */
   emailVerified: boolean;
+  /** Ortamda MFA zorunlu mu? (`config/security`, N8; kurallar ve sunucuyla aynı kaynak) */
+  mfaRequired: boolean;
   /** Ham cihaz kimliği UI'a hiç taşınmaz; yalnızca "kayıtlı cihaz var mı" bilgisi tutulur. */
   hasBoundDevice: boolean;
 }

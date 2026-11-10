@@ -1,5 +1,5 @@
 import { ACCOUNTS, loginAs } from "./fixtures/auth";
-import { listOobCodes } from "./fixtures/emulator";
+import { listOobCodes, writeDocument } from "./fixtures/emulator";
 import { openMenu } from "./fixtures/nav";
 import { expect, test } from "./fixtures/test";
 
@@ -53,4 +53,20 @@ test("hesap güvenliği sayfası: menüden ulaşılır, iki aşamalı doğrulama
   await expect(page.getByRole("region", { name: "İki aşamalı doğrulama" })).toContainText("Kapalı");
   // Emülatör TOTP kaydını desteklemez: düğme yerine açıklama (gerçek kurulum staging'de, F10.3).
   await expect(page.getByRole("status").filter({ hasText: "emülatöründe desteklenmiyor" })).toBeVisible();
+});
+
+test.describe("MFA zorunlu ortam (config/security.requireMfa = true, N8)", () => {
+  test.afterEach(async () => {
+    await writeDocument("config/security", { requireMfa: false });
+  });
+
+  test("kaydı olmayan üye kurulum sayfasına kilitlenir; veri ekranlarına geçemez", async ({ page }) => {
+    await writeDocument("config/security", { requireMfa: true });
+    await loginAs(page, ACCOUNTS.asistan2);
+    await expect(page).toHaveURL(/\/account\/security$/);
+    await expect(page.getByRole("status").filter({ hasText: "İki aşamalı doğrulama gerekli" })).toBeVisible();
+
+    await page.goto("/materials");
+    await expect(page).toHaveURL(/\/account\/security$/);
+  });
 });

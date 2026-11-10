@@ -3,7 +3,8 @@ rules_version = '2';
 // Pediatrist — Cloud Storage güvenlik kuralları (REVISION_PLAN F2.2)
 //
 // - Yetkinin kaynağı Firestore'daki `users/{uid}` dokümanıdır (D3); token claim'lerine bakılmaz.
-//   Firestore ile aynı mantık: aktif üyelik + `auth_time > tokensValidAfter` (bkz. firestore.rules).
+//   Firestore ile aynı mantık: aktif üyelik + `auth_time > tokensValidAfter` + (zorunluysa) MFA
+//   (`config/security`, N8; bkz. firestore.rules).
 //   Çapraz servis erişimi (`firestore.get`) üretimde Storage servis hesabına IAM izni gerektirir;
 //   deploy sırasında Firebase CLI bu izni ister (DEPLOY.md).
 // - Sunumlar PDF olarak yüklenir (D19): tarayıcı pptx'i görüntüleyemez ve filigran uygulanamaz.
@@ -24,11 +25,23 @@ service firebase.storage {
       return firestore.get(profilePath()).data;
     }
 
+    // Ortam güvenlik ayarı (N8, D20): Firestore `config/security`; yoksa MFA zorunlu (bkz. firestore.rules).
+    function securityConfigPath() {
+      return /databases/(default)/documents/config/security;
+    }
+
+    function mfaSatisfied() {
+      return (firestore.exists(securityConfigPath())
+          && firestore.get(securityConfigPath()).data.get('requireMfa', true) == false)
+        || request.auth.token.get('firebase', {}).get('sign_in_second_factor', null) != null;
+    }
+
     function isActive() {
       return signedIn()
         && firestore.exists(profilePath())
         && profile().status == 'active'
-        && request.auth.token.auth_time > profile().get('tokensValidAfter', 0);
+        && request.auth.token.auth_time > profile().get('tokensValidAfter', 0)
+        && mfaSatisfied();
     }
 
     function isAdmin() {

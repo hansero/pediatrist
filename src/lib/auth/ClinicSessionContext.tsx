@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { multiFactor, onIdTokenChanged, signOut, type User } from "firebase/auth";
-import { doc, onSnapshot, type Timestamp } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, type Timestamp } from "firebase/firestore";
+import { parseSecurityConfig, SECURITY_CONFIG, type SecurityConfig } from "@shared/security";
 import type { MemberDoc } from "@shared/types";
 import { toUserMessage } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
@@ -43,7 +44,12 @@ const ClinicSessionContext = createContext<SessionState>({
 
 type InternalState = Pick<SessionState, "phase" | "session" | "error">;
 
-function toSession(user: User, profile: MemberDoc<Timestamp>, mfaVerified: boolean): ClinicMemberSession {
+function toSession(
+  user: User,
+  profile: MemberDoc<Timestamp>,
+  mfaVerified: boolean,
+  security: SecurityConfig
+): ClinicMemberSession {
   return {
     uid: user.uid,
     email: user.email ?? profile.email ?? "",
@@ -55,6 +61,7 @@ function toSession(user: User, profile: MemberDoc<Timestamp>, mfaVerified: boole
     mfaVerified,
     mfaEnrolled: multiFactor(user).enrolledFactors.length > 0,
     emailVerified: user.emailVerified,
+    mfaRequired: security.requireMfa,
     hasBoundDevice: Boolean(profile.boundDeviceHash),
   };
 }
@@ -94,6 +101,11 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
         return;
       }
 
+      // Ortam güvenlik ayarı (N8): kurallar ve sunucuyla aynı doküman. Okunamazsa MFA zorunlu sayılır.
+      const security = getDoc(doc(db, SECURITY_CONFIG.collection, SECURITY_CONFIG.doc))
+        .then((s) => parseSecurityConfig(s.data()))
+        .catch(() => parseSecurityConfig(null));
+
       unsubscribeProfile = onSnapshot(
         doc(db, "users", user.uid),
         async (snap) => {
@@ -121,7 +133,7 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
           }
           setState({
             phase: "ready",
-            session: toSession(user, profile!, Boolean(token.signInSecondFactor)),
+            session: toSession(user, profile!, Boolean(token.signInSecondFactor), await security),
             error: "",
           });
         },

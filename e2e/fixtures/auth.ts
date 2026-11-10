@@ -3,7 +3,7 @@ import { SEED_PASSWORD } from "../../scripts/fixtures/seed-data";
 
 /**
  * Seed hesaplarıyla arayüz üzerinden giriş (F3.4: sahte TOTP adımı kaldırıldı).
- * Emülatör TOTP'yi desteklemediği için e2e MFA zorunluluğu kapalı koşar (`NEXT_PUBLIC_REQUIRE_MFA=false`, D5);
+ * Emülatör TOTP'yi desteklemediği için seed `config/security.requireMfa=false` yazar (N8, D5);
  * MFA akışı birim testlerinde ve staging'de sınanır.
  * N3: gönder butonu hydration tamamlanana kadar devre dışıdır; etkinleşmesi beklenir.
  */

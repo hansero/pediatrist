@@ -1,6 +1,6 @@
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
-import { claimsOf, createRulesEnv, member, seedMembers } from "./helpers";
+import { claimsOf, createRulesEnv, member, seedMembers, seedSecurityConfig, SECOND_FACTOR } from "./helpers";
 
 /**
  * Storage güvenlik kuralları (F2.2). Yetki Firestore'daki `users/{uid}` dokümanından
@@ -32,6 +32,7 @@ beforeEach(async () => {
   await env.clearStorage();
   await env.clearFirestore();
   await seedMembers(env, [admin, resident, pending]);
+  await seedSecurityConfig(env, { requireMfa: false });
   await env.withSecurityRulesDisabled(async (ctx) => {
     await ctx.storage().ref(FILE).put(PDF, { contentType: "application/pdf" });
     await ctx.storage().ref(IMAGE).put(PDF, { contentType: "image/png" });
@@ -131,5 +132,20 @@ describe("tanımsız yollar", () => {
   it("listelenmeyen yollara admin bile yazamaz ve okuyamaz", async () => {
     await assertFails(upload(as(admin), "users/t-res/avatar.png", "image/png"));
     await assertFails(as(admin).ref("baska/x.pdf").getMetadata());
+  });
+});
+
+describe("MFA zorunluluğu (N8)", () => {
+  it("zorunluyken ikinci faktörsüz oturum dosya okuyamaz/yükleyemez; TOTP ile açılmış oturum okur", async () => {
+    await seedSecurityConfig(env, { requireMfa: true });
+    await assertFails(as(resident).ref(FILE).getMetadata());
+    await assertSucceeds(as(resident, SECOND_FACTOR).ref(FILE).getMetadata());
+    await assertFails(upload(as(admin), "materials/m2/yeni.pdf", "application/pdf"));
+    await assertSucceeds(upload(as(admin, SECOND_FACTOR), "materials/m2/yeni.pdf", "application/pdf"));
+  });
+
+  it("doküman yoksa zorunlu (güvenli varsayılan)", async () => {
+    await seedSecurityConfig(env, null);
+    await assertFails(as(resident).ref(FILE).getMetadata());
   });
 });
