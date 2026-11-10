@@ -19,7 +19,8 @@ export interface SeedUser {
   email: string;
   title: string;
   fullName: string;
-  residencyYear: number;
+  /** Yalnızca asistanlar için 1–4; diğer ünvanlarda null (F3.5). */
+  residencyYear: number | null;
   role: SeedRole;
   status: SeedStatus;
 }
@@ -30,7 +31,7 @@ export const SEED_USERS: SeedUser[] = [
     email: "egitim.sorumlusu@pediatrist.test",
     title: "Prof. Dr.",
     fullName: "Nevin Aydoğan",
-    residencyYear: 4,
+    residencyYear: null,
     role: "admin",
     status: "active",
   },

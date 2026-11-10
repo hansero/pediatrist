@@ -195,7 +195,7 @@ export const startQuizAttempt = defineCallable("startQuizAttempt", "member", asy
       quizTitle: quiz.title,
       uid: actor.uid,
       doctorName: `${profile.title ?? ""} ${profile.fullName ?? ""}`.trim() || actor.email,
-      residencyYear: profile.residencyYear ?? 1,
+      residencyYear: profile.residencyYear ?? null,
       status: "in_progress",
       startedAt: Timestamp.fromMillis(nowMs),
       deadline: Timestamp.fromMillis(deadlineMs),

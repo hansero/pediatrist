@@ -13,6 +13,8 @@ vi.mock("@/lib/firebase/client", () => ({
 const { callFunction, startLectureSession, verifyRealTimeAttendance, invokeWithFallback, completeRegistration } =
   await import("@/lib/firebase/callables");
 const { AppError } = await import("@/lib/errors");
+const { CALLABLES } = await import("@shared/schemas");
+const { KVKK_NOTICE_VERSION } = await import("@shared/consent");
 
 const DEVICE = "d".repeat(32);
 
@@ -44,10 +46,24 @@ describe("callFunction", () => {
 
   it("şemanın ürettiği undefined alanları göndermez (SDK onları null'a çevirir ve sunucu reddeder)", async () => {
     serverImpl.mockResolvedValue({ data: { status: "pending", role: "user", alreadyRegistered: false } });
-    await completeRegistration({ title: "Asistan Dr.", fullName: "Ali Veli", residencyYear: 2, inviteCode: "" });
+    await completeRegistration({
+      title: "Asistan Dr.",
+      fullName: "Ali Veli",
+      residencyYear: 2,
+      inviteCode: "",
+      consentVersion: KVKK_NOTICE_VERSION,
+    });
     const sent = serverImpl.mock.calls[0][1] as Record<string, unknown>;
-    expect(sent).toEqual({ title: "Asistan Dr.", fullName: "Ali Veli", residencyYear: 2 });
+    expect(sent).toEqual({ title: "Asistan Dr.", fullName: "Ali Veli", residencyYear: 2, consentVersion: "1.0" });
     expect(Object.keys(sent)).not.toContain("inviteCode");
+  });
+
+  it("gönderilen istek sunucu şemasından yeniden geçer (çıktı = geçerli girdi); uzman için kıdem yılı gitmez", async () => {
+    serverImpl.mockResolvedValue({ data: { status: "pending", role: "user", alreadyRegistered: false } });
+    await completeRegistration({ title: "Uzm. Dr.", fullName: "Ayşe Kaya", consentVersion: KVKK_NOTICE_VERSION });
+    const sent = serverImpl.mock.calls[0][1] as Record<string, unknown>;
+    expect(sent).not.toHaveProperty("residencyYear");
+    expect(CALLABLES.completeRegistration.request.safeParse(sent).success).toBe(true);
   });
 
   it("sözleşmeye uymayan sunucu yanıtını 'bad-response' olarak reddeder", async () => {
@@ -97,7 +113,6 @@ describe("invokeWithFallback (deprecated geçiş katmanı)", () => {
 describe("adlandırılmış çağrılar", () => {
   it("CALLABLES'taki her sözleşmenin istemcide aynı adlı bir çağrısı vardır", async () => {
     const mod = (await import("@/lib/firebase/callables")) as Record<string, unknown>;
-    const { CALLABLES } = await import("@shared/schemas");
     const missing = Object.keys(CALLABLES).filter((name) => typeof mod[name] !== "function");
     expect(missing).toEqual([]);
   });

@@ -12,7 +12,7 @@ interface ClinicMemberRecord {
   fullName: string;
   title: string;
   email: string;
-  residencyYear: number;
+  residencyYear: number | null;
   role: "admin" | "user";
   status: "active" | "pending" | "suspended";
   hasBoundDevice: boolean;
@@ -234,7 +234,7 @@ export default function AdminSecurityPage() {
                       id={`admin-year-select-${m.uid}`}
                       className="form-select mono-num"
                       style={{ width: "92px", padding: "0.3rem 0.45rem" }}
-                      value={m.residencyYear}
+                      value={m.residencyYear ?? ""}
                       onChange={(e) => {
                         const yr = Number(e.target.value) as ResidencyYear; // seçenekler yalnızca 1–4
                         void invokeWithFallback(

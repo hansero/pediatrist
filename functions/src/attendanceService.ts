@@ -202,7 +202,7 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
     uid,
     fullName: profile.fullName ?? actorEmail,
     title: profile.title ?? "",
-    residencyYear: profile.residencyYear ?? 1,
+    residencyYear: profile.residencyYear ?? null,
     verifiedAt: FieldValue.serverTimestamp(),
     // Yalnızca sunucunun doğruladığı yöntem yazılır (istemci beyanı kabul edilmez; WebAuthn → F4.2).
     method: "qr+device_bound",
@@ -249,7 +249,7 @@ export const markAttendanceExcused = defineCallable("markAttendanceExcused", "ad
     uid: data.targetUid,
     fullName: user.fullName ?? "",
     title: user.title ?? "",
-    residencyYear: user.residencyYear ?? 1,
+    residencyYear: user.residencyYear ?? null,
     verifiedAt: FieldValue.serverTimestamp(),
     method: "admin_excused",
     status: "excused",

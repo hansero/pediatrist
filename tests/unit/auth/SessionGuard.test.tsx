@@ -82,7 +82,7 @@ describe("SessionGuard", () => {
       </SessionGuard>
     );
     expect(screen.queryByText("içerik")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Üyelik Onayı Bekleniyor" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Başvurunuz onay bekliyor" })).toBeTruthy();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Çıkış yap" }));
     });

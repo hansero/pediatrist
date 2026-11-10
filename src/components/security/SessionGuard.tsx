@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
+import { EmailVerification } from "@/components/auth/EmailVerification";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
@@ -19,7 +20,8 @@ interface SessionGuardProps {
 
 /**
  * Korumalı içerik bekçisi (F3.3):
- * - Etkin olmayan üye içerik görmez (askıdaki üye F2.4'te zaten oturumdan çıkarılır; burada onay bekleyen kalır).
+ * - Etkin olmayan üye içerik görmez: onay bekleyen için bekleme ekranı (F3.5); askıdaki üye F2.4'te zaten
+ *   oturumdan çıkarılır ve giriş ekranında nedeni görür.
  * - Hareketsizlik: 14. dakikada uyarı diyalogu, 15. dakikada GERÇEK çıkış (`?neden=hareketsizlik`).
  *   İstemcide doğrulanamayan "kilidi aç" adımı yoktur; devam etmek için yeniden giriş gerekir.
  * - Sınav ve projektör ekranları `useIdleExempt()` ile muaftır (AUDIT C8).
@@ -29,9 +31,16 @@ interface SessionGuardProps {
 export function SessionGuard({ session, requireAdmin = false, onSignOut, children }: SessionGuardProps) {
   if (!session) return null;
 
+  if (session.status === "pending") {
+    return <PendingNotice session={session} onSignOut={onSignOut} />;
+  }
   if (session.status !== "active") {
-    // F3.5'te ayrı bekleme ekranına taşınacak; çıkış yolu şimdiden var.
-    return <PendingNotice email={session.email} onSignOut={onSignOut} />;
+    // Askıdaki üye oturum bağlamında hemen çıkarılır (`?neden=askida`, F2.4); bu yalnızca ara durum.
+    return (
+      <main className="app-content" aria-busy="true">
+        <p className="page-header-subtitle">Oturum kapatılıyor…</p>
+      </main>
+    );
   }
 
   if (requireAdmin && session.role !== "admin") {
@@ -58,20 +67,37 @@ export function SessionGuard({ session, requireAdmin = false, onSignOut, childre
   );
 }
 
-function PendingNotice({ email, onSignOut }: { email: string; onSignOut: () => Promise<void> }) {
+/**
+ * Onay bekleme ekranı (F3.5). Oturum bağlamı profili canlı dinlediği için onay geldiğinde bu ekran
+ * kendiliğinden panele dönüşür (F2.4). Teknik terim yok; çıkış yolu ve e-posta doğrulaması burada.
+ */
+function PendingNotice({ session, onSignOut }: { session: ClinicMemberSession; onSignOut: () => Promise<void> }) {
   const signOut = useAsyncAction(onSignOut);
   return (
-    <main className="app-content">
-      <section className="surface-card status-page" aria-labelledby="pending-lock-heading">
-        <h1 id="pending-lock-heading">Üyelik Onayı Bekleniyor</h1>
-        <p className="page-header-subtitle">
-          Hesabınız ({email}) eğitim sorumlusunun onayını bekliyor. Onaylandığında bu sayfa kendiliğinden açılır.
-        </p>
+    <main className="auth-screen">
+      <article className="auth-card auth-stack" aria-labelledby="pending-lock-heading">
+        <div>
+          <h1 id="pending-lock-heading" className="auth-title">
+            Başvurunuz onay bekliyor
+          </h1>
+          <p className="page-header-subtitle">
+            {session.title} {session.fullName} · {session.email}
+          </p>
+        </div>
+        <p>Eğitim sorumlusu başvurunuzu onayladığında bu sayfa kendiliğinden açılır; sayfayı açık bırakabilirsiniz.</p>
+        {!session.emailVerified && (
+          <EmailVerification
+            email={session.email}
+            reason="Onay beklerken e-posta adresinizi doğrulayın; hesabınızın güvenliği için gereklidir."
+          />
+        )}
         {signOut.error && <Alert tone="critical">{signOut.error}</Alert>}
-        <Button variant="secondary" loading={signOut.pending} onClick={() => signOut.run()}>
-          Çıkış yap
-        </Button>
-      </section>
+        <div className="ui-actions">
+          <Button variant="secondary" loading={signOut.pending} onClick={() => signOut.run()}>
+            Çıkış yap
+          </Button>
+        </div>
+      </article>
     </main>
   );
 }

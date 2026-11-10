@@ -9,7 +9,8 @@ export interface ClinicMemberSession {
   email: string;
   fullName: string;
   title: string;
-  residencyYear: number;
+  /** Asistanlar için 1–4; uzman/öğretim üyesi için `null` (F3.5). */
+  residencyYear: number | null;
   role: Role;
   status: MemberStatus;
   /** Bu oturum ikinci faktörle (TOTP) açıldı mı? (ID token → `signInSecondFactor`) */

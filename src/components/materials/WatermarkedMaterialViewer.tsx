@@ -18,7 +18,13 @@ export interface TrainingMaterialItem {
   clinicalSummaryPages: string[];
   readerStats: Record<
     string,
-    { fullName: string; residencyYear: number; durationSeconds: number; completed: boolean; lastViewedAt: string }
+    {
+      fullName: string;
+      residencyYear: number | null;
+      durationSeconds: number;
+      completed: boolean;
+      lastViewedAt: string;
+    }
   >;
 }
 

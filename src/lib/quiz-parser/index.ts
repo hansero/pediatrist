@@ -51,7 +51,7 @@ export interface DoctorQuizAttemptLog {
   quizTitle: string;
   uid: string;
   doctorName: string;
-  residencyYear: number;
+  residencyYear: number | null;
   submittedAt: string;
   /** Sunucu kayıtlı başlangıç (ms) ve kullanılan süre (sn) — admin log dashboard'u için */
   startedAtMs?: number;

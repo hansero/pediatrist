@@ -15,6 +15,12 @@ interface AppShellProps {
   children: ReactNode;
 }
 
+/** Kenar çubuğundaki rol satırı: eğitim sorumlusu, asistan (kıdem yılıyla) veya uzman hekim. */
+export function memberRoleLabel(session: Pick<ClinicMemberSession, "role" | "residencyYear">): string {
+  if (session.role === "admin") return "Eğitim Sorumlusu";
+  return session.residencyYear ? `Asistan • ${session.residencyYear}. yıl` : "Uzman hekim";
+}
+
 function Brand() {
   return (
     <div className="brand-header">
@@ -71,9 +77,7 @@ function UserFooter({ session, onSignOut }: Pick<AppShellProps, "session" | "onS
         <div className="user-pill-name">
           {session.title} {session.fullName}
         </div>
-        <div className="user-pill-meta">
-          {session.role === "admin" ? "Eğitim Sorumlusu" : `Asistan • ${session.residencyYear}. yıl`}
-        </div>
+        <div className="user-pill-meta">{memberRoleLabel(session)}</div>
         <Link href={SECURITY_PAGE} className="user-pill-link">
           Hesap güvenliği
         </Link>

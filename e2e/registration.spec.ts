@@ -1,19 +1,26 @@
 import { expect, test } from "./fixtures/test";
-import { fillRegistration } from "./fixtures/registration";
-import { findUserProfileByEmail, readDocument, writeDocument } from "./fixtures/emulator";
+import { fillRegistration, REGISTER_BUTTON } from "./fixtures/registration";
+import { findUserProfileByEmail, listOobCodes, readDocument, writeDocument } from "./fixtures/emulator";
 
 /**
  * Kayıt akışı (F2.3): hesap Auth'ta açılır, profil sunucuda `completeRegistration` ile yazılır.
- * İstemci `users` dokümanı yazamaz (firestore.rules). F3.5'te KVKK onayı ve e-posta doğrulamasıyla genişler.
+ * İstemci `users` dokümanı yazamaz (firestore.rules). F3.5: KVKK onayı (sürümle saklanır), doğrulama e-postası,
+ * korumalı alandaki canlı bekleme ekranı, kıdem yılı yalnızca asistan için.
  */
 test("davetsiz başvuru: profil sunucuda 'onay bekliyor' olarak oluşur", async ({ page }, testInfo) => {
   const email = `kayit.${testInfo.project.name}.${Date.now()}@example.test`;
   await fillRegistration(page, email);
 
-  await expect(page).toHaveURL(/\/pending$/);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Onayı Bekliyor");
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Başvurunuz onay bekliyor");
   // Not: sayfadaki boş role="alert" Next.js'in rota duyurucusudur (next-route-announcer), hata değildir.
-  await expect(page.locator(".clinical-alert")).toHaveCount(0);
+  await expect(page.locator(".clinical-alert.critical")).toHaveCount(0);
+  // Doğrulama e-postası gönderildi ve bekleme ekranı doğrulamayı istiyor.
+  await expect
+    .poll(async () => (await listOobCodes()).some((c) => c.email === email && c.requestType === "VERIFY_EMAIL"))
+    .toBe(true);
+  await expect(page.getByRole("button", { name: "Doğrulama e-postası gönder" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Çıkış yap" })).toBeVisible();
   expect(await findUserProfileByEmail(email)).toMatchObject({
     email,
     role: "user",
@@ -42,7 +49,7 @@ test("geçerli davet koduyla başvuru: üyelik doğrudan aktif, panele yönlendi
     revoked: false,
   });
 
-  await fillRegistration(page, email, code.toLowerCase());
+  await fillRegistration(page, email, { inviteCode: code.toLowerCase() });
 
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Deneme Asistan");
@@ -54,15 +61,55 @@ test("geçersiz davet kodu: Türkçe hata gösterilir; kodsuz yeniden deneme hes
   page,
 }, testInfo) => {
   const email = `hatali.${testInfo.project.name}.${Date.now()}@example.test`;
-  await fillRegistration(page, email, "PED-YOKBOYLE");
+  await fillRegistration(page, email, { inviteCode: "PED-YOKBOYLE" });
 
   const alert = page.locator(".clinical-alert");
   await expect(alert).toContainText("Davet kodu geçersiz");
   expect(await findUserProfileByEmail(email)).toBeNull();
 
   // Aynı oturumda kodu silip tekrar gönder: hesap zaten açık, yalnızca profil tamamlanmalı.
-  await page.getByLabel("Klinik Davet Kodu (Varsa)").fill("");
-  await page.getByRole("button", { name: "Üyelik Başvurusunu Eğitim Sorumlusuna Gönder" }).click();
-  await expect(page).toHaveURL(/\/pending$/);
+  await page.getByLabel("Davet kodu").fill("");
+  await page.getByRole("button", { name: REGISTER_BUTTON }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
   expect(await findUserProfileByEmail(email)).toMatchObject({ status: "pending" });
+});
+
+test("KVKK onayı ve şifre tekrarı olmadan başvuru gönderilmez; hesap açılmaz", async ({ page }, testInfo) => {
+  const email = `onaysiz.${testInfo.project.name}.${Date.now()}@example.test`;
+  await fillRegistration(page, email, { consent: false });
+  await expect(page.getByText("aydınlatma metnini okuduğunuzu onaylayın")).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /aydınlatma metnini okudum/ })).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+
+  await page.getByLabel("Şifre (tekrar)").fill("Baska-Sifre-2026");
+  await page.getByRole("button", { name: REGISTER_BUTTON }).click();
+  await expect(page.getByText("Şifreler aynı değil.")).toBeVisible();
+  await expect(page).toHaveURL(/\/register$/);
+  expect(await findUserProfileByEmail(email)).toBeNull();
+  expect((await listOobCodes()).some((c) => c.email === email)).toBe(false);
+});
+
+test("aydınlatma metni: sürümlü, veri sorumlusu yapılandırmadan; kayıt formundan bağlantı", async ({ page }) => {
+  await page.goto("/register");
+  await expect(page.getByRole("link", { name: "KVKK aydınlatma metnini" })).toHaveAttribute("href", "/kvkk");
+  await page.goto("/kvkk");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Kişisel Verilerin Korunması Aydınlatma Metni");
+  await expect(page.getByText("Sürüm 1.0")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Veri sorumlusu" })).toContainText("Pediatrist Yerel Test Ortamı");
+  await expect(page.getByRole("region", { name: "Haklarınız (KVKK md. 11)" })).toBeVisible();
+});
+
+test("uzman hekim başvurusu: kıdem yılı sorulmaz, profilde boş", async ({ page }, testInfo) => {
+  const email = `uzman.${testInfo.project.name}.${Date.now()}@example.test`;
+  await page.goto("/register");
+  await expect(page.getByRole("button", { name: REGISTER_BUTTON })).toBeEnabled();
+  await page.getByLabel("Ünvan").selectOption("Uzm. Dr.");
+  await expect(page.getByLabel("Kıdem yılı")).toHaveCount(0);
+
+  await fillRegistration(page, email, { title: "Uzm. Dr.", fullName: "Deneme Uzman" });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Başvurunuz onay bekliyor");
+  const profile = await findUserProfileByEmail(email);
+  expect(profile).toMatchObject({ title: "Uzm. Dr.", residencyYear: null, status: "pending" });
 });

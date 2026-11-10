@@ -32,7 +32,7 @@ test.describe("rol bazlı giriş", () => {
   test("onay bekleyen kullanıcı modüllere erişemez", async ({ page }) => {
     await loginAs(page, ACCOUNTS.bekleyen);
 
-    await expect(page.getByRole("heading", { name: "Üyelik Onayı Bekleniyor" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Başvurunuz onay bekliyor" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Eğitim Materyalleri" })).toHaveCount(0);
   });
 });

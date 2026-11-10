@@ -2,7 +2,8 @@
 
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
-import { sendEmailVerification, type User } from "firebase/auth";
+import type { User } from "firebase/auth";
+import { EmailVerification } from "@/components/auth/EmailVerification";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -71,53 +72,15 @@ export default function AccountSecurityPage() {
         {session.mfaEnrolled ? (
           <EnrolledFactors factors={factors} canRemove={!required} />
         ) : !session.emailVerified ? (
-          <VerifyEmail email={session.email} />
+          <EmailVerification
+            email={session.email}
+            reason="Güvenlik gereği iki aşamalı doğrulama yalnızca doğrulanmış e-posta adresine kurulabilir."
+          />
         ) : (
           <TotpSetup onDone={() => signOutUser("mfa-kuruldu")} />
         )}
       </Card>
     </>
-  );
-}
-
-function VerifyEmail({ email }: { email: string }) {
-  const [info, setInfo] = useState("");
-  const send = useAsyncAction(async () => {
-    await sendEmailVerification(currentUser());
-    return true as const;
-  });
-  const refresh = useAsyncAction(async () => {
-    const user = currentUser();
-    await user.reload();
-    // Token yenilenince oturum bağlamı güncel `emailVerified` değerini alır.
-    await user.getIdToken(true);
-    return user.emailVerified;
-  });
-
-  return (
-    <div className="auth-stack">
-      <Alert tone="info" title="Önce e-posta adresinizi doğrulayın">
-        Güvenlik gereği iki aşamalı doğrulama yalnızca doğrulanmış e-posta adresine kurulabilir ({email}).
-      </Alert>
-      {send.data && <Alert tone="success">Doğrulama bağlantısı gönderildi. E-postanızı kontrol edin.</Alert>}
-      {info && <Alert tone="warning">{info}</Alert>}
-      {(send.error || refresh.error) && <Alert tone="critical">{send.error || refresh.error}</Alert>}
-      <div className="ui-actions">
-        <Button variant="secondary" loading={send.pending} onClick={() => send.run()}>
-          Doğrulama e-postası gönder
-        </Button>
-        <Button
-          loading={refresh.pending}
-          onClick={async () => {
-            setInfo("");
-            const verified = await refresh.run();
-            if (verified === false) setInfo("E-posta adresiniz henüz doğrulanmamış görünüyor.");
-          }}
-        >
-          Doğruladım
-        </Button>
-      </div>
-    </div>
   );
 }
 

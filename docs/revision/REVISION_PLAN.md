@@ -56,7 +56,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F3.2 | Korumalı layout: `next/link`, aktif menü, mobil çekmece, hata/404/yükleniyor | M | ✅ | Kullanılabilirlik |
 | F3.3 | `SessionGuard` yeniden yazımı (uyarı, muafiyet, odak tuzağı) | S | ✅ | C8 (temel) |
 | F3.4 | Giriş: gerçek hata yönetimi, şifre sıfırlama, gerçek TOTP MFA | L | ✅ | C4 |
-| F3.5 | Kayıt, KVKK onayı, e-posta doğrulama, bekleme/askı ekranları | M | ⬜ | C9, Kullanılabilirlik |
+| F3.5 | Kayıt, KVKK onayı, e-posta doğrulama, bekleme/askı ekranları | M | ✅ | C9, Kullanılabilirlik |
 | **F4** | **Yoklama modülü (gerçek)** | | | |
 | F4.1 | Backend sağlamlaştırma (transaction, kilit, süre dolumu, zamanlayıcı) | M | ⬜ | S3, S4, S5, S10 |
 | F4.2 | WebAuthn passkey ile cihaz bağlama | L | ⬜ | S1, C2 (biyometrik) |
@@ -101,18 +101,17 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F3.4. Gerçek giriş (sahte TOTP silindi, C4 kapandı), TOTP ikinci adımı ve `/account/security` kurulumu, `/reset`, MFA zorunluluğu yönlendirmesi, Türkçe Auth hataları. Emülatörün TOTP desteklemediği doğrulandı (D5 güncellendi). Testler: unit 177, rules 40, functions 44, e2e 38.
+- **Son tamamlanan adım:** F3.5. **F3 fazı (UI temeli ve kimlik doğrulama) tamamlandı.** Ayrıca N8 (D20, MFA tek kaynak `config/security`) uygulandı. F3.5: KVKK aydınlatma metni (sürümlü, veri sorumlusu yapılandırmadan, sunucuda zorunlu onay), yeni kayıt formu, doğrulama e-postası, korumalı alanda canlı bekleme ekranı, kıdem yılı yalnızca asistan için (`null` modeli; sessiz `?? 1` uydurmaları kaldırıldı). Testler: unit 180, rules 48, functions 47, e2e 46 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **N8 uygulandı (D20):** MFA zorunluluğu `config/security` dokümanında; kurallar, sunucu ve istemci aynı yerden okur.
-- **Not (F3.5 için):** `REQUIRE_EMAIL_VERIFIED` hâlâ functions parametresi ve kurallarda uygulanmıyor. Aynı tek kaynak yaklaşımına (`config/security.requireEmailVerified`) taşınması önerilecek; kullanıcıya sorulmadan yapılmaz (D-kaydı).
-- **Sıradaki iş:** F3.5 (M) kayıt, KVKK onayı, e-posta doğrulama, bekleme/askı ekranları:
-  - Kayıt formu `Field`/`Button` ile; şifre politikası ipucu ve tekrar alanı; `autoComplete` (`email`, `new-password`).
-  - KVKK aydınlatma metni + açık rıza onay kutusu; `completeRegistration` `consentVersion`'ı zorunlu yapar (F2.3'te isteğe bağlı bırakıldı); metin ve sürüm `functions/src/shared/` sabiti.
-  - Kayıttan sonra `sendEmailVerification`; `REQUIRE_EMAIL_VERIFIED` açıkken doğrulanmamış etkin üye için ekran (hesap güvenliği sayfasındaki `VerifyEmail` yeniden kullanılabilir).
-  - `/pending` sayfası canlı dinlesin (onaylanınca kendiliğinden panele geçsin) veya korumalı alandaki `PendingNotice` ile birleştirilsin; "Custom Claims: status = pending" gibi teknik metin silinir.
-  - Askıdaki üye zaten girişte `?neden=askida` ile çıkarılıyor; girişte askıdaki hesabın mesajı doğrulanır.
+- **Kullanıcıya sorulacak (D-kaydı gerektirir):** `REQUIRE_EMAIL_VERIFIED` hâlâ functions parametresi ve kurallarda uygulanmıyor; MFA gibi `config/security.requireEmailVerified` tek kaynağına taşınması önerilir.
+- **Sıradaki iş:** F4.1 (M) yoklama backend sağlamlaştırma (S3, S4, S5, S10):
+  - `verifyRealTimeAttendance` ve `markAttendanceExcused` transaction içinde: mevcut kaydı oku, durum geçişine göre sayaç farkı (+1/−1), ilk cihaz bağlama transaction içinde.
+  - Tek canlı ders kilidi `attendance_meta/live` (transaction); `endLectureSession` var mı/durum kontrolü (`not-found`/`failed-precondition`); `getProjectorCode` `endsAt` kontrolü.
+  - `onSchedule` (5 dk): süresi dolan canlı dersleri kapat + sırları sil; aynı şekilde `closesAt`'i geçen sınavlar (F5.1 ile paylaşılır).
+  - Denetim kaydı aynı batch/transaction'da (zaten `auditIn`); `ipHash` (tuzlu, `AUDIT_IP_SALT`) doldurulur.
+  - Testler: eşzamanlı yoklama (sayaç tek artar), mazeret↔var geçişleri, çift mazeret, süresi geçmiş ders, zamanlayıcı.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
-- **Engeller / notlar:** Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
+- **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
 ---
 
@@ -671,6 +670,40 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - E-posta doğrulama ekranında "tekrar gönder" butonu.
   - Kayıt formundaki ünvan listesi: kıdem yılı yalnızca "Asistan Dr." için sorulur.
 - **Doğrulama:** e2e `registration.spec.ts`: kayıt → bekleme → admin onayı (ikinci context) → bekleyen kullanıcı yenilemeden aktif olur; davet kodlu kayıt doğrudan aktif olur.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **KVKK aydınlatma metni** `functions/src/shared/consent.ts` (sürüm `1.0`, yürürlük tarihi, bölümler).
+    - İçerik uygulamanın gerçekten işlediği verilerden türetildi: kimlik/iletişim, kıdem, hesap güvenliği, yoklama/sınav/okuma kayıtları, cihaz bağlama özeti, denetim kayıtları; amaçlar, hukuki sebep, aktarım (Google Cloud/Firebase, europe-west1, yurt dışı işleme), saklama, md. 11 hakları.
+    - **Veri sorumlusu kimliği kodda değil**, `NEXT_PUBLIC_KVKK_CONTROLLER_NAME` / `NEXT_PUBLIC_KVKK_CONTACT` (`src/lib/kvkk.ts`). Yapılandırılmamışsa `/kvkk` bunu açıkça söyler ve kayıt formu başvuru almaz (aydınlatma yükümlülüğü yerine getirilemez). `.env.development` yalnızca emülatör değerleri içerir.
+    - `/kvkk` (route group `(public)`), kayıt formundan yeni sekmede bağlantı.
+    - **Hukuki onay gerekli:** metin bir hukuk görüşü değildir. Kurumun KVKK sorumlusu yayından önce onaylamalı (F10.2'ye eklendi). Açık rıza ve yurt dışı aktarım dayanağı (standart sözleşme / açık rıza) kurumun kararıdır; şu an "aydınlatma metnini okudum" onayı alınıyor, açık rıza alınmıyor.
+  - **Sunucu:** `completeRegistration` `consentVersion`'ı **zorunlu** ve **yalnızca güncel sürüm** (`z.literal`) olarak kabul eder; profile `consent: { version, acceptedAt }` yazılır.
+  - **Kıdem yılı yalnızca asistan için** (`RESIDENT_TITLE`, `isResidentTitle`):
+    - Şemada asistan için zorunlu (`superRefine`); diğer ünvanlarda sunucu `null` yazar.
+    - `residencyYear` modelde `number | null` (üye, claim, davet, yoklama kaydı, sınav girişimi).
+    - **Sessiz uydurma kaldırıldı:** functions'ta 6 yerde eksik kıdem `?? 1` ile "1. yıl" olarak yazılıyordu (claim, yetki değişikliği, yoklama, sınav). Artık `null`.
+    - Seed'deki "Prof. Dr." eğitim sorumlusunun kıdem yılı 4 → `null`.
+    - Kenar çubuğunda "Uzman hekim" etiketi (`memberRoleLabel`).
+    - Davette kıdem yılı isteğe bağlı.
+  - **Yolda bulunan hata:** ilk sürümde şema `transform` ile uzman için `residencyYear: null` üretiyordu. İstemci şemanın ÇIKTISINI gönderdiği için sunucu bu `null`'ı reddedecekti. Dönüşüm kaldırıldı. Birim testi: gönderilen istek sunucu şemasından yeniden geçer.
+  - **Kayıt formu yeniden yazıldı** (`Field`/`Button`/`Alert`):
+    - Ünvan, kıdem yılı (yalnızca asistan), ad soyad (`autoComplete=name`), e-posta (`email`), şifre + tekrar (`new-password`, ipucu), davet kodu (ipucu), KVKK onay kutusu (`aria-invalid`/`aria-describedby`).
+    - İstemci ön kontrolleri (`src/lib/auth/password.ts`); asıl şifre politikası Identity Platform'da.
+    - Hata varsa sunucuya gidilmez, hesap açılmaz.
+  - **Plandan sapma, sıra:** `createUser` → `completeRegistration` → `sendEmailVerification`. Plan doğrulama e-postasını kayıttan önce gönderiyordu; geçersiz davet kodunda tekrar denemede ikinci e-posta giderdi. E-posta gönderilemezse başvuru yine tamam; bekleme ekranından yeniden gönderilir.
+  - **Bekleme ekranı korumalı alanda** (`SessionGuard → PendingNotice`):
+    - "Başvurunuz onay bekliyor", ad/e-posta, sade metin.
+    - E-posta doğrulanmamışsa `EmailVerification` paneli (gönder + "Doğruladım"; hesap güvenliği sayfasıyla ortak bileşen, `src/components/auth/`).
+    - "Çıkış yap" düğmesi.
+    - Onay gelince sayfa kendiliğinden açılır (F2.4 canlı dinleyici).
+    - Kayıt sonrası `/dashboard`'a gidilir; **`/pending` artık sunucu yönlendirmesi** (eski bağlantılar için). Teknik "Custom Claims" metni silindi.
+  - **Askı ekranı:** askıdaki üye oturum bağlamında hemen çıkarılır ve giriş ekranında `?neden=askida` mesajını görür (F2.4). `SessionGuard` ara durumda içerik göstermez. Ayrı sayfa gerekmedi.
+  - Testler:
+    - functions +2 (onay zorunlu, eski sürüm reddi, profil yazılmıyor; uzman `null` + claim, asistan yılsız reddi; mevcut kayıt testine onay saklama kontrolü).
+    - unit +3 (çıktı yeniden doğrulanır; `memberRoleLabel`; `passwordProblem`).
+    - e2e kayıt: davetsiz kayıt → doğrulama e-postası emülatöre düşer, bekleme ekranı doğrulama ve çıkış sunar; KVKK onayı / şifre tekrarı yoksa hata, hesap açılmaz, e-posta gitmez; `/kvkk` sürüm ve veri sorumlusu; uzman başvurusunda kıdem alanı yok ve profilde `null`. Oturum ve smoke testleri yeni başlıkla güncellendi.
+    - e2e yardımcı: `fillRegistration(page, email, { inviteCode, fullName, title, consent })`; "Şifre" seçicisi `/^Şifre(\s*\*)?$/` (Playwright etiket eşleşmesine zorunlu alan yıldızı dahil oluyor).
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 180, rules 48, functions 47, e2e 46 (+2 ekran boyutuna özel atlanan), next build.
+  - **Ortam notu:** zaman aşımıyla kesilen bir e2e koşusu `next start -p 3100` sürecini açık bırakıyor; sonraki koşu (`reuseExistingServer`) silinmiş `.next` ile eski sunucuyu kullanıp her testi düşürüyor. Böyle bir durumda önce `pkill -f next-server`. Kural + e2e paketi tek komutta 10 dakikayı aşabiliyor; ayrı çalıştırın.
 
 ---
 
@@ -967,6 +1000,8 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - Functions parametreleri: `ENFORCE_APP_CHECK=true`, `REQUIRE_EMAIL_VERIFIED=true`, `AUDIT_IP_SALT` secret.
 - MFA (D20): `config/security` dokümanı **oluşturulmaz** (yoksa zorunlu) veya `requireMfa: true` yazılır. `false` yazılmamalı; emülatör dışında `false` görülürse alarm (F9.2).
 - WebAuthn RP ID = hosting domaini.
+- **KVKK (F3.5):** `NEXT_PUBLIC_KVKK_CONTROLLER_NAME` (kurumun resmi unvanı) ve `NEXT_PUBLIC_KVKK_CONTACT` (başvuru adresi) tanımlanır; boşsa kayıt alınmaz. `functions/src/shared/consent.ts` metni kurumun KVKK sorumlusu/hukuk birimi tarafından onaylanır; yurt dışı aktarım dayanağı (standart sözleşme veya açık rıza) ve saklama süreleri netleştirilir. Metin değişirse `KVKK_NOTICE_VERSION` artırılır.
+- Auth e-posta şablonları (doğrulama, şifre sıfırlama) Türkçe ve kurumsal gönderen adıyla ayarlanır.
 - Deploy: `DEPLOY.md` sırası; ilk admin kurulumu; smoke test.
 
 #### F10.3 UAT senaryoları (S)

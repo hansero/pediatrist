@@ -46,7 +46,8 @@ export const COLLECTIONS = {
 export interface MemberClaims {
   role: Role;
   status: MemberStatus;
-  residencyYear: number;
+  /** Asistanlar için 1–4; uzman/öğretim üyesi için `null` (F3.5). */
+  residencyYear: number | null;
 }
 
 /** `users/{uid}` */
@@ -55,7 +56,8 @@ export interface MemberDoc<T> {
   title: string;
   fullName: string;
   email: string;
-  residencyYear: number;
+  /** Asistanlar için 1–4; uzman/öğretim üyesi için `null` (F3.5). */
+  residencyYear: number | null;
   role: Role;
   status: MemberStatus;
   createdAt: T;
@@ -80,7 +82,7 @@ export interface InvitationDoc<T> {
   code: string;
   email: string;
   intendedRole: Role;
-  residencyYear: number;
+  residencyYear: number | null;
   invitedBy: string;
   createdAt: T;
   expiresAt: T;
@@ -120,7 +122,7 @@ export interface AttendanceRecordDoc<T> {
   uid: string;
   fullName: string;
   title: string;
-  residencyYear: number;
+  residencyYear: number | null;
   verifiedAt: T;
   method: AttendanceMethod;
   status: AttendanceStatus;
@@ -206,7 +208,7 @@ export interface QuizAttemptDoc<T> {
   quizTitle: string;
   uid: string;
   doctorName: string;
-  residencyYear: number;
+  residencyYear: number | null;
   status: QuizAttemptStatus;
   startedAt: T;
   deadline: T;

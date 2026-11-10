@@ -6,7 +6,7 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { auditIn, writeAuditLog } from "./auditLogger";
 import { defineCallable } from "./callable";
-import { ATTENDANCE_CODE_ALPHABET, REGION, type MemberStatus, type Role } from "./shared/constants";
+import { ATTENDANCE_CODE_ALPHABET, isResidentTitle, REGION, type MemberStatus, type Role } from "./shared/constants";
 import { COLLECTIONS, type InvitationDoc, type MemberClaims, type MemberDoc } from "./shared/types";
 
 /**
@@ -43,7 +43,7 @@ function claimsOf(doc: Partial<MemberDoc<unknown>>): MemberClaims {
   return {
     role: normalizeRole(doc.role),
     status: normalizeStatus(doc.status),
-    residencyYear: Number(doc.residencyYear ?? 1),
+    residencyYear: typeof doc.residencyYear === "number" ? doc.residencyYear : null,
   };
 }
 
@@ -134,7 +134,7 @@ export const updateMemberAccess = defineCallable("updateMemberAccess", "admin", 
 
     const role = data.role ?? normalizeRole(existing.role);
     const status = data.status ?? normalizeStatus(existing.status);
-    const residencyYear = Number(data.residencyYear ?? existing.residencyYear ?? 1);
+    const residencyYear = data.residencyYear ?? existing.residencyYear ?? null;
     const resetDevice = Boolean(data.resetBoundDevice);
 
     // Son aktif admin korunur (sistem yönetilemez hale gelmesin).
@@ -176,7 +176,7 @@ export const updateMemberAccess = defineCallable("updateMemberAccess", "admin", 
       resourceId: data.targetUid,
       severity: revoke ? "WARN" : "INFO",
       metadata: {
-        previous: { role: existing.role, status: existing.status, residencyYear: existing.residencyYear ?? 1 },
+        previous: { role: existing.role, status: existing.status, residencyYear: existing.residencyYear ?? null },
         role,
         status,
         residencyYear,
@@ -250,7 +250,10 @@ export const completeRegistration = defineCallable("completeRegistration", "sign
 
     const role: Role = invite ? normalizeRole(invite.data.intendedRole) : "user";
     const status: MemberStatus = invite ? "active" : "pending";
-    const residencyYear = invite ? Number(invite.data.residencyYear ?? data.residencyYear) : data.residencyYear;
+    // Kıdem yılı yalnızca asistanlar için (F3.5); davet bir yıl belirttiyse o geçerlidir.
+    const residencyYear = isResidentTitle(data.title)
+      ? (invite?.data.residencyYear ?? data.residencyYear ?? null)
+      : null;
 
     tx.set(userRef, {
       uid: me.uid,
@@ -261,7 +264,7 @@ export const completeRegistration = defineCallable("completeRegistration", "sign
       role,
       status,
       inviteCode: data.inviteCode ?? null,
-      consent: data.consentVersion ? { version: data.consentVersion, acceptedAt: FieldValue.serverTimestamp() } : null,
+      consent: { version: data.consentVersion, acceptedAt: FieldValue.serverTimestamp() },
       boundDeviceHash: null,
       createdAt: FieldValue.serverTimestamp(),
       ...(invite ? { approvedBy: invite.data.invitedBy } : {}),
@@ -323,7 +326,7 @@ export const createInvitation = defineCallable("createInvitation", "admin", asyn
       code: candidate,
       email: data.email,
       intendedRole: data.intendedRole,
-      residencyYear: data.residencyYear,
+      residencyYear: data.residencyYear ?? null,
       invitedBy: actor.uid,
       createdAt: FieldValue.serverTimestamp(),
       expiresAt,

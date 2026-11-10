@@ -8,7 +8,7 @@ export interface AttendanceRecordItem {
   uid: string;
   fullName: string;
   title: string;
-  residencyYear: number;
+  residencyYear: number | null;
   verifiedAt: string;
   method: "qr+webauthn" | "qr+device_bound" | "admin_excused";
   status: "present" | "excused";
@@ -32,7 +32,7 @@ export interface ClinicRosterMember {
   uid: string;
   fullName: string;
   title: string;
-  residencyYear: number;
+  residencyYear: number | null;
   hasBoundDevice: boolean;
 }
 

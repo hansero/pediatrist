@@ -55,7 +55,7 @@ function toSession(
     email: user.email ?? profile.email ?? "",
     fullName: String(profile.fullName ?? ""),
     title: String(profile.title ?? ""),
-    residencyYear: Number(profile.residencyYear ?? 1),
+    residencyYear: typeof profile.residencyYear === "number" ? profile.residencyYear : null,
     role: profile.role === "admin" ? "admin" : "user",
     status: profile.status === "active" || profile.status === "suspended" ? profile.status : "pending",
     mfaVerified,

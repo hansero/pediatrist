@@ -12,6 +12,7 @@
  * Soru alanları arası kurallar (seçenek ⇔ doğru cevap, Text Input ⇔ maxLength) `quizQuestion.ts` içindedir ve
  * admin CSV önizlemesiyle ortaktır.
  */
+import { KVKK_NOTICE_VERSION } from "./consent";
 import { z } from "./zod";
 import { QuizQuestionInput } from "./quizQuestion";
 import {
@@ -23,6 +24,7 @@ import {
   RESIDENCY_YEARS,
   ROLES,
   TITLES,
+  isResidentTitle,
 } from "./constants";
 
 // --- Yardımcı tipler ----------------------------------------------------------
@@ -93,7 +95,7 @@ export const UpdateMemberAccessResponse = z.object({
   targetUid: z.string(),
   role: roleSchema,
   status: statusSchema,
-  residencyYear: z.number(),
+  residencyYear: z.number().nullable(),
 });
 
 /** Davet kodu: büyük harfe çevrilir; harf, rakam ve tire. */
@@ -107,17 +109,29 @@ export const invitationCode = z
 
 /**
  * Kayıt (F2.3): profil SUNUCUDA yazılır (D4). Rol ve durum istemciden alınmaz; e-posta token'dan okunur.
- * Davet kodu geçerliyse üyelik doğrudan aktif olur. `consentVersion` F3.5'te zorunlu olacak (KVKK onay kutusu).
+ * Davet kodu geçerliyse üyelik doğrudan aktif olur. KVKK onayı (`consentVersion`) zorunludur (F3.5).
  */
-export const CompleteRegistrationRequest = z.object({
-  title: z.enum(TITLES, { error: "Ünvan listeden seçilmelidir." }),
-  fullName: requiredText("Ad soyad", LIMITS.personNameLength).refine((v) => v.length >= 2, {
-    error: "Ad soyad en az 2 karakter olmalıdır.",
-  }),
-  residencyYear: residencyYearSchema,
-  inviteCode: z.union([invitationCode, z.literal("").transform(() => undefined)]).optional(),
-  consentVersion: z.string().trim().min(1).max(32).optional(),
-});
+export const CompleteRegistrationRequest = z
+  .object({
+    title: z.enum(TITLES, { error: "Ünvan listeden seçilmelidir." }),
+    fullName: requiredText("Ad soyad", LIMITS.personNameLength).refine((v) => v.length >= 2, {
+      error: "Ad soyad en az 2 karakter olmalıdır.",
+    }),
+    /** Yalnızca asistanlar için zorunlu; diğer ünvanlarda yok sayılır ve `null` saklanır. */
+    residencyYear: residencyYearSchema.optional(),
+    inviteCode: z.union([invitationCode, z.literal("").transform(() => undefined)]).optional(),
+    /** KVKK aydınlatma metninin okunduğu onayı: yalnızca GÜNCEL sürüm kabul edilir (F3.5). */
+    consentVersion: z.literal(KVKK_NOTICE_VERSION, {
+      error: "Devam etmek için güncel KVKK aydınlatma metnini okuduğunuzu onaylayın.",
+    }),
+  })
+  .superRefine((v, ctx) => {
+    if (isResidentTitle(v.title) && v.residencyYear === undefined) {
+      ctx.addIssue({ code: "custom", path: ["residencyYear"], message: "Kıdem yılı seçilmelidir." });
+    }
+  });
+// Not: dönüşüm (transform) yok; istemci şemanın ÇIKTISINI gönderir ve sunucu aynı şemayla yeniden doğrular.
+// Asistan olmayanlar için `residencyYear`'ı sunucu `null` yazar (members.ts).
 export const CompleteRegistrationResponse = z.object({
   status: statusSchema,
   role: roleSchema,
@@ -132,7 +146,8 @@ export const CreateInvitationRequest = z.object({
     .max(254, { error: "E-posta adresi çok uzun." })
     .pipe(z.email({ error: "Geçerli bir e-posta adresi girin." })),
   intendedRole: roleSchema,
-  residencyYear: residencyYearSchema,
+  /** Asistan daveti için kıdem yılı; boşsa kayıt olan asistanın seçimi geçerlidir. */
+  residencyYear: residencyYearSchema.optional(),
   validForDays: intInRange("Geçerlilik süresi (gün)", 1, 90).optional().default(14),
 });
 export const CreateInvitationResponse = z.object({

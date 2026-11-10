@@ -19,11 +19,10 @@ test("onay → canlı aktifleşme; cihaz sıfırlama → oturum sonlanır; askı
   const admin = await adminCtx.newPage();
 
   // 1) Asistan kayıt olur ve onay bekleme ekranını görür.
-  await fillRegistration(user, email, "", fullName);
-  await expect(user).toHaveURL(/\/pending$/);
+  await fillRegistration(user, email, { fullName });
+  await expect(user).toHaveURL(/\/dashboard$/);
+  await expect(user.getByRole("heading", { name: "Başvurunuz onay bekliyor" })).toBeVisible();
   const uid = String((await findUserProfileByEmail(email))?.uid);
-  await user.goto("/dashboard");
-  await expect(user.getByRole("heading", { name: "Üyelik Onayı Bekleniyor" })).toBeVisible();
 
   // 2) Admin kendi tarayıcısında onaylar → asistanın ekranı yenilenmeden panele geçer.
   await loginAs(admin, ACCOUNTS.admin);

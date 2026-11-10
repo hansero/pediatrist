@@ -25,6 +25,10 @@ export type Title = (typeof TITLES)[number];
 export const RESIDENCY_YEARS = [1, 2, 3, 4] as const;
 export type ResidencyYear = (typeof RESIDENCY_YEARS)[number];
 
+/** Kıdem yılı yalnızca bu ünvan için anlamlıdır; uzman/öğretim üyelerinde `residencyYear` `null`'dır (F3.5). */
+export const RESIDENT_TITLE: Title = "Asistan Dr.";
+export const isResidentTitle = (title: string): boolean => title === RESIDENT_TITLE;
+
 // --- Yoklama ---------------------------------------------------------------
 
 /** Projektör kodunun yenilenme aralığı. Bir önceki pencere ağ gecikmesi toleransı olarak kabul edilir. */

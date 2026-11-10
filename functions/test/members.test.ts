@@ -9,6 +9,7 @@ import {
   updateMemberAccess,
 } from "../src/members";
 import { CALLABLES } from "../src/shared/schemas";
+import { KVKK_NOTICE_VERSION } from "../src/shared/consent";
 import {
   asAdmin,
   asMember,
@@ -31,7 +32,12 @@ async function signedInOnly(uid: string, email = `${uid}@example.test`): Promise
   return { uid, claims: { email } };
 }
 
-const registration = { title: "Asistan Dr.", fullName: "Yeni Asistan", residencyYear: 2 };
+const registration = {
+  title: "Asistan Dr.",
+  fullName: "Yeni Asistan",
+  residencyYear: 2,
+  consentVersion: KVKK_NOTICE_VERSION,
+};
 
 async function invite(code: string, overrides: Record<string, unknown> = {}) {
   await db()
@@ -184,9 +190,43 @@ describe("completeRegistration", () => {
       status: "pending",
       inviteCode: null,
       boundDeviceHash: null,
+      consent: { version: KVKK_NOTICE_VERSION },
     });
+    expect((await profile("yeni"))?.consent?.acceptedAt).toBeTruthy();
     expect((await auth().getUser("yeni")).customClaims).toMatchObject({ role: "user", status: "pending" });
     expect(await auditActions()).toContain("MEMBER_REGISTERED");
+  });
+
+  it("KVKK onayı zorunlu ve yalnızca güncel sürüm kabul edilir (F3.5)", async () => {
+    const me = await signedInOnly("onaysiz");
+    const { consentVersion: _omit, ...withoutConsent } = registration;
+    void _omit;
+    expect(await errorCode(completeRegistration.run(callableRequest(withoutConsent, me)))).toBe("invalid-argument");
+    const old = await errorOf(
+      completeRegistration.run(callableRequest({ ...registration, consentVersion: "0.9" }, me))
+    );
+    expect(old).toEqual({ code: "invalid-argument", message: expect.stringContaining("aydınlatma metnini") });
+    expect(await profile("onaysiz")).toBeUndefined();
+  });
+
+  it("kıdem yılı yalnızca asistan için: uzman hekimde null saklanır; asistanda zorunlu", async () => {
+    const uzman = await signedInOnly("uzman");
+    await completeRegistration.run(
+      callableRequest({ title: "Uzm. Dr.", fullName: "Uzman Hekim", consentVersion: KVKK_NOTICE_VERSION }, uzman)
+    );
+    expect(await profile("uzman")).toMatchObject({ title: "Uzm. Dr.", residencyYear: null });
+    expect((await auth().getUser("uzman")).customClaims).toMatchObject({ residencyYear: null });
+
+    const asistan = await signedInOnly("yilsiz");
+    const res = await errorOf(
+      completeRegistration.run(
+        callableRequest(
+          { title: "Asistan Dr.", fullName: "Yılsız Asistan", consentVersion: KVKK_NOTICE_VERSION },
+          asistan
+        )
+      )
+    );
+    expect(res).toEqual({ code: "invalid-argument", message: expect.stringContaining("Kıdem yılı") });
   });
 
   it("idempotent: ikinci çağrı hiçbir şeyi değiştirmez", async () => {

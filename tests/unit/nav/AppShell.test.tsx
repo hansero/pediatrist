@@ -139,3 +139,12 @@ describe("AppShell", () => {
     expect(screen.getByRole("alert").textContent).toContain("Beklenmeyen bir hata");
   });
 });
+
+describe("memberRoleLabel", () => {
+  it("eğitim sorumlusu, kıdemli asistan, kıdemsiz (uzman) hekim", async () => {
+    const { memberRoleLabel } = await import("@/components/nav/AppShell");
+    expect(memberRoleLabel({ role: "admin", residencyYear: null })).toBe("Eğitim Sorumlusu");
+    expect(memberRoleLabel({ role: "user", residencyYear: 3 })).toBe("Asistan • 3. yıl");
+    expect(memberRoleLabel({ role: "user", residencyYear: null })).toBe("Uzman hekim");
+  });
+});
