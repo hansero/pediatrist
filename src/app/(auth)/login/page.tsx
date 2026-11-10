@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { SIGN_OUT_MESSAGES, type SignOutReason } from "@/lib/auth/sessionDecision";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -118,13 +119,13 @@ export default function LoginPage() {
             </Button>
 
             <div style={{ marginTop: "1rem", textAlign: "center", fontSize: "0.82rem" }}>
-              <a
+              <Link
                 id="login-to-register-link"
                 href="/register"
                 style={{ color: "var(--clinical-primary)", fontWeight: 600 }}
               >
                 Kliniğe yeni başladınız mı? Asistan / Uzman Üyelik Başvurusu Yapın &rarr;
-              </a>
+              </Link>
             </div>
           </form>
         ) : (

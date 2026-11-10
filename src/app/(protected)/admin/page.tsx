@@ -172,10 +172,7 @@ export default function AdminSecurityPage() {
     <section aria-labelledby="admin-security-page-heading">
       <div className="page-header">
         <div>
-          <span className="sec-chip success">Modül 5 • /admin • Güvenlik &amp; Üye Yönetimi</span>
-          <h1 id="admin-security-page-heading" style={{ marginTop: "0.45rem" }}>
-            Kapalı Devre Üyelik, RBAC ve Siber Güvenlik Denetim Paneli
-          </h1>
+          <h1 id="admin-security-page-heading">Kapalı Devre Üyelik, RBAC ve Siber Güvenlik Denetim Paneli</h1>
           <p className="page-header-subtitle">
             Bekleyen üyelik onayları, rol ve kıdem ataması, kişisel yoklama cihazı sıfırlama ve değiştirilemez güvenlik
             denetim kayıtları.

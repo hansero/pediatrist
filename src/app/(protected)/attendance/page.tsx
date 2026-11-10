@@ -247,10 +247,7 @@ export default function AttendancePage() {
     <section aria-labelledby="attendance-page-heading">
       <div className="page-header">
         <div>
-          <span className="sec-chip info">Modül 3 • /attendance</span>
-          <h1 id="attendance-page-heading" style={{ marginTop: "0.45rem" }}>
-            Derslere Katılım Kontrolü
-          </h1>
+          <h1 id="attendance-page-heading">Derslere Katılım Kontrolü</h1>
           <p className="page-header-subtitle">
             {isAdmin
               ? "Yoklama alınacak dersi başlatın, canlı projektör kodunu yansıtın ve ders/asistan bazlı katılım karnelerini takip edin."

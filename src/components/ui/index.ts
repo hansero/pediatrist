@@ -6,6 +6,7 @@ export { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
 export { Countdown, formatRemaining, type CountdownProps } from "./Countdown";
 export { DataTable, type Column, type DataTableProps } from "./DataTable";
 export { Dialog, type DialogProps } from "./Dialog";
+export { Drawer, type DrawerProps } from "./Drawer";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { Field, type FieldControlProps, type FieldProps } from "./Field";
 export { PageHeader, type PageHeaderProps } from "./PageHeader";

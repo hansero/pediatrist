@@ -187,8 +187,7 @@ export default function OnlineQuizzesPage() {
     <section aria-labelledby="quizzes-page-heading">
       <div className="page-header">
         <div>
-          <span className="sec-chip info">Modül 4 • /quizzes</span>
-          <h1 id="quizzes-page-heading" style={{ marginTop: "0.45rem" }}>
+          <h1 id="quizzes-page-heading">
             {isAdmin
               ? "Online Sınav Yönetimi, CSV Yükleme ve Merkezi Log Dashboard'u"
               : "Online Klinik Vaka Sınavı ve Kişisel Gelişim Takibi"}

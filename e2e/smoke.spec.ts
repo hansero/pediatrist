@@ -1,5 +1,6 @@
 import { expect, test } from "./fixtures/test";
 import { ACCOUNTS, loginAs } from "./fixtures/auth";
+import { openMenu } from "./fixtures/nav";
 
 /**
  * Duman testi: seed hesaplarıyla rol bazlı giriş. Gerçek emülatör verisi kullanılır
@@ -14,7 +15,8 @@ test.describe("rol bazlı giriş", () => {
 
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Nevin Aydoğan");
-    await expect(page.locator("#nav-link-admin")).toBeVisible();
+    const menu = await openMenu(page);
+    await expect(menu.getByRole("link", { name: "Üyeler ve Güvenlik" })).toBeVisible();
     expect(pageErrors).toEqual([]);
   });
 
@@ -22,14 +24,16 @@ test.describe("rol bazlı giriş", () => {
     await loginAs(page, ACCOUNTS.asistan2);
 
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Selin Ateş");
-    await expect(page.locator("#nav-link-admin")).toHaveCount(0);
+    const menu = await openMenu(page);
+    await expect(menu.getByRole("link", { name: "Genel Bakış" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Üyeler ve Güvenlik" })).toHaveCount(0);
   });
 
   test("onay bekleyen kullanıcı modüllere erişemez", async ({ page }) => {
     await loginAs(page, ACCOUNTS.bekleyen);
 
     await expect(page.getByRole("heading", { name: "Üyelik Onayı Bekleniyor" })).toBeVisible();
-    await expect(page.locator("#nav-link-materials")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Eğitim Materyalleri" })).toHaveCount(0);
   });
 });
 

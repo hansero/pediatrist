@@ -231,3 +231,55 @@
   pointer-events: auto;
   box-shadow: var(--shadow-md);
 }
+
+/* Çekmece (mobil menü) */
+.ui-drawer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+}
+
+.ui-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 23, 38, 0.6);
+}
+
+.ui-drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(300px, 85vw);
+  height: 100%;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.ui-drawer:focus-visible {
+  outline: none;
+}
+
+.ui-drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.ui-drawer-header .ui-icon-btn {
+  color: var(--text-on-dark);
+}
+
+.ui-drawer-header .ui-icon-btn:hover {
+  background: var(--bg-sidebar-hover);
+}
+
+/* Durum sayfaları (404, hata, yükleniyor) */
+.status-page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  max-width: 560px;
+}

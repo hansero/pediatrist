@@ -1,13 +1,34 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { AppShell } from "@/components/nav/AppShell";
 import { SessionGuard } from "@/components/security/SessionGuard";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
 import { ClinicSessionProvider, useClinicSession } from "@/lib/auth/ClinicSessionContext";
 
 /**
- * Korumalı alan iskeleti.
- * GÜVENLİK: Uygulama içi "Rol Değiştir" butonu KALDIRILDI. Rol yalnızca Firebase Custom Claims'ten
- * gelir. Kenar çubuğunda cihaz kimliği, proje kimliği veya token claim'leri gösterilmez.
+ * Oturum yok → giriş; hesap açık ama profil yok (ör. kayıt sırasında sekme kapandı) → kayıt ekranı,
+ * orada yalnızca profil tamamlanır (F2.3). Yönlendirme render sırasında değil, efektte ve
+ * geçmişe kayıt bırakmadan (`replace`) yapılır.
+ */
+function Redirect({ to }: { to: string }) {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace(to);
+  }, [router, to]);
+  return (
+    <main className="app-content" aria-busy="true">
+      <p className="page-header-subtitle">Yönlendiriliyor…</p>
+    </main>
+  );
+}
+
+/**
+ * Korumalı alan: oturum fazlarına göre durum ekranı veya uygulama iskeleti (`AppShell`, F3.2).
+ * Rol ve durum yalnızca `users/{uid}` dokümanından gelir (D3). Kenar çubuğunda cihaz kimliği,
+ * proje kimliği veya token claim'leri gösterilmez.
  */
 function ClinicShell({ children }: { children: React.ReactNode }) {
   const { session, phase, error, signOutUser } = useClinicSession();
@@ -31,99 +52,23 @@ function ClinicShell({ children }: { children: React.ReactNode }) {
   if (phase === "error") {
     return (
       <main className="app-content">
-        <div role="alert" className="clinical-alert critical">
-          Oturum bilgileri yüklenemedi: {error}
-        </div>
-        <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
-          Tekrar dene
-        </button>
+        <Alert tone="critical" title="Oturum bilgileri yüklenemedi">
+          {error}
+        </Alert>
+        <Button onClick={() => window.location.reload()}>Tekrar dene</Button>
       </main>
     );
   }
 
-  // Hesap açık ama kayıt tamamlanmamış (ör. kayıt sırasında sekme kapandı): kayıt ekranı açık oturumu
-  // algılayıp yalnızca profili tamamlar (F2.3).
-  if (phase === "needsProfile") {
-    if (typeof window !== "undefined") window.location.replace("/register");
-    return null;
-  }
-
-  if (phase === "signedOut" || !session) {
-    if (typeof window !== "undefined") window.location.replace("/login");
-    return null;
+  if (phase === "needsProfile" || phase === "signedOut" || !session) {
+    return <Redirect to={phase === "needsProfile" ? "/register" : "/login"} />;
   }
 
   return (
     <SessionGuard session={session} onUnlock={() => false} onSignOut={signOutUser}>
-      <div className="app-shell">
-        <aside className="app-sidebar" aria-label="Klinik Ana Navigasyon">
-          <div>
-            <div className="brand-header">
-              <div className="brand-mark">P</div>
-              <div>
-                <span className="brand-title">Pediatrist</span>
-                <span className="brand-subtitle">Eğitim Kliniği Platformu</span>
-              </div>
-            </div>
-
-            <div className="nav-section-label">Klinik Eğitim Modülleri</div>
-            <ul className="nav-list">
-              <li>
-                <a id="nav-link-dashboard" href="/dashboard" className="nav-link">
-                  <span className="nav-link-inner">Genel Bakış</span>
-                </a>
-              </li>
-              <li>
-                <a id="nav-link-materials" href="/materials" className="nav-link">
-                  <span className="nav-link-inner">1. Eğitim Materyalleri</span>
-                </a>
-              </li>
-              <li>
-                <a id="nav-link-calculators" href="/calculators" className="nav-link">
-                  <span className="nav-link-inner">2. Pediatri Hesaplamaları</span>
-                </a>
-              </li>
-              <li>
-                <a id="nav-link-attendance" href="/attendance" className="nav-link">
-                  <span className="nav-link-inner">3. Ders Katılım Kontrolü</span>
-                </a>
-              </li>
-              <li>
-                <a id="nav-link-quizzes" href="/quizzes" className="nav-link">
-                  <span className="nav-link-inner">
-                    {session.role === "admin" ? "4. Sınav Yönetimi" : "4. Online Sınav"}
-                  </span>
-                </a>
-              </li>
-              {session.role === "admin" && (
-                <li>
-                  <a id="nav-link-admin" href="/admin" className="nav-link">
-                    <span className="nav-link-inner">5. Üye &amp; Güvenlik</span>
-                  </a>
-                </li>
-              )}
-            </ul>
-          </div>
-
-          <div className="sidebar-footer">
-            <div className="user-pill">
-              <div className="user-pill-name">
-                {session.title} {session.fullName}
-              </div>
-              <div className="user-pill-meta">
-                {session.role === "admin" ? "Eğitim Sorumlusu" : `Asistan • ${session.residencyYear}. yıl`}
-              </div>
-            </div>
-            <button id="sidebar-signout-btn" type="button" className="btn btn-secondary btn-sm" onClick={signOutUser}>
-              Güvenli Çıkış
-            </button>
-          </div>
-        </aside>
-
-        <div className="app-main-wrapper">
-          <main className="app-content">{children}</main>
-        </div>
-      </div>
+      <AppShell session={session} onSignOut={signOutUser}>
+        {children}
+      </AppShell>
     </SessionGuard>
   );
 }

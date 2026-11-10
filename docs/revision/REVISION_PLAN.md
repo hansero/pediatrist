@@ -53,7 +53,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F2.5 | Tek kaynaklı CSP, header'lar, SSR bölgesi | S | ✅ | C6, §7 bölge |
 | **F3** | **UI temeli ve kimlik doğrulama UX** | | | |
 | F3.1 | Tasarım token'ları, kontrast/odak, `next/font`, UI primitifleri | L | ✅ | Tutarlılık, Erişilebilirlik |
-| F3.2 | Korumalı layout: `next/link`, aktif menü, mobil çekmece, hata/404/yükleniyor | M | ⬜ | Kullanılabilirlik |
+| F3.2 | Korumalı layout: `next/link`, aktif menü, mobil çekmece, hata/404/yükleniyor | M | ✅ | Kullanılabilirlik |
 | F3.3 | `SessionGuard` yeniden yazımı (uyarı, muafiyet, odak tuzağı) | S | ⬜ | C8 (temel) |
 | F3.4 | Giriş: gerçek hata yönetimi, şifre sıfırlama, gerçek TOTP MFA | L | ⬜ | C4 |
 | F3.5 | Kayıt, KVKK onayı, e-posta doğrulama, bekleme/askı ekranları | M | ⬜ | C9, Kullanılabilirlik |
@@ -101,15 +101,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F3.1. Tasarım token'ları (`src/styles/tokens.css`, kontrast birim testiyle), tek durum sözlüğü, odak/dokunma/hareket erişilebilirliği, `next/font` (CSP'den Google Fonts çıktı), 13 UI primitifi (`src/components/ui/`), N3 kapandı. Testler: unit 140, rules 40, functions 44, e2e 20.
+- **Son tamamlanan adım:** F3.2. Korumalı iskelet `AppShell` (`next/link`, `aria-current`, mobil çekmece, "İçeriğe geç"), `useModalLayer` + `Drawer`, `router.replace` yönlendirmeleri, 404/hata/yükleniyor sayfaları, rota çipleri kaldırıldı. Testler: unit 146, rules 40, functions 44, e2e 28.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F3.2 (M) korumalı layout:
-  - `src/app/(protected)/layout.tsx`: `<a href>` → `next/link`, `usePathname()` ile `.nav-link.active` + `aria-current="page"`.
-  - Mobilde (≤960 px) kenar çubuğu yerine çekmece (hamburger, `Dialog` benzeri odak yönetimi) veya alt sekme çubuğu; hekim için yoklama kartı önce.
-  - `not-found.tsx`, `error.tsx` (yeniden dene), `loading.tsx` (app router).
-  - Rota yönlendirme çipleri ("Modül 4 • /quizzes") kaldırılır; sayfa başlıkları `PageHeader` ile.
-  - Yeni ekranlar `@/components/ui` primitiflerini kullanır; satır içi stil eklenmez.
-  - E2E: menü gezinmesi tam sayfa yenilemesi olmadan (oturum doğrulanıyor ekranı çıkmadan), telefonda çekmece klavye ile açılıp kapanır.
+- **Sıradaki iş:** F3.3 (S) `src/components/security/SessionGuard.tsx` yeniden yazımı:
+  - Bekleme ve askı durumları ayrı ekranlar, sade metin, "Çıkış yap" düğmesi (askıdaki kullanıcı zaten F2.4'te oturumdan atılıyor; pending ekranı canlı olarak aktifleşiyor).
+  - Hareketsizlik kilidi: 15 dk öncesinde 60 sn'lik uyarı diyalogu (`Dialog` + `Countdown`, "Devam et"); kilit = gerçek çıkış (`signOutUser`), sahte "kilit aç" yok (`onUnlock` kaldırılır).
+  - Muafiyet: sınav ve projektör ekranları (`useIdleExempt()` gibi bir bağlam kancası; C8).
+  - Her saniye tüm ağacı yeniden çizen `setInterval` state'i kaldırılır (son etkinlik zamanı ref'te; tek zamanlayıcı).
+  - Birim testleri (sahte zamanlayıcı): uyarı zamanı, etkinlikte sıfırlama, muafiyet, süre sonunda çıkış.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -562,6 +561,25 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Tüm sayfalardan "Modül X • /route" çipleri kaldırılır.
   - Oturum yokken yönlendirme `router.replace` ile yapılır.
 - **Doğrulama:** e2e `nav.spec.ts` (390px ve 1280px).
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **`src/components/nav/`**: `navItems.ts` (menü sırası/etiketleri tek yerde, rol bazlı etiket, `isActivePath` alt yolları da eşler ama `/quizzes-old` gibi önekleri eşlemez), `AppShell.tsx` (kenar çubuğu, mobil üst çubuk + çekmece, kullanıcı alanı, çıkış), `ErrorPanel.tsx`.
+  - Menü etiketlerinden numaralar kaldırıldı ("1. Eğitim Materyalleri" → "Eğitim Materyalleri"; "5. Üye & Güvenlik" → "Üyeler ve Güvenlik"; hekim için "Sınavlar", admin için "Sınav Yönetimi"). Masaüstü bağlantı kimlikleri `nav-link-*`, çekmecedekiler `drawer-nav-link-*` (yinelenen id yok).
+  - **Çekmece:** yeni `Drawer` primitifi. Odak/inert/Esc/kaydırma kilidi mantığı `Dialog`'dan **`useModalLayer`** kancasına taşındı; ikisi de onu kullanıyor. Çekmece Esc, "Menüyü kapat", arka plana dokunma, bağlantı tıklaması ve rota değişiminde kapanıyor. Üst çubuktaki "Menü" düğmesi `aria-expanded` / `aria-haspopup="dialog"`.
+  - **"İçeriğe geç" bağlantısı** (WCAG 2.4.1) ve `main#main-content` (`tabIndex=-1`).
+  - Çıkış düğmesi `Button` + `useAsyncAction`: hata ekranda gösteriliyor.
+  - Korumalı layout yönlendirmeleri render sırasında `window.location.replace` yerine efektte `router.replace` (`Redirect` bileşeni). Nedenli oturum sonlandırma (F2.4) bilerek tam sayfa yönlendirmesi olarak kaldı (istemci durumu sıfırlanır).
+  - **Durum sayfaları:** `app/not-found.tsx` (404 durum kodu ile), `app/error.tsx` (giriş/kayıt), `app/(protected)/error.tsx` (menü yerinde kalır), `app/global-error.tsx` (kök layout çökerse kendi html/body'si), `app/(protected)/loading.tsx`. Hata panelinde teknik ayrıntı yok, yalnızca Next `digest` hata kodu.
+  - Sayfa başlıklarındaki "Modül N • /route" çipleri ve panelin "… Görünümü" süs çipi kaldırıldı. İç bağlantılar (`dashboard` kart düğmeleri, login↔register) `next/link`.
+  - **Kapsam notu:** sayfa başlıkları henüz `PageHeader`'a taşınmadı ve uzun başlıklar kısaltılmadı; her sayfa yeniden yazıldığı fazda (F4–F7) ve metin sadeleştirmesi F8.1'de yapılır.
+  - Testler: `tests/unit/nav/AppShell.test.tsx` (aktif öğe, rol, çekmece odak/Esc/inert, bağlantı ve rota değişiminde kapanma, çıkış hatası); `e2e/nav.spec.ts`:
+    - menü geçişinde sayfa yeniden yüklenmiyor (pencere işareti korunuyor) ve `aria-current` taşınıyor (iki ekran boyutu);
+    - telefonda kenar çubuğu gizli, çekmece klavyeyle açılıyor, 12 Tab'da dışarı çıkmıyor, Esc ile kapanınca odak "Menü"ye dönüyor;
+    - "İçeriğe geç" ilk Tab'da görünüyor ve içeriğe atlıyor;
+    - Türkçe 404;
+    - oturumsuz korumalı sayfa geçmişe kayıt bırakmadan girişe yönlendiriyor.
+  - `e2e/fixtures/nav.ts` → `openMenu(page)`: telefonda çekmeceyi açar. Smoke testleri id yerine rol/ad ile menüyü sorguluyor.
+  - Ekran görüntüleriyle kontrol: 390 px üst çubuk + çekmece, 1280 px aktif öğe. (Geçişten hemen sonra eski öğe 150 ms renk geçişiyle sönüyor; sınıflar doğru, ölçüldü.)
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 146, e2e 28 (+2 bilinçli atlanan ekran boyutu testi), next build.
 
 #### F3.3 SessionGuard (S)
 - **Dosyalar:** `src/components/security/SessionGuard.tsx`, `src/lib/auth/IdleContext.tsx`

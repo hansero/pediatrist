@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import type { ResidencyYear, Title } from "@shared/constants";
@@ -176,9 +177,13 @@ export default function RegisterPage() {
           </Button>
 
           <div style={{ marginTop: "1rem", textAlign: "center", fontSize: "0.82rem" }}>
-            <a id="register-to-login-link" href="/login" style={{ color: "var(--clinical-primary)", fontWeight: 600 }}>
+            <Link
+              id="register-to-login-link"
+              href="/login"
+              style={{ color: "var(--clinical-primary)", fontWeight: 600 }}
+            >
               Zaten onaylı hesabınız var mı? Giriş Ekranına Dönün
-            </a>
+            </Link>
           </div>
         </form>
       </article>

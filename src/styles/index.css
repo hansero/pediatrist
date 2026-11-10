@@ -60,6 +60,28 @@ h3 {
   outline-color: var(--focus-ring-on-dark);
 }
 
+/* "İçeriğe geç": klavyeyle ilk Tab'da görünür (WCAG 2.4.1) */
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: -100px;
+  z-index: 300;
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-surface);
+  color: var(--clinical-primary);
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+#main-content:focus {
+  outline: none;
+}
+
 /* Yalnızca ekran okuyucular için metin */
 .sr-only {
   position: absolute;
@@ -595,14 +617,42 @@ h3 {
 /* ===========================================================================
    RESPONSIVE KURALLAR (Mobil Nöbet / Poliklinik Uyumu)
    =========================================================================== */
+/* Mobil üst çubuk: geniş ekranda gizli */
+.mobile-topbar {
+  display: none;
+}
+
 @media (max-width: 960px) {
   .app-shell {
     grid-template-columns: 1fr;
   }
 
-  .app-sidebar {
-    position: static;
-    height: auto;
+  /* Telefonda kenar çubuğu yerine üst çubuk + çekmece (F3.2) */
+  .app-sidebar--desktop {
+    display: none;
+  }
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    background: var(--bg-sidebar);
+    color: var(--text-on-dark);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .mobile-topbar .brand-header {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding: 0;
+  }
+
+  .mobile-topbar :focus-visible {
+    outline-color: var(--focus-ring-on-dark);
   }
 
   .app-content {

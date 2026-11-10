@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React from "react";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 
@@ -19,10 +20,7 @@ export default function DashboardPage() {
     >
       <div className="page-header">
         <div>
-          <span className="sec-chip success">
-            {isAdmin ? "Eğitim Sorumlusu Yönetim Görünümü" : "Pediatri Asistanı Klinik Eğitim Görünümü"}
-          </span>
-          <h1 id="dashboard-main-heading" style={{ marginTop: "0.45rem" }}>
+          <h1 id="dashboard-main-heading">
             {session ? `Hoş Geldiniz, ${session.title} ${session.fullName}` : "Pediatri Eğitim Kliniği Gösterge Paneli"}
           </h1>
           <p className="page-header-subtitle">
@@ -74,14 +72,14 @@ export default function DashboardPage() {
                 : "Eğitim Sorumlusu tarafından başlatılan derse kayıtlı kişisel cihazınız ve projektördeki 6 haneli kod ile yoklama verin."}
             </p>
           </div>
-          <a
+          <Link
             id="dashboard-goto-attendance-btn"
             href="/attendance"
             className="btn btn-primary"
             style={{ textAlign: "center", textDecoration: "none" }}
           >
             {isAdmin ? "Ders Başlatma ve Katılım Raporları Ekranını Aç" : "Ders Yoklama Ekranına Git"}
-          </a>
+          </Link>
         </article>
 
         <article
@@ -101,14 +99,14 @@ export default function DashboardPage() {
                 : "Yayındaki klinik vaka sınavını çözün, sınav sonunda her vakanın klinik öğrenme noktasını inceleyin ve gelişim grafiğinizi takip edin."}
             </p>
           </div>
-          <a
+          <Link
             id="dashboard-goto-quizzes-btn"
             href="/quizzes"
             className="btn btn-primary"
             style={{ textAlign: "center", textDecoration: "none" }}
           >
             {isAdmin ? "Sınav Yönetimi ve Analitik Paneline Git" : "Online Sınav ve Gelişim Panelime Git"}
-          </a>
+          </Link>
         </article>
       </div>
 
@@ -125,14 +123,14 @@ export default function DashboardPage() {
               filigranlı görüntüleyicide inceleyin.
             </p>
           </div>
-          <a
+          <Link
             id="dashboard-goto-materials-btn"
             href="/materials"
             className="btn btn-secondary"
             style={{ textAlign: "center", textDecoration: "none" }}
           >
             Eğitim Materyalleri Kütüphanesini Aç
-          </a>
+          </Link>
         </article>
 
         <article
@@ -147,14 +145,14 @@ export default function DashboardPage() {
               görüntüleyin.
             </p>
           </div>
-          <a
+          <Link
             id="dashboard-goto-calculators-btn"
             href="/calculators"
             className="btn btn-secondary"
             style={{ textAlign: "center", textDecoration: "none" }}
           >
             Pediatri Hesaplayıcılarını Görüntüle
-          </a>
+          </Link>
         </article>
       </div>
     </section>

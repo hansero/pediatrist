@@ -133,10 +133,7 @@ export default function TrainingMaterialsPage() {
     <section aria-labelledby="materials-page-heading">
       <div className="page-header">
         <div>
-          <span className="sec-chip info">Modül 1 • /materials</span>
-          <h1 id="materials-page-heading" style={{ marginTop: "0.45rem" }}>
-            Eğitim Materyalleri Paylaşma ve Görüntüleme
-          </h1>
+          <h1 id="materials-page-heading">Eğitim Materyalleri Paylaşma ve Görüntüleme</h1>
           <p className="page-header-subtitle">
             Bilim dalı ve asistan kıdem yılına göre filtreleme, sızıntı önleyici dinamik filigranlı belge görüntüleyici
             ve okunma takibi.

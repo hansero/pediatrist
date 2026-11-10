@@ -17,10 +17,7 @@ export default function PediatricCalculatorsPage() {
     <section aria-labelledby="calculators-page-heading">
       <div className="page-header">
         <div>
-          <span className="sec-chip info">Modül 2 • /calculators (Yer Tutucu Mimari)</span>
-          <h1 id="calculators-page-heading" style={{ marginTop: "0.45rem" }}>
-            Pediatri Hesaplama Uygulamaları
-          </h1>
+          <h1 id="calculators-page-heading">Pediatri Hesaplama Uygulamaları</h1>
           <p className="page-header-subtitle">
             5 ana pediatrik hesaplama grubu için sayfa yapısı ve girdi/çıktı yer tutucuları hazırlandı. Detaylı formül
             motoru bir sonraki aşamada kodlanacaktır.
