@@ -102,10 +102,40 @@ jobs:
       - name: Functions tests
         run: npm run test:functions
 
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      # Run #8'de `--with-deps` kurulumu 29 dk asılı kaldı (apt). Zaman sınırı + yeniden deneme.
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: |
+          for i in 1 2 3; do
+            timeout 180 npx playwright install --with-deps chromium && exit 0
+            echo "Deneme $i başarısız, tekrar deneniyor..."; sleep 10
+          done
+          exit 1
+
+      - name: Install Playwright system dependencies (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        timeout-minutes: 10
+        run: |
+          for i in 1 2 3; do
+            timeout 180 npx playwright install-deps chromium && exit 0
+            echo "Deneme $i başarısız, tekrar deneniyor..."; sleep 10
+          done
+          exit 1
 
       - name: End-to-end tests
+        timeout-minutes: 10
         run: npm run test:e2e
 
       - name: Upload Playwright report
