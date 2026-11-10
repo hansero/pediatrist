@@ -49,7 +49,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F2.1 | `firestore.rules` yeniden yazımı + rules testleri | L | ✅ | C5, C7 (kural), S11, S12, C9 (davet) |
 | F2.2 | `storage.rules` yeniden yazımı + testler | S | ✅ | C5, C11 (silme/MIME) |
 | F2.3 | Claim senkronu, `tokensValidAfter`, üye yönetimi korumaları, sunucu tarafı kayıt, davetler | L | ✅ | C5, C9, S9 |
-| F2.4 | `ClinicSessionContext` yeniden yazımı (canlı profil, token yenileme) | M | ⬜ | C5 |
+| F2.4 | `ClinicSessionContext` yeniden yazımı (canlı profil, token yenileme) | M | ✅ | C5 |
 | F2.5 | Tek kaynaklı CSP, header'lar, SSR bölgesi | S | ⬜ | C6, §7 bölge |
 | **F3** | **UI temeli ve kimlik doğrulama UX** | | | |
 | F3.1 | Tasarım token'ları, kontrast/odak, `next/font`, UI primitifleri | L | ⬜ | Tutarlılık, Erişilebilirlik |
@@ -101,19 +101,18 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F2.3 (üyelik modülü `members.ts`: `syncUserClaims`, korumalı `updateMemberAccess`, `completeRegistration`, davetler; kayıt kuralı kapatıldı; kayıt ekranı sunucu akışında; N6 düzeltildi).
+- **Son tamamlanan adım:** F2.4. **F2 fazı (yetkilendirme temeli) tamamlandı:** Firestore ve Storage kuralları doküman tabanlı (C5, C7 kural tarafı, C9, C11 kapandı); sunucu tarafı kayıt ve davetler (C9 akışı); korumalı üye yönetimi; anında oturum iptali (kurallar + callable'lar + arayüz); canlı oturum. Testler: unit 77, rules 40, functions 44, e2e 14.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F2.4 `ClinicSessionContext` yeniden yazımı:
-  - `onIdTokenChanged` + `onSnapshot(users/{uid})` birlikte.
-  - Durum ve rol **yalnızca dokümandan**.
-  - Doküman ile claim'ler uyuşmazsa `getIdToken(true)`.
-  - `suspended` olursa anında `signOut` ve bilgi ekranı.
-  - `appCheckVerified` / `mfaVerified` sahte alanları kaldırılır (`src/lib/auth/types.ts`); MFA bilgisi gerçek `multiFactor(user).enrolledFactors`'tan.
-  - `clinic_members` okuması silinir.
-  - **Profil yoksa** (hesap açık ama kayıt tamamlanmamış: sekme kapanmış vb.) `/register`'a yönlendirilir; kayıt ekranı açık oturumu algılayıp yalnızca profili tamamlıyor (F2.3).
-  - **E2E:** admin bekleyen kullanıcıyı onaylayınca kullanıcının ekranı yenilemeden aktif olur (iki browser context; onay `updateMemberAccess` callable'ı veya emülatöre doküman yazarak). Askıya alınan kullanıcının açık oturumu kapanır.
+- **Sıradaki iş:** F3.1 (L) tasarım token'ları + UI primitifleri:
+  - Token düzeltmeleri: `--status-warn*` → `--status-warning*`, alert sınıfları tek sözlük (`success | warning | critical | info`; `DoctorRealTimeCheckIn` `success/critical` kullanıyor, CSS `ok/warn/err` tanımlıyor).
+  - Kontrast: `--text-muted` ≈ `hsl(215,16%,42%)`, `--status-warning` ≈ `hsl(30,90%,30%)`, input kenarı ≈ `hsl(214,18%,58%)`; `:focus-visible` 2 px outline.
+  - `.btn:disabled`, mobilde ≥44 px dokunma hedefi, `--space-*` ölçeği, `prefers-reduced-motion`.
+  - `next/font` (Google Fonts `@import` ve tekrarlı CSS importları kaldırılır).
+  - Primitifler `src/components/ui/`: Button (loading/disabled; **N3: hydration'a kadar disabled**), Alert, ConfirmDialog, Tabs, StatusChip, PageHeader, Card, EmptyState, DataTable, Field, Countdown, Toast.
+  - Testler jsdom'da (`// @vitest-environment jsdom`, `@testing-library/react` kurulu).
+  - Kontrast değerleri betikle yeniden hesaplanır (AUDIT §6'daki yöntem).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
-- **Engeller / notlar:** N3 açık (§7). Kayıt ekranının UX'i (KVKK, e-posta doğrulama, şifre tekrarı) F3.5'te.
+- **Engeller / notlar:** N3 açık (§7; F3.1 Button ile çözülecek). Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
 ---
 
@@ -482,6 +481,16 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `mfaEnrolled` gerçek `multiFactor(user).enrolledFactors` değerinden gelir.
   - `clinic_members` okuması silinir.
 - **Doğrulama:** e2e (F3.5'te yazılır): admin onaylayınca bekleyen kullanıcının ekranı yenilemeden aktif duruma geçer.
+- **✅ Uygulanan (2026-11-10) — plandan sapmalar:**
+  - **Karar mantığı saf fonksiyonda:** `src/lib/auth/sessionDecision.ts → evaluateSession(profile, token)`. Çıktısı `needsProfile` / `signOut(askida | oturum-sonlandi)` / `ready(role, status, refreshClaims)`. Rol ve durum yalnızca dokümandan; geçersiz değerler en düşük yetkiye indirgeniyor. Askıda veya `auth_time <= tokensValidAfter` ise oturum kapanıyor. 7 birim testi.
+  - **Bağlam** (`ClinicSessionContext.tsx`): `onIdTokenChanged` + kendi profilinin `onSnapshot`'ı. Fazlar `loading | signedOut | signingOut | needsProfile | ready | error`; geriye uyumlu `session` ve `loading` alanları korunuyor. Claim önbelleği dokümandan farklıysa token **(uid, rol, durum) başına bir kez** yenileniyor (tetikleyici çalışmazsa yenileme → `onIdTokenChanged` → yeniden abonelik döngüsüne girmemek için). Firebase yapılandırılmamışsa "error" fazı (sessiz boş oturum yok). `clinic_members` okuması silindi.
+  - **`ClinicMemberSession`:** `appCheckVerified` (her zaman `true` yazılıyordu) **kaldırıldı**. `mfaVerified` token'daki `signInSecondFactor`'dan; yeni `mfaEnrolled` `multiFactor(user).enrolledFactors`'tan. Mock sayfaların `FALLBACK_*` oturumları buna göre güncellendi; bu sayfalar zaten izin listesinde.
+  - **Korumalı layout:** `needsProfile` → `/register` (kayıt ekranı açık oturumu algılayıp yalnızca profili tamamlıyor); `error` → mesaj ve "Tekrar dene"; `signingOut` → "Oturum kapatılıyor…".
+  - **Giriş ekranı** `?neden=askida | oturum-sonlandi` için Türkçe bilgi kutusu gösteriyor (`role="status"`).
+  - **E2E ile bulunan yarış durumu:** nedenli oturum kapatmada `signOut()` → `onIdTokenChanged(null)` → "signedOut" → layout'un **nedensiz** `/login` yönlendirmesi, nedenli yönlendirmeyi eziyordu. Çözüm: `signingOut` ref'i ve fazı; o sürede "signedOut" bastırılıyor.
+  - **E2E `session.spec.ts` (iki tarayıcı bağlamı, seed'i bozmadan kendi kullanıcısını oluşturuyor):** kayıt → onay bekleme ekranı → admin **kendi tarayıcısında** admin panelinden onaylıyor → asistanın ekranı **yenilenmeden** panele geçiyor → admin cihaz eşleşmesini sıfırlıyor → asistanın oturumu `?neden=oturum-sonlandi` ile kapanıyor → yeniden giriş → admin askıya alıyor → oturum `?neden=askida` ile kapanıyor ve profil `suspended`. İki ardışık çalıştırmada kararlı. Kayıt formu yardımcısı `e2e/fixtures/registration.ts`'e taşındı; `loginAs` şifre parametresi alıyor.
+  - **Kapsam dışı (F3.5):** `/pending` sayfası korumalı layout dışında olduğu için canlı dinlemiyor; kayıt sonrası orada bekleyen kullanıcı onaylanınca otomatik geçmiyor (panelde bekleyen kullanıcı geçiyor).
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 77, rules 40, functions 44, e2e 14 (iki kez), next build.
 
 #### F2.5 CSP ve bölge (S)
 - **Dosyalar:** `next.config.ts`, `firebase.json`

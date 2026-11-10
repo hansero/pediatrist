@@ -1,9 +1,8 @@
 import type { MemberStatus, Role } from "@shared/constants";
 
 /**
- * İstemcideki oturum görünümü (UI için). Rol ve durum tipleri ortak modülden gelir.
- * F2.4'te `ClinicSessionContext` yeniden yazılırken `mfaVerified` / `appCheckVerified` gibi
- * doğrulanmamış alanlar kaldırılır (AUDIT C4).
+ * İstemcideki oturum görünümü (UI için). Rol ve durum `users/{uid}` dokümanından gelir (D3);
+ * bütün alanlar gerçek kaynaklardan okunur (F2.4'te `appCheckVerified` gibi doğrulanmamış alanlar kaldırıldı).
  */
 export interface ClinicMemberSession {
   uid: string;
@@ -13,8 +12,10 @@ export interface ClinicMemberSession {
   residencyYear: number;
   role: Role;
   status: MemberStatus;
+  /** Bu oturum ikinci faktörle (TOTP) açıldı mı? (ID token → `signInSecondFactor`) */
   mfaVerified: boolean;
-  appCheckVerified: boolean;
+  /** Hesapta kayıtlı ikinci faktör var mı? (`multiFactor(user).enrolledFactors`) */
+  mfaEnrolled: boolean;
   /** Ham cihaz kimliği UI'a hiç taşınmaz; yalnızca "kayıtlı cihaz var mı" bilgisi tutulur. */
   hasBoundDevice: boolean;
 }

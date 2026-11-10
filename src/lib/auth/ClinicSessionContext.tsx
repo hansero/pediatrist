@@ -1,86 +1,146 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { onIdTokenChanged, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { multiFactor, onIdTokenChanged, signOut, type User } from "firebase/auth";
+import { doc, onSnapshot, type Timestamp } from "firebase/firestore";
+import type { MemberDoc } from "@shared/types";
+import { toUserMessage } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
-import type { MemberStatus, Role } from "@shared/constants";
+import { evaluateSession, type SignOutReason } from "@/lib/auth/sessionDecision";
 import type { ClinicMemberSession } from "@/lib/auth/types";
 
+/**
+ * Oturum bağlamı (F2.4).
+ *
+ * - Firebase Auth durumu ve kullanıcının KENDİ profil dokümanı (`users/{uid}`) canlı dinlenir.
+ * - Rol ve durum yalnızca dokümandan okunur (D3). Admin onayladığında ekran yenilemeden aktif olur;
+ *   askıya alındığında veya oturum iptal edildiğinde oturum anında kapanır.
+ * - Claim'ler yalnızca önbellektir; dokümandan farklıysa token bir kez yenilenir (döngü koruması var).
+ */
+export type SessionPhase = "loading" | "signedOut" | "signingOut" | "needsProfile" | "ready" | "error";
+
 interface SessionState {
+  phase: SessionPhase;
   session: ClinicMemberSession | null;
+  /** Geriye uyumluluk: `phase === "loading"`. */
   loading: boolean;
+  /** `phase === "error"` iken kullanıcıya gösterilecek metin. */
+  error: string;
   signOutUser: () => Promise<void>;
 }
 
 const ClinicSessionContext = createContext<SessionState>({
+  phase: "loading",
   session: null,
   loading: true,
+  error: "",
   signOutUser: async () => {},
 });
 
-/**
- * Oturum bilgisi YALNIZCA Firebase ID token'ındaki Custom Claims'ten (role, status) türetilir.
- * Rol, istemci tarafında hiçbir şekilde değiştirilemez; rol değişikliği yalnızca Admin'in
- * `updateMemberAccess` Cloud Function çağrısı ile olur ve token yenilenince yansır.
- */
+type InternalState = Pick<SessionState, "phase" | "session" | "error">;
+
+function toSession(user: User, profile: MemberDoc<Timestamp>, mfaVerified: boolean): ClinicMemberSession {
+  return {
+    uid: user.uid,
+    email: user.email ?? profile.email ?? "",
+    fullName: String(profile.fullName ?? ""),
+    title: String(profile.title ?? ""),
+    residencyYear: Number(profile.residencyYear ?? 1),
+    role: profile.role === "admin" ? "admin" : "user",
+    status: profile.status === "active" || profile.status === "suspended" ? profile.status : "pending",
+    mfaVerified,
+    mfaEnrolled: multiFactor(user).enrolledFactors.length > 0,
+    hasBoundDevice: Boolean(profile.boundDeviceHash),
+  };
+}
+
 export function ClinicSessionProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<Omit<SessionState, "signOutUser">>({ session: null, loading: true });
-  const clients = initPediatristFirebase();
+  const [state, setState] = useState<InternalState>({ phase: "loading", session: null, error: "" });
+  /** Aynı rol/durum için claim yenilemesini bir kez yap (yenileme → onIdTokenChanged → döngü olmasın). */
+  const refreshedFor = useRef<string>("");
+  /**
+   * Nedenli oturum kapatma sürüyor mu? `signOut()` → `onIdTokenChanged(null)` → "signedOut" → layout'un
+   * nedensiz `/login` yönlendirmesi, nedenli yönlendirmeyi (`?neden=...`) ezmesin diye (F2.4 e2e ile bulundu).
+   */
+  const signingOut = useRef(false);
 
   useEffect(() => {
+    const clients = initPediatristFirebase();
     if (!clients) {
-      setState({ session: null, loading: false });
+      setState({ phase: "error", session: null, error: "Sunucu bağlantısı yapılandırılmamış." });
       return;
     }
-    return onIdTokenChanged(clients.auth, async (user) => {
+    const { auth, db } = clients;
+
+    const endSession = async (reason: SignOutReason) => {
+      if (signingOut.current) return;
+      signingOut.current = true;
+      setState({ phase: "signingOut", session: null, error: "" });
+      await signOut(auth).catch(() => undefined);
+      window.location.replace(`/login?neden=${reason}`);
+    };
+
+    let unsubscribeProfile: (() => void) | null = null;
+    const unsubscribeAuth = onIdTokenChanged(auth, (user) => {
+      unsubscribeProfile?.();
+      unsubscribeProfile = null;
       if (!user) {
-        setState({ session: null, loading: false });
+        if (!signingOut.current) setState({ phase: "signedOut", session: null, error: "" });
         return;
       }
-      const token = await user.getIdTokenResult();
-      const userSnap = await getDoc(doc(clients.db, "users", user.uid)).catch(() => null);
-      const legacySnap =
-        userSnap && userSnap.exists()
-          ? null
-          : await getDoc(doc(clients.db, "clinic_members", user.uid)).catch(() => null);
-      const profile = userSnap?.data() ?? legacySnap?.data() ?? {};
 
-      const effectiveRole: Role =
-        profile.role === "admin" || (token.claims.role as Role) === "admin" ? "admin" : "user";
+      unsubscribeProfile = onSnapshot(
+        doc(db, "users", user.uid),
+        async (snap) => {
+          const profile = snap.exists() ? (snap.data() as MemberDoc<Timestamp>) : null;
+          const token = await user.getIdTokenResult();
+          const decision = evaluateSession(profile, {
+            authTimeSeconds: Math.floor(Date.parse(token.authTime) / 1000),
+            claimRole: token.claims.role,
+            claimStatus: token.claims.status,
+          });
 
-      const effectiveStatus: MemberStatus =
-        profile.status === "active" || (token.claims.status as MemberStatus) === "active"
-          ? "active"
-          : profile.status === "suspended" || (token.claims.status as MemberStatus) === "suspended"
-            ? "suspended"
-            : "pending";
+          if (decision.kind === "needsProfile") {
+            setState({ phase: "needsProfile", session: null, error: "" });
+            return;
+          }
+          if (decision.kind === "signOut") {
+            await endSession(decision.reason);
+            return;
+          }
 
-      setState({
-        loading: false,
-        session: {
-          uid: user.uid,
-          email: user.email ?? "",
-          fullName: String(profile.fullName ?? user.displayName ?? ""),
-          title: String(profile.title ?? ""),
-          residencyYear: Number(profile.residencyYear ?? token.claims.residencyYear ?? 1),
-          role: effectiveRole,
-          status: effectiveStatus,
-          mfaVerified: Boolean(token.signInSecondFactor),
-          appCheckVerified: true,
-          hasBoundDevice: Boolean(profile.boundDeviceHash),
+          const key = `${user.uid}:${decision.role}:${decision.status}`;
+          if (decision.refreshClaims && refreshedFor.current !== key) {
+            refreshedFor.current = key;
+            void user.getIdToken(true).catch(() => undefined);
+          }
+          setState({
+            phase: "ready",
+            session: toSession(user, profile!, Boolean(token.signInSecondFactor)),
+            error: "",
+          });
         },
-      });
+        (err) => setState({ phase: "error", session: null, error: toUserMessage(err) })
+      );
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    return () => {
+      unsubscribeProfile?.();
+      unsubscribeAuth();
+    };
   }, []);
 
   const signOutUser = async () => {
+    const clients = initPediatristFirebase();
     if (clients) await signOut(clients.auth);
     window.location.href = "/login";
   };
 
-  return <ClinicSessionContext.Provider value={{ ...state, signOutUser }}>{children}</ClinicSessionContext.Provider>;
+  return (
+    <ClinicSessionContext.Provider value={{ ...state, loading: state.phase === "loading", signOutUser }}>
+      {children}
+    </ClinicSessionContext.Provider>
+  );
 }
 
 export function useClinicSession() {

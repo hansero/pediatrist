@@ -1,22 +1,11 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { fillRegistration } from "./fixtures/registration";
 import { findUserProfileByEmail, readDocument, writeDocument } from "./fixtures/emulator";
 
 /**
  * Kayıt akışı (F2.3): hesap Auth'ta açılır, profil sunucuda `completeRegistration` ile yazılır.
  * İstemci `users` dokümanı yazamaz (firestore.rules). F3.5'te KVKK onayı ve e-posta doğrulamasıyla genişler.
  */
-async function fillRegistration(page: Page, email: string, inviteCode = "") {
-  // Hydration beklenmeden gönderilen form kaybolur (REVISION_PLAN N3).
-  await page.goto("/register", { waitUntil: "networkidle" });
-  await page.getByLabel("Akademik / Klinik Unvan").selectOption("Asistan Dr.");
-  await page.getByLabel("Pediatri Kıdem Yılı").selectOption("2");
-  await page.getByLabel("Ad Soyad").fill("Deneme Asistan");
-  await page.getByLabel("Kurumsal E-Posta Adresi").fill(email);
-  await page.getByLabel("Oturum Şifresi (En az 8 karakter)").fill("Deneme-Sifre-2026");
-  if (inviteCode) await page.getByLabel("Klinik Davet Kodu (Varsa)").fill(inviteCode);
-  await page.getByRole("button", { name: "Üyelik Başvurusunu Eğitim Sorumlusuna Gönder" }).click();
-}
-
 test("davetsiz başvuru: profil sunucuda 'onay bekliyor' olarak oluşur", async ({ page }, testInfo) => {
   const email = `kayit.${testInfo.project.name}.${Date.now()}@example.test`;
   await fillRegistration(page, email);

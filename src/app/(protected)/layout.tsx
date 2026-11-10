@@ -11,9 +11,17 @@ import "@/styles/index.css";
  * gelir. Kenar çubuğunda cihaz kimliği, proje kimliği veya token claim'leri gösterilmez.
  */
 function ClinicShell({ children }: { children: React.ReactNode }) {
-  const { session, loading, signOutUser } = useClinicSession();
+  const { session, phase, error, signOutUser } = useClinicSession();
 
-  if (loading) {
+  if (phase === "signingOut") {
+    return (
+      <main className="app-content" aria-busy="true">
+        <p className="page-header-subtitle">Oturum kapatılıyor…</p>
+      </main>
+    );
+  }
+
+  if (phase === "loading") {
     return (
       <main className="app-content" aria-busy="true">
         <p className="page-header-subtitle">Oturum doğrulanıyor…</p>
@@ -21,7 +29,27 @@ function ClinicShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!session) {
+  if (phase === "error") {
+    return (
+      <main className="app-content">
+        <div role="alert" className="clinical-alert err">
+          Oturum bilgileri yüklenemedi: {error}
+        </div>
+        <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
+          Tekrar dene
+        </button>
+      </main>
+    );
+  }
+
+  // Hesap açık ama kayıt tamamlanmamış (ör. kayıt sırasında sekme kapandı): kayıt ekranı açık oturumu
+  // algılayıp yalnızca profili tamamlar (F2.3).
+  if (phase === "needsProfile") {
+    if (typeof window !== "undefined") window.location.replace("/register");
+    return null;
+  }
+
+  if (phase === "signedOut" || !session) {
     if (typeof window !== "undefined") window.location.replace("/login");
     return null;
   }

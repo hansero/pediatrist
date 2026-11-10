@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { SIGN_OUT_MESSAGES, type SignOutReason } from "@/lib/auth/sessionDecision";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import "@/styles/index.css";
@@ -12,6 +13,13 @@ export default function LoginPage() {
   const [totpCode, setTotpCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [notice, setNotice] = useState("");
+
+  // Oturum bağlamı askıya alma / oturum iptalinde buraya `?neden=...` ile yönlendirir (F2.4).
+  useEffect(() => {
+    const reason = new URLSearchParams(window.location.search).get("neden") as SignOutReason | null;
+    if (reason && reason in SIGN_OUT_MESSAGES) setNotice(SIGN_OUT_MESSAGES[reason]);
+  }, []);
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +62,12 @@ export default function LoginPage() {
             </span>
           </div>
         </div>
+
+        {notice && (
+          <div role="status" className="clinical-alert warn" style={{ marginBottom: "1rem" }}>
+            {notice}
+          </div>
+        )}
 
         {errorMessage && (
           <div role="alert" className="clinical-alert err" style={{ marginBottom: "1rem" }}>

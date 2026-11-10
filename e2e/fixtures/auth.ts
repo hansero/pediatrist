@@ -9,10 +9,10 @@ import { SEED_PASSWORD } from "../../scripts/fixtures/seed-data";
  * Sayfanın hydrate olmasını beklemek gerekir; aksi halde form tarayıcının varsayılan gönderimiyle
  * kaybolur (REVISION_PLAN N3).
  */
-export async function loginAs(page: Page, email: string) {
+export async function loginAs(page: Page, email: string, password: string = SEED_PASSWORD) {
   await page.goto("/login", { waitUntil: "networkidle" });
   await page.getByLabel("Kurumsal Hekim E-Postası").fill(email);
-  await page.getByLabel("Klinik Oturum Şifresi").fill(SEED_PASSWORD);
+  await page.getByLabel("Klinik Oturum Şifresi").fill(password);
   await page.getByRole("button", { name: "İki Aşamalı Doğrulamaya Geç" }).click();
   const totp = page.getByLabel("6 Haneli Doğrulama Kodu (Authenticator)");
   await totp.waitFor();
