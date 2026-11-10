@@ -8,8 +8,7 @@ rules_version = '2';
 //  - `tokensValidAfter` (epoch saniye) ile oturum iptali: bu andan önce açılmış oturumlar geçersizdir.
 //    Aynı mantık Cloud Functions tarafında `functions/src/guards.ts` içindedir.
 //  - İstemci hiçbir koleksiyona doğrudan yazamaz; bütün yazımlar Cloud Functions (Admin SDK) üzerindendir.
-//    İki istisna: kayıt sırasında kendi profilini oluşturma (F2.3'te sunucuya taşınıp kaldırılacak) ve
-//    kendi materyal okuma ilerlemesi.
+//    Tek istisna: kendi materyal okuma ilerlemesi.
 //  - Listelenmeyen her yol varsayılan olarak kapalıdır.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -53,32 +52,9 @@ service cloud.firestore {
       // Kendi profilini durumu ne olursa olsun okuyabilir (onay bekleme / askı ekranı için).
       allow read: if isSelf(uid) || isAdmin();
 
-      // GEÇİCİ (F2.3'te kaldırılacak): kayıt ekranı kendi profilini oluşturur. D4'e göre profil
-      // sunucuda `completeRegistration` ile yazılacak; o zamana kadar alanlar sıkı biçimde sınırlanır.
-      allow create: if isSelf(uid)
-        && request.resource.data.keys().hasOnly([
-             'uid', 'title', 'fullName', 'email', 'residencyYear', 'role', 'status',
-             'inviteCode', 'mfaEnabled', 'boundDeviceHash', 'createdAt'])
-        && request.resource.data.keys().hasAll([
-             'uid', 'title', 'fullName', 'email', 'residencyYear', 'role', 'status', 'createdAt'])
-        && request.resource.data.uid == uid
-        && request.resource.data.role == 'user'
-        && request.resource.data.status == 'pending'
-        && request.resource.data.email == request.auth.token.email
-        && request.resource.data.title in ['Asistan Dr.', 'Uzm. Dr.', 'Doç. Dr.', 'Prof. Dr.']
-        && request.resource.data.fullName is string
-        && request.resource.data.fullName.size() >= 2
-        && request.resource.data.fullName.size() <= 120
-        && request.resource.data.residencyYear in [1, 2, 3, 4]
-        && (!('inviteCode' in request.resource.data)
-            || request.resource.data.inviteCode == null
-            || (request.resource.data.inviteCode is string && request.resource.data.inviteCode.size() <= 64))
-        && request.resource.data.get('mfaEnabled', false) == false
-        && request.resource.data.get('boundDeviceHash', null) == null
-        && request.resource.data.createdAt == request.time;
-
-      // Rol, durum, kıdem, cihaz bağı yalnızca Cloud Functions ile değişir.
-      allow update, delete: if false;
+      // Profil SUNUCUDA oluşturulur (`completeRegistration`, D4); rol, durum, kıdem ve cihaz bağı yalnızca
+      // Cloud Functions ile değişir. İstemci hiçbir koşulda profil yazamaz.
+      allow create, update, delete: if false;
     }
 
     // Davet kodları: yalnızca admin görür (AUDIT C9). Oluşturma/kullanma Cloud Functions ile (F2.3).

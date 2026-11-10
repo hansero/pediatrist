@@ -20,6 +20,23 @@ export { toUserMessage } from "@/lib/errors";
  *
  * Bu katman hiçbir koşulda "sahte başarı" üretmez (CLAUDE.md kural 2).
  */
+/**
+ * `undefined` alanları ayıklar. Firebase SDK'sı `undefined`'ı `null` olarak gönderir; şemaların isteğe bağlı
+ * alanları (`.optional()`) `null` kabul etmez. Örn. boş davet kodu → şema `undefined` üretir → `null`
+ * olarak gider → sunucu "Geçersiz değer" der (F2.3'te e2e ile bulundu).
+ */
+export function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) return value.map((v) => stripUndefined(v)) as T;
+  if (value !== null && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, stripUndefined(v)])
+    ) as T;
+  }
+  return value;
+}
+
 export async function callFunction<N extends CallableName>(
   name: N,
   data: CallableRequestInput<N>
@@ -36,7 +53,7 @@ export async function callFunction<N extends CallableName>(
 
   let raw: unknown;
   try {
-    raw = (await httpsCallable(clients.functions, name)(request.data)).data;
+    raw = (await httpsCallable(clients.functions, name)(stripUndefined(request.data))).data;
   } catch (err) {
     throw toAppError(err);
   }
@@ -56,6 +73,9 @@ const bind =
 
 // --- Adlandırılmış çağrılar (tipleri `functions/src/shared/schemas.ts` → CALLABLES'tan) ---
 export const updateMemberAccess = bind("updateMemberAccess");
+export const completeRegistration = bind("completeRegistration");
+export const createInvitation = bind("createInvitation");
+export const revokeInvitation = bind("revokeInvitation");
 export const startLectureSession = bind("startLectureSession");
 export const endLectureSession = bind("endLectureSession");
 export const getProjectorCode = bind("getProjectorCode");

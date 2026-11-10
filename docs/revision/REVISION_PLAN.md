@@ -48,7 +48,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F2** | **Yetkilendirme temeli** | | | |
 | F2.1 | `firestore.rules` yeniden yazımı + rules testleri | L | ✅ | C5, C7 (kural), S11, S12, C9 (davet) |
 | F2.2 | `storage.rules` yeniden yazımı + testler | S | ✅ | C5, C11 (silme/MIME) |
-| F2.3 | Claim senkronu, `tokensValidAfter`, üye yönetimi korumaları, sunucu tarafı kayıt, davetler | L | ⬜ | C5, C9, S9 |
+| F2.3 | Claim senkronu, `tokensValidAfter`, üye yönetimi korumaları, sunucu tarafı kayıt, davetler | L | ✅ | C5, C9, S9 |
 | F2.4 | `ClinicSessionContext` yeniden yazımı (canlı profil, token yenileme) | M | ⬜ | C5 |
 | F2.5 | Tek kaynaklı CSP, header'lar, SSR bölgesi | S | ⬜ | C6, §7 bölge |
 | **F3** | **UI temeli ve kimlik doğrulama UX** | | | |
@@ -101,18 +101,19 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F2.2 (Storage kuralları; C11 kapandı; artık hiç `it.fails` yok; kurallar ile yükleme sabitleri arası eşitleme testi).
+- **Son tamamlanan adım:** F2.3 (üyelik modülü `members.ts`: `syncUserClaims`, korumalı `updateMemberAccess`, `completeRegistration`, davetler; kayıt kuralı kapatıldı; kayıt ekranı sunucu akışında; N6 düzeltildi).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F2.3 (L). Gerekirse WIP commit'leriyle bölünür:
-  1. `onClinicMemberCreated` → `syncUserClaims`. Claim senkronu; durum veya rol düşüşünde `revokeRefreshTokens` + `tokensValidAfter = floor(now/1000)` (epoch **saniye**).
-  2. `updateMemberAccess` korumaları: hedef Auth'ta var mı (`getUser`), kendini değiştirme yasak, son aktif admin düşürülemez. Askıya alma, rol düşürme ve cihaz sıfırlamada `tokensValidAfter` yazılır. Onay ile yeniden etkinleştirme ayrımı (`action`) gerekiyorsa şemaya eklenir.
-  3. `completeRegistration` callable'ı (idempotent): profil sunucuda yazılır, e-posta token'dan alınır. Davet kodu geçerliyse transaction içinde `used=true` ve doğrudan `active`, değilse `pending`. `consentVersion` alanı da eklenir. **Bu callable `defineCallable`'ın "member" erişimini kullanamaz** (profil henüz yok): ayrı bir guard gerekir (`requireAuth` + e-posta).
-  4. `createInvitation` / `revokeInvitation` (admin).
-  5. **Aynı adımda zorunlu:** `firestore.rules`'taki geçici `users` create kuralı kapatılır **ve** kayıt ekranı (`register/page.tsx`) `setDoc` yerine `createUserWithEmailAndPassword` → `completeRegistration` çağırır. Aksi halde kayıt kırılır; e2e `registration.spec.ts` bunu yakalar. Kayıt ekranının UX yenilemesi (KVKK onayı, e-posta doğrulama ekranı) F3.5'te.
-  6. Testler: functions (davetli/davetsiz kayıt, tekrar çağrı, son admin, kendini düşürme, olmayan uid, `tokensValidAfter` yazımı), rules (istemci `users` create artık reddedilir), e2e kayıt testi yeni akışla.
-  7. Yeni callable'lar önce `functions/src/shared/schemas.ts` → `CALLABLES`'a eklenir (kayıt defteri testi bunu zorunlu kılıyor).
+- **Sıradaki iş:** F2.4 `ClinicSessionContext` yeniden yazımı:
+  - `onIdTokenChanged` + `onSnapshot(users/{uid})` birlikte.
+  - Durum ve rol **yalnızca dokümandan**.
+  - Doküman ile claim'ler uyuşmazsa `getIdToken(true)`.
+  - `suspended` olursa anında `signOut` ve bilgi ekranı.
+  - `appCheckVerified` / `mfaVerified` sahte alanları kaldırılır (`src/lib/auth/types.ts`); MFA bilgisi gerçek `multiFactor(user).enrolledFactors`'tan.
+  - `clinic_members` okuması silinir.
+  - **Profil yoksa** (hesap açık ama kayıt tamamlanmamış: sekme kapanmış vb.) `/register`'a yönlendirilir; kayıt ekranı açık oturumu algılayıp yalnızca profili tamamlıyor (F2.3).
+  - **E2E:** admin bekleyen kullanıcıyı onaylayınca kullanıcının ekranı yenilemeden aktif olur (iki browser context; onay `updateMemberAccess` callable'ı veya emülatöre doküman yazarak). Askıya alınan kullanıcının açık oturumu kapanır.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
-- **Engeller / notlar:** N3 açık (§7).
+- **Engeller / notlar:** N3 açık (§7). Kayıt ekranının UX'i (KVKK, e-posta doğrulama, şifre tekrarı) F3.5'te.
 
 ---
 
@@ -441,6 +442,33 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
     - Yeniden aktivasyon ve onay ayrı `action` değerleriyle yapılır.
   - `createInvitation` / `revokeInvitation` callable'ları.
 - **Testler:** davetli/davetsiz kayıt, tekrar çağrı (idempotent), son admin koruması, kendini düşürme, olmayan uid, askıya alınca `tokensValidAfter` yazılması.
+- **✅ Uygulanan (2026-11-10) — plandan sapmalar:**
+  - `functions/src/authTriggers.ts` → **`functions/src/members.ts`**. `onClinicMemberCreated` → **`syncUserClaims`**: claim'leri dokümanla eşitliyor; yetki düşüşünde `revokeRefreshTokens` ve `tokensValidAfter` (callable aynı yazımda yazmadıysa); yalnızca başka alanlar değiştiyse çıkıyor (döngü yok); profil silinince oturumları kapatıp claim'leri temizliyor; her claim değişikliği `MEMBER_CLAIMS_*` denetim kaydı (aktör `system`; konsol değişiklikleri de iz bırakıyor).
+  - **`updateMemberAccess`:**
+    - Kendi rolünü/durumunu değiştirme yasak.
+    - Hedef Auth'ta ve profilde yoksa `not-found` (eskiden rastgele uid için profil oluşturuyordu).
+    - Transaction içinde son aktif admin sayımı.
+    - Yalnızca yetki düşüşü ve cihaz sıfırlamada `tokensValidAfter` + iptal (eskiden "pending" kullanıcının kıdemini değiştirmek bile oturumu iptal ediyordu).
+    - `updatedBy`; `approvedBy` yalnızca aktifleştirmede.
+    - Denetim kaydı transaction içinde ve önceki değerleri içeriyor.
+  - **Son admin koruması hakkında doğru tespit:** sıralı akışta erişilemez (isteği yapan da aktif admin olmak zorunda, kendini değiştirme de yasak). Gerçek işlevi **eşzamanlı** karşılıklı düşürmede sistemin admin'siz kalmasını önlemek. Test buna göre yazıldı (iki istek aynı anda → yalnızca biri başarılı, 1 aktif admin kalıyor; üç tekrarda kararlı). Koruma kapatılınca testin kırmızıya döndüğü doğrulandı. İlk yazdığım dört karışık test silindi.
+  - **`completeRegistration`** (`defineCallable`'a yeni erişim seviyesi `"signedIn"` + `guards.ts → requireSignedIn`):
+    - İdempotent; e-posta token'dan (küçük harf), rol ve durum istemciden alınmıyor.
+    - Davet kodu transaction içinde doğrulanıp tüketiliyor; kodun kullanılmamış, iptal edilmemiş, süresi dolmamış ve aynı e-postaya ait olması gerekiyor.
+    - Geçerli davette rol ve kıdem davetten, durum doğrudan `active`. **Geçersiz kodda kayıt hata veriyor**: sessizce "pending" olmuyor, kullanıcı düzeltebiliyor.
+    - Claim hemen yazılıyor; denetim kaydı `MEMBER_REGISTERED`.
+    - **`consentVersion` şimdilik isteğe bağlı:** F3.5'te KVKK onay kutusuyla zorunlu olacak. Kullanıcının vermediği bir onayı kaydetmek uydurma veri olurdu.
+  - **`createInvitation` / `revokeInvitation`** (admin): kod `PED-` + 8 karakter (karışıklık yaratan harfler yok, `crypto.randomBytes`), çakışma kontrolü, kayıtlı üyenin e-postasına davet yasak, kullanılmış davet iptal edilemez. `InvitationDoc`'a `revoked*` alanları eklendi; seed daveti `revoked: false` içeriyor.
+  - **Kayıt kuralı kapatıldı** (`users` create/update/delete herkese kapalı). Kayıt ekranı aynı adımda `createUserWithEmailAndPassword` → `completeRegistration` akışına geçti. Yarım kalmış kayıtta (hesap açık, profil yok) hesabı yeniden açmaya çalışmadan profili tamamlıyor. Etkin davette `/dashboard`'a, değilse `/pending`'e gidiyor. **Firebase yapılandırılmamışken "başarılı" sayılıp yönlendirme yapılması** (eski sahte başarı) kaldırıldı.
+  - `src/lib/errors.ts`: Firebase **Auth** hata kodları (e-posta kullanımda, zayıf şifre, hatalı kimlik bilgisi, çok fazla deneme, ağ vb.) Türkçe; bilinmeyen kodda teknik mesaj gösterilmiyor.
+  - **N6 (e2e ile bulundu ve düzeltildi):** bkz. §7. `callFunction` artık göndermeden önce `undefined` alanları ayıklıyor (`stripUndefined`).
+  - İstemciye `completeRegistration`, `createInvitation`, `revokeInvitation` çağrıları eklendi. Yeni birim testi, `CALLABLES`'taki her sözleşmenin istemcide aynı adlı bir çağrısı olmasını zorunlu kılıyor (bu adımda bir eksik böyle fark edildi).
+  - Testler:
+    - Functions 44: `members.test.ts` 23 (onay, askı + `tokensValidAfter`, cihaz sıfırlama, kendini değiştirme, olmayan kullanıcı, geçersiz kıdem, eşzamanlı son admin; kayıt: davetsiz, rol/durum enjeksiyonu, idempotent, geçerli davet, 4 geçersiz davet türü, olmayan kod sonrası kodsuz kayıt, oturumsuz, e-postasız; davet oluşturma, yetki, kayıtlı e-posta, iptal; claim senkronu: ilk yazım, konsoldan askı, döngü yok).
+    - Rules 40: kayıt bloğu "istemci profil oluşturamaz" olarak güncellendi.
+    - Unit 70.
+    - **E2E 12:** davetsiz, davetli (doğrudan aktif, panel, davet tüketildi), geçersiz kod (Türkçe hata, kodsuz tekrar denemede hesap yeniden açılmadan tamamlanıyor); her biri masaüstü ve telefonda. `e2e/fixtures/emulator.ts`'e `writeDocument` / `readDocument` eklendi.
+  - Doğrulandı: lint, format, typecheck (iki paket), no-mock, unit 70, rules 40, functions 44, e2e 12, next build.
 
 #### F2.4 Oturum bağlamı (M)
 - **Dosyalar:** `src/lib/auth/ClinicSessionContext.tsx`
@@ -884,5 +912,6 @@ Denetimde (AUDIT.md) olmayan, uygulama çalıştırılınca ortaya çıkan sorun
 | N2 | Cloud Functions, `firebase-admin` namespace API'sini (`admin.firestore.FieldValue/Timestamp`) kullanıyordu. Functions emülatöründe bunlar `undefined` geliyor, bu yüzden **her yazma işlemi `TypeError` ile çöküyordu** (denetim kaydı, sayaçlar, zaman damgaları). Düz Node'da çalışıyor; sorun emülatörün admin SDK sarmalayıcısında. | Bütün backend emülatörde test edilemezdi. | ✅ F0.3'te düzeltildi: modüler import'lar (`firebase-admin/app`, `/auth`, `/firestore`; firebase-admin v12+ için önerilen API), davranış değişikliği yok |
 | N3 | Formlar hydration tamamlanmadan gönderilirse tarayıcının varsayılan GET gönderimiyle sayfa yenileniyor (`/register?`). Input'larda `name` olmadığı için veri sızmıyor, ama kullanıcı "hiçbir şey olmadı" deneyimi yaşıyor. | UX; yavaş bağlantıda kafa karıştırıcı. | ⬜ F3.1 `Button`/form primitifleri: gönder butonu hydration'a kadar `disabled`, form `method="post"` + `action` yok + `noValidate` kararı; F3.4/F3.5'te uygulanır |
 | N5 | `defineBoolean(...).value()` ortam değişkeni yoksa **`false`** döner (`firebase-functions/lib/params/types.js` → `process.env[name] === "true"`); `default: true` yalnızca deploy sırasında kullanılır. `.value()` ile okunsaydı, değişkeni eksik bir ortamda App Check/MFA/e-posta zorunlulukları **sessizce kapanırdı**. | Güvenlik | ✅ F1.3: `guards.ts → isEnforced()` yalnızca açıkça `"false"` değerinde kapatır; testle doğrulandı |
+| N6 | İstemci, şemanın isteğe bağlı alanlar için ürettiği `undefined` değerleri gönderiyordu; Firebase SDK'sı bunları **`null`**'a çeviriyor ve `.optional()` alanlar `null`'ı reddettiği için sunucu `invalid-argument` ("Geçersiz değer") dönüyordu. Örnek: boş davet kodu ile kayıt. | İsteğe bağlı alanı olan her callable | ✅ F2.3: `callFunction` → `stripUndefined`; birim testi + e2e kayıt testleri |
 | N4 | Storage emülatörü başlarken "Unexpected rules runtime error" uyarısı veriyor; içerik yalnızca ortamın `JAVA_TOOL_OPTIONS` satırı. | Yok | ✅ F0.4'te doğrulandı: Storage kuralları doğru değerlendiriliyor (aktif kullanıcıya izin, bekleyene `storage/unauthorized`). Uyarı zararsız. |
 

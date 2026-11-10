@@ -2,7 +2,13 @@ import { initializeApp } from "firebase-admin/app";
 
 initializeApp();
 
-export { onClinicMemberCreated, updateMemberAccess } from "./authTriggers";
+export {
+  syncUserClaims,
+  updateMemberAccess,
+  completeRegistration,
+  createInvitation,
+  revokeInvitation,
+} from "./members";
 export {
   startLectureSession,
   endLectureSession,

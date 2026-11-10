@@ -22,6 +22,7 @@ import {
   QUESTION_TYPES,
   RESIDENCY_YEARS,
   ROLES,
+  TITLES,
 } from "./constants";
 
 // --- Yardımcı tipler ----------------------------------------------------------
@@ -94,6 +95,54 @@ export const UpdateMemberAccessResponse = z.object({
   status: statusSchema,
   residencyYear: z.number(),
 });
+
+/** Davet kodu: büyük harfe çevrilir; harf, rakam ve tire. */
+export const invitationCode = z
+  .string({ error: "Davet kodu metin olmalıdır." })
+  .trim()
+  .toUpperCase()
+  .min(4, { error: "Davet kodu geçersiz." })
+  .max(64, { error: "Davet kodu geçersiz." })
+  .regex(/^[A-Z0-9-]+$/, { error: "Davet kodu yalnızca harf, rakam ve tire içerebilir." });
+
+/**
+ * Kayıt (F2.3): profil SUNUCUDA yazılır (D4). Rol ve durum istemciden alınmaz; e-posta token'dan okunur.
+ * Davet kodu geçerliyse üyelik doğrudan aktif olur. `consentVersion` F3.5'te zorunlu olacak (KVKK onay kutusu).
+ */
+export const CompleteRegistrationRequest = z.object({
+  title: z.enum(TITLES, { error: "Ünvan listeden seçilmelidir." }),
+  fullName: requiredText("Ad soyad", LIMITS.personNameLength).refine((v) => v.length >= 2, {
+    error: "Ad soyad en az 2 karakter olmalıdır.",
+  }),
+  residencyYear: residencyYearSchema,
+  inviteCode: z.union([invitationCode, z.literal("").transform(() => undefined)]).optional(),
+  consentVersion: z.string().trim().min(1).max(32).optional(),
+});
+export const CompleteRegistrationResponse = z.object({
+  status: statusSchema,
+  role: roleSchema,
+  alreadyRegistered: z.boolean(),
+});
+
+export const CreateInvitationRequest = z.object({
+  email: z
+    .string({ error: "E-posta adresi zorunludur." })
+    .trim()
+    .toLowerCase()
+    .max(254, { error: "E-posta adresi çok uzun." })
+    .pipe(z.email({ error: "Geçerli bir e-posta adresi girin." })),
+  intendedRole: roleSchema,
+  residencyYear: residencyYearSchema,
+  validForDays: intInRange("Geçerlilik süresi (gün)", 1, 90).optional().default(14),
+});
+export const CreateInvitationResponse = z.object({
+  invitationId: z.string(),
+  code: z.string(),
+  expiresAtMs: z.number(),
+});
+
+export const RevokeInvitationRequest = z.object({ invitationId: docId("Davet") });
+export const RevokeInvitationResponse = z.object({ revoked: z.literal(true) });
 
 // --- Yoklama -------------------------------------------------------------------
 
@@ -212,6 +261,9 @@ export const SubmitQuizAttemptResponse = z.object({
  */
 export const CALLABLES = {
   updateMemberAccess: { request: UpdateMemberAccessRequest, response: UpdateMemberAccessResponse },
+  completeRegistration: { request: CompleteRegistrationRequest, response: CompleteRegistrationResponse },
+  createInvitation: { request: CreateInvitationRequest, response: CreateInvitationResponse },
+  revokeInvitation: { request: RevokeInvitationRequest, response: RevokeInvitationResponse },
   startLectureSession: { request: StartLectureSessionRequest, response: StartLectureSessionResponse },
   endLectureSession: { request: EndLectureSessionRequest, response: EndLectureSessionResponse },
   getProjectorCode: { request: GetProjectorCodeRequest, response: GetProjectorCodeResponse },

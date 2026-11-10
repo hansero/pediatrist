@@ -61,7 +61,10 @@ export interface MemberDoc<T> {
   createdAt: T;
   updatedAt?: T;
   approvedBy?: string;
+  updatedBy?: string;
   inviteCode?: string | null;
+  /** KVKK aydınlatma metni onayı (F3.5'te zorunlu). */
+  consent?: { version: string; acceptedAt: T } | null;
   boundDeviceHash?: string | null;
   hasBoundDevice?: boolean;
   webAuthnCredentialId?: string | null;
@@ -84,6 +87,9 @@ export interface InvitationDoc<T> {
   used: boolean;
   usedBy?: string;
   usedAt?: T;
+  revoked?: boolean;
+  revokedBy?: string;
+  revokedAt?: T;
 }
 
 // --- Yoklama ----------------------------------------------------------------

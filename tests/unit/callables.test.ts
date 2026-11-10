@@ -10,7 +10,7 @@ vi.mock("@/lib/firebase/client", () => ({
   isFirebaseConfigured: () => configured.value,
 }));
 
-const { callFunction, startLectureSession, verifyRealTimeAttendance, invokeWithFallback } =
+const { callFunction, startLectureSession, verifyRealTimeAttendance, invokeWithFallback, completeRegistration } =
   await import("@/lib/firebase/callables");
 const { AppError } = await import("@/lib/errors");
 
@@ -40,6 +40,14 @@ describe("callFunction", () => {
       code: "K9P4X2",
       deviceId: DEVICE,
     });
+  });
+
+  it("şemanın ürettiği undefined alanları göndermez (SDK onları null'a çevirir ve sunucu reddeder)", async () => {
+    serverImpl.mockResolvedValue({ data: { status: "pending", role: "user", alreadyRegistered: false } });
+    await completeRegistration({ title: "Asistan Dr.", fullName: "Ali Veli", residencyYear: 2, inviteCode: "" });
+    const sent = serverImpl.mock.calls[0][1] as Record<string, unknown>;
+    expect(sent).toEqual({ title: "Asistan Dr.", fullName: "Ali Veli", residencyYear: 2 });
+    expect(Object.keys(sent)).not.toContain("inviteCode");
   });
 
   it("sözleşmeye uymayan sunucu yanıtını 'bad-response' olarak reddeder", async () => {
@@ -83,5 +91,14 @@ describe("invokeWithFallback (deprecated geçiş katmanı)", () => {
     );
     expect(res.syncedWithCloud).toBe(false);
     expect(spy).toHaveBeenCalledWith(expect.stringContaining("C1"), expect.anything());
+  });
+});
+
+describe("adlandırılmış çağrılar", () => {
+  it("CALLABLES'taki her sözleşmenin istemcide aynı adlı bir çağrısı vardır", async () => {
+    const mod = (await import("@/lib/firebase/callables")) as Record<string, unknown>;
+    const { CALLABLES } = await import("@shared/schemas");
+    const missing = Object.keys(CALLABLES).filter((name) => typeof mod[name] !== "function");
+    expect(missing).toEqual([]);
   });
 });

@@ -2,12 +2,19 @@
 
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import type { ResidencyYear, Title } from "@shared/constants";
+import { completeRegistration } from "@/lib/firebase/callables";
 import { initPediatristFirebase } from "@/lib/firebase/client";
+import { toUserMessage } from "@/lib/errors";
 import "@/styles/index.css";
 
+/**
+ * Üyelik başvurusu (F2.3): hesap Firebase Auth'ta açılır, profil SUNUCUDA `completeRegistration` ile yazılır
+ * (D4; istemci `users` dokümanı yazamaz). Geçerli davet kodu → üyelik doğrudan aktif.
+ * UX yenilemesi (KVKK onayı, e-posta doğrulama, şifre tekrarı) F3.5'te.
+ */
 export default function RegisterPage() {
-  const [title, setTitle] = useState("Asistan Dr.");
+  const [title, setTitle] = useState<Title>("Asistan Dr.");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,28 +30,25 @@ export default function RegisterPage() {
 
     try {
       const clients = initPediatristFirebase();
-      if (clients) {
-        const cred = await createUserWithEmailAndPassword(clients.auth, email.trim(), password);
-        // firestore.rules gereği yeni üye yalnızca role: 'user' ve status: 'pending' ile oluşturulabilir
-        await setDoc(doc(clients.db, "users", cred.user.uid), {
-          uid: cred.user.uid,
-          title,
-          fullName: fullName.trim(),
-          email: email.trim().toLowerCase(),
-          residencyYear: Number(residencyYear),
-          role: "user",
-          status: "pending",
-          inviteCode: inviteCode.trim() || null,
-          mfaEnabled: false,
-          boundDeviceHash: null,
-          createdAt: serverTimestamp(),
-        });
+      if (!clients) throw new Error("not-configured");
+      const normalizedEmail = email.trim().toLowerCase();
+
+      // Yarım kalmış kayıt: hesap açılmış ama profil yazılamamışsa (ör. davet kodu hatası) hesabı
+      // yeniden açmaya çalışmadan profili tamamla.
+      const current = clients.auth.currentUser;
+      if (!current || current.email?.toLowerCase() !== normalizedEmail) {
+        await createUserWithEmailAndPassword(clients.auth, normalizedEmail, password);
       }
-      window.location.href = "/pending";
-    } catch {
-      setErrorMessage(
-        "Başvuru kaydedilirken bir sorun oluştu. E-posta adresinizi ve şifre uzunluğunu (en az 8 karakter) kontrol edin."
-      );
+
+      const result = await completeRegistration({
+        title,
+        fullName,
+        residencyYear: Number(residencyYear) as ResidencyYear,
+        inviteCode,
+      });
+      window.location.href = result.status === "active" ? "/dashboard" : "/pending";
+    } catch (err) {
+      setErrorMessage(toUserMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -74,7 +78,7 @@ export default function RegisterPage() {
                 id="register-title-select"
                 className="form-select"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => setTitle(e.target.value as Title)}
               >
                 <option value="Asistan Dr.">Asistan Dr.</option>
                 <option value="Uzm. Dr.">Uzm. Dr.</option>

@@ -124,11 +124,12 @@ describe("kimlik ve üyelik durumu (doküman yetkinin kaynağıdır)", () => {
   });
 });
 
-describe("kayıt sırasında profil oluşturma (geçici kural; F2.3'te kaldırılacak)", () => {
+describe("profil oluşturma (F2.3: yalnızca sunucu, completeRegistration)", () => {
   const uid = "t-new";
   const email = "yeni@example.test";
   const db = () => env.authenticatedContext(uid, { email }).firestore();
-  const valid = () => ({
+  // F2.1'deki geçici kuralın izin verdiği (eski kayıt ekranının yazdığı) biçim:
+  const legacyRegistrationDoc = () => ({
     uid,
     title: "Asistan Dr.",
     fullName: "Yeni Asistan",
@@ -142,76 +143,22 @@ describe("kayıt sırasında profil oluşturma (geçici kural; F2.3'te kaldırı
     createdAt: serverTime(),
   });
 
-  it("kayıt ekranının yazdığı biçimle bekleyen profil oluşturulabilir", async () => {
-    await assertSucceeds(db().collection("users").doc(uid).set(valid()));
+  it("istemci, eski kayıt ekranının geçerli biçimiyle bile profil oluşturamaz (D4)", async () => {
+    await assertFails(db().collection("users").doc(uid).set(legacyRegistrationDoc()));
   });
 
-  it("kendini admin veya aktif olarak kaydedemez", async () => {
+  it("kendini admin/aktif kaydetme girişimleri de reddedilir", async () => {
     await assertFails(
       db()
         .collection("users")
         .doc(uid)
-        .set({ ...valid(), role: "admin" })
+        .set({ ...legacyRegistrationDoc(), role: "admin" })
     );
     await assertFails(
       db()
         .collection("users")
         .doc(uid)
-        .set({ ...valid(), status: "active" })
-    );
-  });
-
-  it("ek alan, başkasının e-postası, başka uid veya istemci zamanı kabul edilmez", async () => {
-    await assertFails(
-      db()
-        .collection("users")
-        .doc(uid)
-        .set({ ...valid(), approvedBy: "x" })
-    );
-    await assertFails(
-      db()
-        .collection("users")
-        .doc(uid)
-        .set({ ...valid(), boundDeviceHash: "f".repeat(64) })
-    );
-    await assertFails(
-      db()
-        .collection("users")
-        .doc(uid)
-        .set({ ...valid(), email: "baskasi@example.test" })
-    );
-    await assertFails(
-      db()
-        .collection("users")
-        .doc("baskasi")
-        .set({ ...valid(), uid: "baskasi" })
-    );
-    await assertFails(
-      db()
-        .collection("users")
-        .doc(uid)
-        .set({ ...valid(), createdAt: firebase.firestore.Timestamp.fromMillis(0) })
-    );
-  });
-
-  it("geçersiz ünvan / kıdem yılı / ad reddedilir", async () => {
-    await assertFails(
-      db()
-        .collection("users")
-        .doc(uid)
-        .set({ ...valid(), title: "Başhekim" })
-    );
-    await assertFails(
-      db()
-        .collection("users")
-        .doc(uid)
-        .set({ ...valid(), residencyYear: 9 })
-    );
-    await assertFails(
-      db()
-        .collection("users")
-        .doc(uid)
-        .set({ ...valid(), fullName: "x" })
+        .set({ ...legacyRegistrationDoc(), status: "active" })
     );
   });
 });

@@ -32,3 +32,37 @@ export async function findUserProfileByEmail(email: string): Promise<Record<stri
     ])
   );
 }
+
+type Writable = string | number | boolean | null | Date;
+
+function toFirestoreValue(v: Writable): Record<string, unknown> {
+  if (v === null) return { nullValue: null };
+  if (v instanceof Date) return { timestampValue: v.toISOString() };
+  if (typeof v === "boolean") return { booleanValue: v };
+  if (typeof v === "number") return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  return { stringValue: v };
+}
+
+/** Test hazırlığı için emülatöre doküman yazar (kuralları atlar; yalnızca emülatörde geçerlidir). */
+export async function writeDocument(path: string, data: Record<string, Writable>): Promise<void> {
+  const fields = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, toFirestoreValue(v)]));
+  const res = await fetch(`${BASE}/${path}`, {
+    method: "PATCH",
+    headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) throw new Error(`Doküman yazılamadı: ${path} (HTTP ${res.status})`);
+}
+
+/** Tek bir dokümanı düz değerlerle okur. */
+export async function readDocument(path: string): Promise<Record<string, unknown> | null> {
+  const res = await fetch(`${BASE}/${path}`, { headers: { Authorization: "Bearer owner" } });
+  if (res.status === 404) return null;
+  const doc = (await res.json()) as { fields?: Record<string, FirestoreValue> };
+  return Object.fromEntries(
+    Object.entries(doc.fields ?? {}).map(([k, v]) => [
+      k,
+      v.stringValue ?? (v.integerValue !== undefined ? Number(v.integerValue) : (v.booleanValue ?? null)),
+    ])
+  );
+}

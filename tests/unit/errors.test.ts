@@ -41,3 +41,15 @@ describe("toAppError", () => {
     expect(toUserMessage("düz metin")).toBe(APP_ERROR_MESSAGES.internal);
   });
 });
+
+describe("Firebase Auth hataları", () => {
+  it("bilinen kodları Türkçe mesaja, bilinmeyenleri genel mesaja çevirir", () => {
+    const authErr = (code: string) => Object.assign(new Error(`Firebase: Error (${code}).`), { code });
+    expect(toAppError(authErr("auth/email-already-in-use"))).toMatchObject({ code: "already-exists" });
+    expect(toUserMessage(authErr("auth/email-already-in-use"))).toContain("zaten bir hesap var");
+    expect(toUserMessage(authErr("auth/weak-password"))).toContain("Şifre çok zayıf");
+    expect(toUserMessage(authErr("auth/invalid-credential"))).toBe("E-posta adresi veya şifre hatalı.");
+    // Bilinmeyen kodda Firebase'in teknik mesajı gösterilmez
+    expect(toUserMessage(authErr("auth/internal-error"))).toBe(APP_ERROR_MESSAGES.internal);
+  });
+});

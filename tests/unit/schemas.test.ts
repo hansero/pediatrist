@@ -162,7 +162,7 @@ describe("CALLABLES kayıt defteri", () => {
         .map((s) => s.trim())
         .filter(Boolean)
     );
-    const triggers = ["onClinicMemberCreated"];
+    const triggers = ["syncUserClaims"];
     const callables = exported.filter((n) => !triggers.includes(n));
     expect(callables).toHaveLength(Object.keys(CALLABLES).length);
     expect(callables.filter((n) => !(n in CALLABLES))).toEqual([]);

@@ -38,6 +38,21 @@ export function requireAuth(request: CallableRequest<unknown>) {
   return request.auth;
 }
 
+/** Oturum açmış ama henüz profili olmayabilecek kullanıcı (yalnızca kayıt tamamlama için). */
+export interface SignedInContext {
+  uid: string;
+  /** Firebase Auth'taki e-posta (küçük harf). E-postasız hesaplar kayıt olamaz. */
+  email: string | null;
+  emailVerified: boolean;
+}
+
+/** Profil şartı olmadan oturum + (zorunluysa) App Check. Kayıt tamamlama dışında kullanılmaz. */
+export function requireSignedIn(request: CallableRequest<unknown>): SignedInContext {
+  const auth = requireAuth(request);
+  const email = typeof auth.token.email === "string" ? auth.token.email.toLowerCase() : null;
+  return { uid: auth.uid, email, emailVerified: auth.token.email_verified === true };
+}
+
 /** Aktif üye: doküman `active`, oturum iptal zamanından sonra açılmış, (zorunluysa) e-posta doğrulanmış ve MFA'lı. */
 export async function requireActive(request: CallableRequest<unknown>): Promise<MemberContext> {
   const auth = requireAuth(request);

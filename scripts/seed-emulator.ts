@@ -153,6 +153,7 @@ async function main() {
       createdAt: Timestamp.fromMillis(now),
       expiresAt: Timestamp.fromMillis(now + inv.validForDays * 86_400_000),
       used: false,
+      revoked: false,
     });
   console.log("• 1 davet.");
 
