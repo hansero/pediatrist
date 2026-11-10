@@ -46,20 +46,3 @@ export function formatDateTime(ms: number): string {
   if (!ms) return "—";
   return new Date(ms).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" });
 }
-
-/** CSV indirme (Excel uyumlu UTF-8 BOM, alan kaçışlı). */
-export function downloadCsv(fileName: string, headers: string[], rows: Array<Array<string | number>>) {
-  const esc = (v: string | number) => {
-    const s = String(v ?? "");
-    // CSV/Excel formül enjeksiyonuna karşı (=, +, -, @, \t, \r ile başlayan hücreler)
-    const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
-    return /[",;\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
-  };
-  const csv = "\uFEFF" + [headers, ...rows].map((r) => r.map(esc).join(",")).join("\n");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(url);
-}

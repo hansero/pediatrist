@@ -9,7 +9,7 @@ import {
   buildNineFieldCsvTemplate,
   NINE_FIELD_CSV_HEADERS,
 } from "@/lib/quiz-parser";
-import { downloadCsv } from "@/lib/firebase/hooks";
+import { downloadCsv, downloadTextFile } from "@/lib/csv";
 
 interface AdminQuizStudioProps {
   activeQuizTitle: string;
@@ -51,16 +51,8 @@ export function AdminQuizStudio({
     setCsvErrors(parsed.errors);
   };
 
-  const handleDownloadSampleCsv = () => {
-    const csv = buildNineFieldCsvTemplate();
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "pediatrist_9_sutun_ornek_sinav_sablonu.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const handleDownloadSampleCsv = () =>
+    downloadTextFile("pediatrist_9_sutun_sinav_sablonu.csv", buildNineFieldCsvTemplate(), "text/csv;charset=utf-8");
 
   const canPublish =
     quizTitleInput.trim().length > 0 &&

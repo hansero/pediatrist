@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { downloadCsv } from "@/lib/firebase/hooks";
+import { downloadCsv } from "@/lib/csv";
 
 export interface AttendanceRecordItem {
   uid: string;

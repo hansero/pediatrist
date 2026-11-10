@@ -42,7 +42,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F0.5 | Eski sahte testleri kaldır, test iskeletleri + "no-mock" bekçisi | M | ✅ | §8 |
 | **F1** | **Ortak domain ve API sözleşmeleri** | | | |
 | F1.1 | `functions/src/shared`: sabitler, tipler, zod şemaları, `@shared` alias | M | ✅ | Tutarlılık tablosu |
-| F1.2 | Ortak CSV doğrulayıcı + birim testleri | S | ⬜ | Tutarlılık (CSV) |
+| F1.2 | Ortak CSV doğrulayıcı + birim testleri | S | ✅ | Tutarlılık (CSV) |
 | F1.3 | Functions: `guards.ts`, `validate.ts`, tüm callable'ların refactor'u | M | ⬜ | C5 (kısmen), S8 |
 | F1.4 | İstemci `callables.ts` yeniden yazımı, `AppError`, `useAsyncAction` | S | ⬜ | C1 (temel) |
 | **F2** | **Yetkilendirme temeli** | | | |
@@ -282,6 +282,16 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - İstemcideki `evaluateClinicalQuizAttempt` silinir: puanlama yalnızca sunucuda yapılır.
   - CSV dışa aktarımı tek fonksiyondan yapılır (`downloadCsv`): `;` ayırıcı, BOM ve formül enjeksiyonu koruması.
 - **Testler:** RFC-4180 tırnak/satır sonu, `;`/`,` algılama, Türkçe normalizasyon, her hata türü, başlık sırası hatası.
+- **✅ Uygulanan (2026-11-10) — plandan sapmalar:**
+  - **Tek doğrulama kaynağı zod şemasıdır:** `functions/src/shared/quizQuestion.ts` → `QuizQuestionInput` (yapısal kurallar + `superRefine` ile alanlar arası kurallar + `transform` ile normalizasyon). Plandaki ayrı `validateQuestion()` fonksiyonu yerine CSV ayrıştırıcı (`quizCsv.ts`) her satırı **aynı şemadan** geçiriyor. Böylece önizleme ile sunucu arasında ikinci bir kural kodu yok. Döngüsel import olmasın diye şema `schemas.ts`'den ayrı dosyada; `schemas.ts` ve `quizCsv.ts` onu import ediyor.
+  - Alanlar arası kurallar: Text Input ⇔ maxLength 1–2000 tam sayı ve yanıtlar maxLength'i aşamaz; seçenekli soruda ≥2 seçenek, tekrarlı seçenek yok, doğru cevaplar seçeneklerde, tekrarlı doğru cevap yok; Single Choice tam 1 doğru. Görsel yalnızca `quiz_media/…` (istemci eskiden `https://` kabul ediyordu, sunucu her şeyi kabul ediyordu).
+  - Normalizasyon: seçenekler tek listede (`optionsArray` yoksa `optionsRaw` bölünür), `optionsRaw` listeden üretilir, açık uçluda seçenekler boşalır, seçenekli soruda `maxLength` 0.
+  - **Başlık adları** sırasıyla doğrulanıyor (büyük/küçük harf ve boşluk duyarsız). Eskiden yalnızca sütun sayısına bakılıyordu ve yer değiştirmiş sütunlar sessizce yanlış alana eşleniyordu.
+  - `src/lib/quiz-parser` ince istemci katmanına indi: ortak ayrıştırıcıyı re-export ediyor, UI tiplerini (`GradedQuestionFeedback` = ortak `GradedItem`) ve şablon üretecini tutuyor. **`evaluateClinicalQuizAttempt` silindi.** Mock sınav sayfasında (F5.2'de yeniden yazılacak) iki kullanımı kaldırıldı: admin karne incelemesi artık uydurma karne üretmiyor; sınav teslimi istemcide puanlamaya düşmüyor, sunucu hatası kullanıcıya gösteriliyor.
+  - **Tek CSV yazıcısı:** `src/lib/csv.ts` (`toCsv` saf fonksiyon, `escapeCsvCell`, `downloadCsv`, `downloadTextFile`): `;` ayırıcı (Türkçe Excel), BOM, CRLF, formül enjeksiyonu koruması, indirme bağlantısı gecikmeli iptal ediliyor. Eski `hooks.ts → downloadCsv`, `downloadQuizLogsAsCsv` (koruması yoktu, URL'i iptal etmiyordu) ve `AdminQuizStudio`'daki kendi Blob kodu bu yazıcıya geçti. Not: koruma eklenen hücreler (`-5` → `'-5`) yeniden içe aktarılırsa `'` metnin parçası olur (OWASP önerisi, kabul edildi).
+  - İndirilebilir sınav şablonu artık `;` ile yazılıyor ve ayrıştırıcıdan hatasız geçtiği testle garanti ediliyor.
+  - **Sunucu henüz bu şemayı kullanmıyor:** `quizService.ts → sanitizeQuestion` F1.3'te `SaveQuizDraftRequest` ile değiştirilecek.
+  - Testler (unit toplam 49): **15 varyantlı istemci/sunucu eşdeğerlik testi** (CSV önizleme kararı = `SaveQuizDraftRequest` kararı; ayrıca 11 geçersiz varyantın gerçekten reddedildiği doğrulanıyor), normalizasyon, satır/sütun etiketi, başlık adı (yer değiştirme + harf duyarsızlığı), CSV yazıcısı (formül koruması, tırnaklama, yazıcı→ayrıştırıcı gidiş-dönüş), şablon.
 
 #### F1.3 Functions koruyucuları (M)
 - **Dosyalar:** `functions/src/guards.ts`, `functions/src/validate.ts`, `functions/src/auditLogger.ts`, tüm servisler

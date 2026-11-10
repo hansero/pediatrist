@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { NineFieldClinicalQuestion, DoctorQuizAttemptLog, evaluateClinicalQuizAttempt } from "@/lib/quiz-parser";
+import { NineFieldClinicalQuestion, DoctorQuizAttemptLog } from "@/lib/quiz-parser";
 import { DoctorGrowthDashboard } from "@/components/quizzes/DoctorGrowthDashboard";
 import { ClinicalExamRunner } from "@/components/quizzes/ClinicalExamRunner";
 import { InstantFeedbackReport } from "@/components/quizzes/InstantFeedbackReport";
@@ -10,6 +10,7 @@ import { AdminCentralAnalytics } from "@/components/quizzes/AdminCentralAnalytic
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 import type { ClinicMemberSession } from "@/lib/auth/types";
 import {
+  toUserMessage,
   invokeWithFallback,
   saveQuizDraft,
   publishQuiz,
@@ -178,18 +179,9 @@ export default function OnlineQuizzesPage() {
 
   const personalAttempts = allAttempts.filter((a) => a.uid === activeSession.uid);
 
-  const openAttemptReport = (att: DoctorQuizAttemptLog) => {
-    if (!att.gradedReport.length) {
-      const sampleGraded = evaluateClinicalQuizAttempt(activeQuestions, {
-        [activeQuestions[0]?.id || "q_active_1"]: ["Tek doz 2 g/kg IVIG + Aspirin (ASA)"],
-        [activeQuestions[1]?.id || "q_active_2"]: ["20 mL/kg %0.9 NaCl (İzotonik Kristalloid) hızlı IV bolus"],
-        [activeQuestions[2]?.id || "q_active_3"]: ["Krup"],
-      });
-      setInspectedAttempt({ ...att, gradedReport: sampleGraded.gradedReport });
-    } else {
-      setInspectedAttempt(att);
-    }
-  };
+  // Karne yalnızca sunucunun ürettiği gradedReport'tan gösterilir; eksikse uydurulmaz (AUDIT C3).
+  const openAttemptReport = (att: DoctorQuizAttemptLog) => setInspectedAttempt(att);
+  const [submitError, setSubmitError] = useState<string>("");
 
   return (
     <section aria-labelledby="quizzes-page-heading">
@@ -208,6 +200,12 @@ export default function OnlineQuizzesPage() {
           </p>
         </div>
       </div>
+
+      {submitError && (
+        <div role="alert" className="clinical-alert err" style={{ marginTop: "1rem" }}>
+          Sınav teslim edilemedi: {submitError}
+        </div>
+      )}
 
       {isAdmin ? (
         inspectedAttempt ? (
@@ -258,11 +256,16 @@ export default function OnlineQuizzesPage() {
           durationMinutes={activeQuizDurationMinutes}
           questions={activeQuestions}
           onSubmitExam={async (responses, tabSwitchCount) => {
-            const fallbackGraded = evaluateClinicalQuizAttempt(activeQuestions, responses);
-            const { data: graded } = await invokeWithFallback(
-              () => submitQuizAttempt({ quizId: "quiz_active_current", responses, tabSwitchCount }),
-              () => ({ ...fallbackGraded, lateSubmission: false })
-            );
+            // Puanlama yalnızca sunucuda yapılır; hata olursa istemcide puan üretilmez (CLAUDE.md kural 5).
+            setSubmitError("");
+            let graded;
+            try {
+              graded = await submitQuizAttempt({ quizId: "quiz_active_current", responses, tabSwitchCount });
+            } catch (err) {
+              setSubmitError(toUserMessage(err));
+              setUserStage("dashboard");
+              return;
+            }
             const newAttempt: DoctorQuizAttemptLog = {
               attemptId: `att_${Date.now()}`,
               quizId: "quiz_active_current",

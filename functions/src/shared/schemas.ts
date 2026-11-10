@@ -9,9 +9,11 @@
  *   bu sözleşmeye `assertion` alanı olarak eklenir.
  *
  * Zamana bağlı kurallar (ör. `closesAtMs` gelecekte olmalı) şemada değil, handler'da denetlenir; şemalar saftır.
- * Soru alanları arası kurallar (seçenek ⇔ doğru cevap, Text Input ⇔ maxLength) F1.2'deki ortak doğrulayıcıdadır.
+ * Soru alanları arası kurallar (seçenek ⇔ doğru cevap, Text Input ⇔ maxLength) `quizQuestion.ts` içindedir ve
+ * admin CSV önizlemesiyle ortaktır.
  */
 import { z } from "zod";
+import { QuizQuestionInput } from "./quizQuestion";
 import {
   ATTENDANCE_CODE_ALPHABET,
   ATTENDANCE_CODE_LENGTH,
@@ -146,41 +148,6 @@ export const MarkAttendanceExcusedRequest = z.object({
 export const MarkAttendanceExcusedResponse = z.object({ ok: z.literal(true) });
 
 // --- Sınav ----------------------------------------------------------------------
-
-/** `quiz_media/` altındaki bir Storage yolu veya boş. Harici URL'ler CSP'ye takılır ve kabul edilmez. */
-export const quizImagePath = z
-  .string()
-  .trim()
-  .max(LIMITS.imagePathLength, { error: "Soru görseli yolu çok uzun." })
-  .refine((v) => v === "" || /^quiz_media\/[\w\-./]+$/.test(v), {
-    error: "Soru görseli 'quiz_media/' ile başlayan bir Storage yolu olmalıdır.",
-  })
-  .optional()
-  .transform((v) => v ?? "");
-
-const optionText = requiredText("Seçenek", LIMITS.optionLength);
-
-/** 9 alanlı soru (yapısal doğrulama). Alanlar arası kurallar F1.2 ortak doğrulayıcısındadır. */
-export const QuizQuestionInput = z.object({
-  caseContent: requiredText("1. alan (Soru İçeriği)", LIMITS.caseContentLength),
-  imageUrl: quizImagePath,
-  questionText: requiredText("3. alan (Sorunun Kendi)", LIMITS.questionTextLength),
-  questionType: z.enum(QUESTION_TYPES, {
-    error: "4. alan (Soru Tipi) 'Single Choice', 'Multiple Choice' veya 'Text Input' olmalıdır.",
-  }),
-  maxLength: z.number().int().min(0).max(LIMITS.textAnswerLength.max).optional(),
-  optionsRaw: z
-    .string()
-    .max(LIMITS.optionLength * 20)
-    .optional(),
-  optionsArray: z.array(optionText).max(20, { error: "En fazla 20 seçenek olabilir." }).optional(),
-  correctAnswers: z
-    .array(optionText, { error: "8. alan (Doğru Seçenek) liste olmalıdır." })
-    .min(1, { error: "8. alan (Doğru Seçenek) boş olamaz." })
-    .max(20),
-  feedbackText: requiredText("9. alan (Feedback_Text)", LIMITS.feedbackTextLength),
-});
-export type QuizQuestionInputT = z.infer<typeof QuizQuestionInput>;
 
 const quizMinutes = intInRange("Sınav süresi (dk)", LIMITS.quizMinutes.min, LIMITS.quizMinutes.max);
 

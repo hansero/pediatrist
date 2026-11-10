@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SaveQuizDraftRequest } from "@shared";
 import {
   buildNineFieldCsvTemplate,
   normalizeClinicalAnswer,
@@ -71,5 +72,116 @@ describe("parseNineFieldQuizCsv", () => {
     const res = parseNineFieldQuizCsv("a,b,c\n1,2,3");
     expect(res.questions).toHaveLength(0);
     expect(res.errors[0]).toMatchObject({ row: 1, field: "Başlık" });
+  });
+});
+
+describe("ortak doğrulayıcı (F1.2): istemci önizlemesi = sunucu sözleşmesi", () => {
+  const valid: Record<string, string | string[]> = {
+    caseContent: "Vaka",
+    imageUrl: "",
+    questionText: "Soru?",
+    questionType: "Single Choice",
+    maxLength: "",
+    optionsRaw: "A | B | C",
+    optionsArray: [],
+    correctAnswers: ["B"],
+    feedbackText: "Öğrenme noktası",
+  };
+  const toRow = (q: Record<string, string | string[]>) =>
+    csvRow([
+      q.caseContent as string,
+      q.imageUrl as string,
+      q.questionText as string,
+      q.questionType as string,
+      q.maxLength as string,
+      q.optionsRaw as string,
+      (q.optionsArray as string[]).length ? JSON.stringify(q.optionsArray) : "",
+      JSON.stringify(q.correctAnswers),
+      q.feedbackText as string,
+    ]);
+  const toDraft = (q: Record<string, string | string[]>) => ({
+    ...q,
+    maxLength: q.maxLength === "" ? undefined : Number(q.maxLength),
+  });
+
+  const variants: Array<[string, Record<string, string | string[]>]> = [
+    ["geçerli tek seçmeli", valid],
+    ["geçerli çoklu seçmeli", { ...valid, questionType: "Multiple Choice", correctAnswers: ["A", "C"] }],
+    [
+      "geçerli açık uçlu",
+      { ...valid, questionType: "Text Input", maxLength: "40", optionsRaw: "", correctAnswers: ["Krup"] },
+    ],
+    ["geçerli görselli", { ...valid, imageUrl: "quiz_media/x.png" }],
+    ["tek seçmelide 2 doğru", { ...valid, correctAnswers: ["A", "B"] }],
+    ["doğru cevap seçeneklerde yok", { ...valid, correctAnswers: ["Z"] }],
+    ["tekrarlı seçenek", { ...valid, optionsRaw: "A | a | B" }],
+    ["tek seçenek", { ...valid, optionsRaw: "A", correctAnswers: ["A"] }],
+    ["açık uçluda maxLength yok", { ...valid, questionType: "Text Input", optionsRaw: "" }],
+    ["açık uçluda maxLength 2001", { ...valid, questionType: "Text Input", maxLength: "2001", optionsRaw: "" }],
+    [
+      "yanıt maxLength'ten uzun",
+      { ...valid, questionType: "Text Input", maxLength: "3", optionsRaw: "", correctAnswers: ["Krup"] },
+    ],
+    ["harici görsel URL'si", { ...valid, imageUrl: "https://example.com/x.png" }],
+    ["boş vaka", { ...valid, caseContent: "" }],
+    ["boş feedback", { ...valid, feedbackText: "" }],
+    ["geçersiz soru tipi", { ...valid, questionType: "Essay" }],
+  ];
+
+  it.each(variants)("%s: iki taraf aynı kararı verir", (_name, q) => {
+    const client = parseNineFieldQuizCsv(`${HEADER}\n${toRow(q)}`);
+    const server = SaveQuizDraftRequest.safeParse({ title: "S", durationMinutes: 10, questions: [toDraft(q)] });
+    expect(client.errors.length === 0).toBe(server.success);
+    expect(client.questions.length === 1).toBe(server.success);
+  });
+
+  it("geçersiz varyantların hepsi gerçekten reddedilir (testin boşa geçmediğinin kontrolü)", () => {
+    const rejected = variants.filter(([, q]) => parseNineFieldQuizCsv(`${HEADER}\n${toRow(q)}`).errors.length > 0);
+    expect(rejected.map(([n]) => n)).toEqual(variants.slice(4).map(([n]) => n));
+  });
+
+  it("seçenekleri normalize eder: '|' metni listeye, açık uçluda liste boşalır", () => {
+    const [choice] = parseNineFieldQuizCsv(`${HEADER}\n${toRow(valid)}`).questions;
+    expect(choice.optionsArray).toEqual(["A", "B", "C"]);
+    expect(choice.optionsRaw).toBe("A | B | C");
+    expect(choice.maxLength).toBe(0);
+    const text = {
+      ...valid,
+      questionType: "Text Input",
+      maxLength: "40",
+      optionsRaw: "A | B",
+      correctAnswers: ["Krup"],
+    };
+    const [q] = parseNineFieldQuizCsv(`${HEADER}\n${toRow(text)}`).questions;
+    expect(q.optionsArray).toEqual([]);
+    expect(q.maxLength).toBe(40);
+  });
+
+  it("hata satırını ve sütun etiketini verir", () => {
+    const res = parseNineFieldQuizCsv(`${HEADER}\n${toRow(valid)}\n${toRow({ ...valid, optionsRaw: "A | a | B" })}`);
+    expect(res.questions).toHaveLength(1);
+    expect(res.errors).toEqual([{ row: 3, field: "6/7: Seçenekler", message: "Tekrarlanan seçenek var." }]);
+  });
+});
+
+describe("başlık adı doğrulaması", () => {
+  it("sütunlar yer değiştirmişse reddeder (eskiden sessizce yanlış alana eşleniyordu)", () => {
+    const swapped = HEADER.split(",");
+    [swapped[0], swapped[2]] = [swapped[2], swapped[0]];
+    const res = parseNineFieldQuizCsv(`${swapped.join(",")}\n${csvRow(Array(9).fill("x"))}`);
+    expect(res.questions).toHaveLength(0);
+    expect(res.errors.map((e) => e.message)).toEqual([
+      '1. sütun "Soru İçeriği" olmalı, "Sorunun Kendi" bulundu.',
+      '3. sütun "Sorunun Kendi" olmalı, "Soru İçeriği" bulundu.',
+    ]);
+  });
+  it("büyük/küçük harf ve boşluk farkını önemsemez", () => {
+    const loose = HEADER.split(",")
+      .map((h) => `  ${h.toLocaleUpperCase("tr-TR")} `)
+      .join(",");
+    expect(
+      parseNineFieldQuizCsv(`${loose}\n${csvRow(["V", "", "S?", "Single Choice", "", "A | B", "", '["A"]', "F"])}`)
+        .errors
+    ).toEqual([]);
   });
 });
