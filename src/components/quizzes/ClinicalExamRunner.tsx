@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useIdleExempt } from "@/lib/auth/IdleContext";
 import { NineFieldClinicalQuestion, QuizQuestionType } from "@/lib/quiz-parser";
 
 interface ClinicalExamRunnerProps {
@@ -30,6 +31,8 @@ export function ClinicalExamRunner({
   onSubmitExam,
   onCancel,
 }: ClinicalExamRunnerProps) {
+  // Sınav sırasında uzun vaka okuması hareketsizlik sayılmaz (AUDIT C8).
+  useIdleExempt();
   const [secondsLeft, setSecondsLeft] = useState<number>(Math.max(60, durationMinutes * 60));
   const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
   const [responses, setResponses] = useState<Record<string, string[]>>({});

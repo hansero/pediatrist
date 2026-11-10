@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useIdleExempt } from "@/lib/auth/IdleContext";
 import { downloadCsv } from "@/lib/csv";
 
 export interface AttendanceRecordItem {
@@ -60,6 +61,8 @@ export function AdminLiveAttendanceProjector({
   onEndLiveSession,
   onMarkExcused,
 }: AdminLiveAttendanceProjectorProps) {
+  // Canlı ders sürerken projektör ekranı pasiftir; hareketsizlik kilidi uygulanmaz (AUDIT C8).
+  useIdleExempt(Boolean(liveSession));
   const [dashboardTab, setDashboardTab] = useState<"projector" | "by_lecture" | "by_participant">("projector");
   const [newTitle, setNewTitle] = useState<string>("");
   const [newLecturer, setNewLecturer] = useState<string>("Prof. Dr. Selim Kaya");

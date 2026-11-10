@@ -65,7 +65,7 @@ function ClinicShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SessionGuard session={session} onUnlock={() => false} onSignOut={signOutUser}>
+    <SessionGuard session={session} onSignOut={signOutUser}>
       <AppShell session={session} onSignOut={signOutUser}>
         {children}
       </AppShell>

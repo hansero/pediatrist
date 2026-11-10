@@ -54,7 +54,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F3** | **UI temeli ve kimlik doğrulama UX** | | | |
 | F3.1 | Tasarım token'ları, kontrast/odak, `next/font`, UI primitifleri | L | ✅ | Tutarlılık, Erişilebilirlik |
 | F3.2 | Korumalı layout: `next/link`, aktif menü, mobil çekmece, hata/404/yükleniyor | M | ✅ | Kullanılabilirlik |
-| F3.3 | `SessionGuard` yeniden yazımı (uyarı, muafiyet, odak tuzağı) | S | ⬜ | C8 (temel) |
+| F3.3 | `SessionGuard` yeniden yazımı (uyarı, muafiyet, odak tuzağı) | S | ✅ | C8 (temel) |
 | F3.4 | Giriş: gerçek hata yönetimi, şifre sıfırlama, gerçek TOTP MFA | L | ⬜ | C4 |
 | F3.5 | Kayıt, KVKK onayı, e-posta doğrulama, bekleme/askı ekranları | M | ⬜ | C9, Kullanılabilirlik |
 | **F4** | **Yoklama modülü (gerçek)** | | | |
@@ -101,14 +101,15 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F3.2. Korumalı iskelet `AppShell` (`next/link`, `aria-current`, mobil çekmece, "İçeriğe geç"), `useModalLayer` + `Drawer`, `router.replace` yönlendirmeleri, 404/hata/yükleniyor sayfaları, rota çipleri kaldırıldı. Testler: unit 146, rules 40, functions 44, e2e 28.
+- **Son tamamlanan adım:** F3.3. `IdleContext` (ref tabanlı tek zamanlayıcı, sekmeler arası, muafiyet), `SessionGuard` uyarı diyalogu ve gerçek nedenli çıkış, sınav/projektör muafiyeti, bekleyen ekranına çıkış düğmesi. Testler: unit 158, rules 40, functions 44, e2e 30.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F3.3 (S) `src/components/security/SessionGuard.tsx` yeniden yazımı:
-  - Bekleme ve askı durumları ayrı ekranlar, sade metin, "Çıkış yap" düğmesi (askıdaki kullanıcı zaten F2.4'te oturumdan atılıyor; pending ekranı canlı olarak aktifleşiyor).
-  - Hareketsizlik kilidi: 15 dk öncesinde 60 sn'lik uyarı diyalogu (`Dialog` + `Countdown`, "Devam et"); kilit = gerçek çıkış (`signOutUser`), sahte "kilit aç" yok (`onUnlock` kaldırılır).
-  - Muafiyet: sınav ve projektör ekranları (`useIdleExempt()` gibi bir bağlam kancası; C8).
-  - Her saniye tüm ağacı yeniden çizen `setInterval` state'i kaldırılır (son etkinlik zamanı ref'te; tek zamanlayıcı).
-  - Birim testleri (sahte zamanlayıcı): uyarı zamanı, etkinlikte sıfırlama, muafiyet, süre sonunda çıkış.
+- **Sıradaki iş:** F3.4 (L) giriş ve gerçek TOTP MFA (AUDIT C4):
+  - `src/app/(auth)/login/page.tsx`: sahte 6 hane adımı silinir. `signInWithEmailAndPassword` → `auth/multi-factor-auth-required` yakalanır → `getMultiFactorResolver` + `TotpMultiFactorGenerator.assertionForSignIn`.
+  - İlk girişte TOTP kaydı (`TotpMultiFactorGenerator.generateSecret` → QR + elle anahtar → `enroll`); zorunluluk `REQUIRE_MFA` / `NEXT_PUBLIC_REQUIRE_MFA` ile (emülatörde kapalı).
+  - Sunucu: `guards.ts` zaten `REQUIRE_MFA` ile `sign_in_second_factor` kontrol ediyor (F1.3); kurallarda admin yolları için değerlendirilir.
+  - Şifremi unuttum (`sendPasswordResetEmail`), `autoComplete` (username, current-password, one-time-code), `inputMode="numeric"`, `Field` + `Button` primitifleri, Türkçe Auth hataları (`src/lib/errors.ts` → `AUTH_ERRORS` genişletilir).
+  - **Ön kontrol:** Auth emülatörü TOTP MFA'yı destekliyor mu? Desteklemiyorsa: e2e MFA kapalı akışı test eder, MFA akışı birim testinde SDK çağrıları sahte (yalnızca testte) olarak sınanır ve staging kontrol listesine (F10.2) eklenir. Karar §3'e D-kaydı olarak yazılır.
+  - e2e `loginAs` yardımcısı sahte TOTP adımını artık atlamalı.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -590,6 +591,26 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Sekmeler arası etkinlik `BroadcastChannel` ile paylaşılır.
   - Bekleyen/askıdaki kullanıcı ekranları F3.5'e taşınır.
 - **Doğrulama:** `tests/unit/SessionGuard.test.tsx` (sahte zamanlayıcı ile uyarı, muafiyet, kilit).
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **`src/lib/auth/IdleContext.tsx`** (`IdleProvider`, `useIdle`, `useIdleExempt`):
+    - Son etkinlik zamanı ref'te; tek `setTimeout` bir sonraki karar anına kurulur. State yalnızca etkin ↔ uyarı geçişinde değişir (testte ölçüldü: 14 dakikada ≤2 çizim). Eski bileşen her saniye state güncelliyordu.
+    - 14. dakikada uyarı, 15. dakikada `onTimeout` (bir kez).
+    - **Uyarı açıkken fare/klavye hareketi süreyi uzatmaz**; yalnızca açık "Devam et" uzatır (yanlışlıkla dokunmayla oturumun sessizce uzamasını önler).
+    - Sekmeler arası `BroadcastChannel("pediatrist-idle")` (5 sn kısıtlı): başka sekmede çalışan hekimin bu sekmesi kapanmaz; açık uyarı kapanır.
+    - `visibilitychange` ile uyku/arka plan dönüşünde saatten yeniden hesap.
+    - Muafiyet sayaçla tutulur; muafiyet başlarsa açık uyarı kapanır, bitince süre baştan başlar.
+  - **Plandan sapma:** uyarı `ConfirmDialog` değil `Dialog` (`alertdialog`) + `Countdown`. "Devam et" bir sunucu işlemi değil; `ConfirmDialog`'un "işlem bitene kadar açık kal" davranışı burada anlamsız. Başlangıç odağı "Devam et"te; Esc de devam sayılır; "Şimdi çıkış yap" ikinci seçenek.
+  - **Kilit = gerçek çıkış:** `signOutUser("hareketsizlik")` → `/login?neden=hareketsizlik` ("Uzun süre işlem yapılmadığı için oturumunuz kapatıldı…"). İstemcide doğrulanamayan "kilidi aç" adımı ve `onUnlock` prop'u kaldırıldı. Çıkış başarısız olsa bile sayfa giriş ekranına yönlendirilir.
+  - `signOutUser(reason?)`: `signOut` hatasında oturumu "kapatılıyor" durumunda bırakmaz, hatayı fırlatır (arayüz gösterir). `SignOutReason`'a `hareketsizlik` eklendi.
+  - **Muafiyetler (C8):** `ClinicalExamRunner` (sınav ekranı açıkken), `AdminLiveAttendanceProjector` (canlı ders varken). Asıl ekranlar F4.3/F5.3'te yeniden yazılınca aynı kanca taşınır.
+  - **Plandan sapma:** bekleyen kullanıcı ekranı F3.5'e taşınmadı, ama kullanılabilirlik açığı nedeniyle şimdiden "Çıkış yap" düğmesi ve doğru metin aldı ("Onaylandığında bu sayfa kendiliğinden açılır": F2.4 canlı oturum sayesinde doğru). Başlık `h1`. Bekleyen kullanıcıda hareketsizlik zamanlayıcısı çalışmaz. Ayrı ekran tasarımı F3.5'te.
+  - `requireAdmin` reddi `Alert` ile (henüz çağıran yok; F7'de admin sayfaları kullanacak).
+  - Testler:
+    - `tests/unit/auth/IdleContext.test.tsx` (9): uyarı/zaman aşımı zamanlaması ve tek çağrı; etkinlikle sıfırlama; uyarıda hareketin uzatmaması; "Devam et"; muafiyet ve bitişi; uyarıdayken muafiyet; uyku dönüşü; BroadcastChannel.
+    - `tests/unit/auth/SessionGuard.test.tsx` (4).
+    - Mutasyonla doğrulandı: muafiyet ve "uyarıda hareket uzatmaz" kontrolleri kaldırılınca ilgili testler düşüyor. İlk sürüm ikinci mutasyonu yakalamıyordu; test bitiş anını geçecek şekilde güçlendirildi.
+    - `e2e/idle.spec.ts` (Playwright `page.clock`): 14. dakikada uyarı, odak "Devam et"te, Enter ile kapanır, tekrar uyarı, 15. dakikada `?neden=hareketsizlik` ve Türkçe mesaj.
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 158, e2e 30 (+2 ekran boyutuna özel atlanan), next build.
 
 #### F3.4 Giriş ve MFA (L)
 - **Dosyalar:** `src/app/(auth)/login/page.tsx`, `src/app/(auth)/reset/page.tsx`, `src/app/(protected)/account/security/page.tsx`

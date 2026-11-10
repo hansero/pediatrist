@@ -26,7 +26,11 @@ interface SessionState {
   loading: boolean;
   /** `phase === "error"` iken kullanıcıya gösterilecek metin. */
   error: string;
-  signOutUser: () => Promise<void>;
+  /**
+   * Oturumu kapatır ve giriş sayfasına gider. Neden verilirse giriş sayfası Türkçe açıklamayı gösterir
+   * (ör. `hareketsizlik`). `signOut` başarısız olursa hata fırlatılır ve oturum açık kalır.
+   */
+  signOutUser: (reason?: SignOutReason) => Promise<void>;
 }
 
 const ClinicSessionContext = createContext<SessionState>({
@@ -130,10 +134,18 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
     };
   }, []);
 
-  const signOutUser = async () => {
+  const signOutUser = async (reason?: SignOutReason) => {
     const clients = initPediatristFirebase();
-    if (clients) await signOut(clients.auth);
-    window.location.href = "/login";
+    // Çıkış sürerken onIdTokenChanged(null) → "signedOut" → nedensiz /login yönlendirmesi bastırılır (F2.4).
+    signingOut.current = true;
+    try {
+      if (clients) await signOut(clients.auth);
+    } catch (err) {
+      signingOut.current = false;
+      throw err;
+    }
+    setState({ phase: "signingOut", session: null, error: "" });
+    window.location.replace(reason ? `/login?neden=${reason}` : "/login");
   };
 
   return (

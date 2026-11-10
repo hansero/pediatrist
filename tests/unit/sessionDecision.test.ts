@@ -53,6 +53,6 @@ describe("evaluateSession", () => {
   });
 
   it("her oturum kapatma nedeninin Türkçe mesajı vardır", () => {
-    expect(Object.keys(SIGN_OUT_MESSAGES).sort()).toEqual(["askida", "oturum-sonlandi"]);
+    expect(Object.keys(SIGN_OUT_MESSAGES).sort()).toEqual(["askida", "hareketsizlik", "oturum-sonlandi"]);
   });
 });
