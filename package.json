@@ -4,7 +4,10 @@
   "private": true,
   "description": "Pediatri Eğitim Kliniği Yönetim ve Eğitim Platformu (Firebase Zero-Trust Architecture)",
   "scripts": {
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs",
+    "predev": "node scripts/copy-pdfjs-assets.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-pdfjs-assets.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

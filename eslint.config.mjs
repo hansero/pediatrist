@@ -21,6 +21,8 @@ const config = [
       "test-results/**",
       "playwright-report/**",
       "coverage/**",
+      // pdf.js worker ve fontları: kurulu paketten kopya (scripts/copy-pdfjs-assets.mjs), bizim kodumuz değil.
+      "public/pdfjs/**",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),

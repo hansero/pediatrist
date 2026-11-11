@@ -18,6 +18,8 @@ service-account*.json
 *-firebase-adminsdk-*.json
 
 # Build çıktıları
+# pdf.js worker + standart fontlar (scripts/copy-pdfjs-assets.mjs; postinstall/prebuild üretir)
+public/pdfjs/
 functions/lib/
 next-env.d.ts
 *.tsbuildinfo

@@ -73,8 +73,8 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F6** | **Materyaller modülü (gerçek)** | | | |
 | F6.1 | Backend callable'ları + kurallar | M | ✅ | C11, S12 |
 | F6.2 | Admin yükleme / düzenleme / silme / okunma raporu | M | ✅ | C11 |
-| F6.3 | Görüntüleyici (pdf.js / video) + ilerleme takibi | L | ⬜ | C11, S13 |
-| F6.4 | Materyal testleri + mock bekçisi temizliği | S | ⬜ | §8 |
+| F6.3 | Görüntüleyici (pdf.js / video) + ilerleme takibi | L | ✅ | C11, S13 |
+| F6.4 | Materyal testleri + mock bekçisi temizliği | S | ✅ | §8 |
 | **F7** | **Admin paneli, dashboard, hesaplayıcılar** | | | |
 | F7.1 | Üye paneli (onay/askı/rol, onay diyalogları) + davet yönetimi | M | ⬜ | C10, Kullanılabilirlik |
 | F7.2 | Denetim kaydı görüntüleyici (gerçek `audit_logs`) | S | ⬜ | C10 |
@@ -101,19 +101,15 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F6.2. Admin materyal yönetimi (yükleme + ilerleme + iptal + taslak temizliği, düzenle/sil, canlı okunma raporu + CSV). Testler: unit 227, rules 57, functions 98, e2e 87 (+3 bilinçli atlanan).
+- **Son tamamlanan adım:** F6.3 + F6.4. **F6 materyal modülü tamamlandı.** pdf.js görüntüleyici + yakılı filigran, video/görsel, görünür süre ve sayfa ilerlemesi, kurallı "tamamlandı", indirme izni; mock silindi. Testler: unit 231, rules 57, functions 98, e2e 89 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F6.3 (L) hekim görüntüleyicisi (bkz. §F6.3). Mevcut: `materials/page.tsx → LegacyDoctorMaterials` + `WatermarkedMaterialViewer.tsx` (mock, sabit metin "sayfalar").
-  - Liste: `materials where status == published` (kural gereği filtre şart). Varsayılan filtre hekimin kıdemi; kategori filtresi ortak listeden. Kendi ilerlemem `progress/{uid}` (sahibi okur).
-  - **PDF:** `pdfjs-dist` ile canvas'a sayfa sayfa çizim.
-    - Worker `blob:`/aynı köken. **CSP** `worker-src` gerekebilir (config/securityHeaders.ts tek kaynak; e2e CSP bekçisi var).
-    - `standardFontDataUrl`: fontlar `public/` altına kopyalanır.
-    - Üstte filigran (ad, e-posta, zaman).
-  - Video `<video controls controlsList="nodownload">`; görsel `<img>`. URL `getDownloadURL`.
-  - İlerleme: görünür sekmede geçen süre + son sayfa, `progress/{uid}`'e debounce'lu yazım (kural şeması: uid, secondsSpent ≤ 604800, lastPage, completed, `updatedAt == request.time` → `serverTimestamp()`).
-  - "Tamamlandı" ancak son sayfaya ulaşınca veya video ≥ %90 izlenince. `allowDownload` → indirme butonu.
-  - Etiket "Filigranlı görüntüleme" (D11); Storage yolu UI'da gösterilmez.
-  - F6.4 e2e: hekim (doğru kıdem) görür, açar, sayfaları gezer, tamamlar → admin raporu güncellenir; hedef dışı kıdem varsayılan filtrede görmez; ardından izin listesinden `materials/*` çıkar.
+- **Sıradaki iş:** F7 (bkz. §F7). İzin listesinde kalan 3 dosya: `admin/page.tsx` (F7.1), `dashboard/page.tsx` (F7.3), `lib/firebase/callables.ts` (`invokeWithFallback`, F7.5).
+  - **Önce F7.1 admin paneli:** `admin/page.tsx` mock üyeler + `invokeWithFallback` ile iyimser başarı.
+    - Gerçek `users` canlı listesi; `updateMemberAccess` sunucu sonucu beklenerek.
+    - Onayla / yeniden etkinleştir ayrımı; askıya al; admin yap (yazarak onay); cihaz ve MFA sıfırlama.
+    - Davetler (`createInvitation` / `revokeInvitation`).
+    - Denetim kayıtları: `audit_logs orderBy timestamp desc`, sayfalı, önem süzgeci.
+  - Sonra F7.3 dashboard (durum odaklı), F7.4 hesaplayıcılar ("Yakında", D8 + `calculators_config`), F7.5 `invokeWithFallback` silinir ve izin listesi dosyası kaldırılır.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -1238,6 +1234,35 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - "Tamamlandı" ancak son sayfaya ulaşılınca veya video ≥%90 izlenince aktifleşir.
   - `allowDownload` doğruysa indirme butonu (`getDownloadURL`) gösterilir.
   - Etiket "Filigranlı görüntüleme" olur (D11). Storage yolu UI'da gösterilmez.
+- **✅ Uygulanan:**
+  - **Liste** (`viewer/DoctorMaterials.tsx`): `materials where status == published` canlı.
+    - Varsayılan kıdem süzgeci hekimin kıdemi ("(benim)"); kıdemsiz uzmanda "Bütün kıdemler". Kategori ortak listeden.
+    - Kartta kendi durumum: Okunmadı / Okumaya başladınız / Tamamlandı (`progress/{uid}`).
+  - **PDF** (`viewer/PdfViewer.tsx`, `pdfjs-dist` 6):
+    - Worker ve standart fontlar `public/pdfjs/` altında. `scripts/copy-pdfjs-assets.mjs` kurulu paketten kopyalar (sürüm hep aynı); `postinstall`, `predev`, `prebuild`'de çalışır; git'e girmez.
+    - e2e web sunucusu artık `npm run build` ile derler (prebuild çalışsın).
+    - `useWasm: false`: CSP `'wasm-unsafe-eval'` içermiyor; JPEG2000 dışında gerekmez. CSP değişikliği gerekmedi (`worker-src 'self'`); e2e CSP bekçisi ihlal görmedi.
+    - Sayfa canvas'a çizilir; **filigran (ad, e-posta, zaman) aynı canvas'a yakılır** (ekran görüntüsünde kalır).
+    - Seçilebilir metin katmanı yok (kopyalamayı caydırır). **Ekran okuyucu için sayfa metni** görünmez bölgede verilir (erişilebilirlik caydırıcılıktan önce gelir).
+    - Sayfa çevirme düğmelerle ve klavyeyle (←/→, PageUp/PageDown, Home/End; odaklanabilir sayfa bölgesi). Sağ tık kapalı (caydırıcı).
+    - **Telefon e2e'sinin yakaladığı hata:** genişlik değişince (kaydırma çubuğu) yeni çizim, iptal edilen çizim bitmeden aynı canvas'ta başlıyordu → pdf.js reddediyor, "Sayfa çizilemedi". Çizimler artık zincirle sıralı; iptal edilen çizimin hatası yok sayılıyor.
+  - **Video** `<video controls controlsList="nodownload noremoteplayback" disablePictureInPicture>`; **görsel** `<img>`. İkisinde de filigran üst katmanı.
+  - **İlerleme** (`MaterialViewer`, `mergeProgress` saf):
+    - Yalnızca sekme **görünürken** geçen süre sayılır; 15 sn'de bir, sekme gizlenince ve kapanışta yazılır.
+    - Son sayfa = en uzak okunan sayfa (geri gitmez). Tamamlandı geri alınmaz. Kural sınırlarına kırpılır.
+    - Yazma hatasında uyarı gösterilir ve süre sonraki denemede yeniden gönderilir.
+  - **"Tamamlandı olarak işaretle"** ancak PDF'te son sayfa çizilince, videoda ≥ %90 izlenince, görselde hemen açılır (`canComplete`); ipucu ilerlemeyi gösterir ("1 / 3").
+  - **İndirme** yalnızca `allowDownload` ise ("İndir"). Etiket "Filigranlı görüntüleme" (D11). Storage yolu UI'da yok.
+  - **Mock temizliği:** eski `WatermarkedMaterialViewer.tsx` (sabit metin "sayfalar", sahte DRM etiketi) ve sayfadaki `INITIAL_MATERIALS` / `FALLBACK_SESSION` / sahte okuyucu istatistikleri silindi. **`materials/*` izin listesinden çıktı** (izin listesi 3 dosya: F7.1, F7.3, F7.5).
+  - **Staging:** Storage CORS kuralı F10.2 listesine eklendi.
+  - **Testler:**
+    - unit +4 (`tests/unit/materials/doctor.test.ts`): ilerleme birleştirme, tamamlanabilirlik, süzgeç, filigran metni.
+    - e2e +1 (`e2e/materials-viewer.spec.ts`, iki ekran boyutu, ekran başına ayrı hekim; F6.4 senaryosu):
+      - Varsayılan süzgeçte hedef dışı materyal görünmez, "Bütün kıdemler"de görünür.
+      - PDF gerçekten çizilir (canvas boyutu, ekran okuyucu metni); indirme yok.
+      - "Tamamlandı" düğmesi son sayfaya kadar kapalı; düğme ve klavyeyle sayfa çevrilir; tamamlanır; listede "Tamamlandı".
+      - İndirme izinli materyalde "İndir".
+      - Admin okunma raporunda hekim "Tamamladı", son sayfa 3.
 
 #### F6.4 Materyal testleri (S)
 - **Dosyalar:** `e2e/materials.spec.ts`
@@ -1246,6 +1271,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Hedef dışı kıdemdeki hekim varsayılan filtrede materyali görmez.
   - Admin materyali siler → Storage'dan da silinir.
 - Allowlist'ten `materials/*` çıkarılır.
+- **✅ Uygulanan:** senaryo `e2e/materials-viewer.spec.ts` (F6.3) ve `e2e/materials-admin.spec.ts` (F6.2: yükle/sil, sunucuda doküman yok; Storage silmesi functions testinde). `materials/*` F6.3'te izin listesinden çıktı.
 
 ---
 
@@ -1352,6 +1378,7 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - App Check: reCAPTCHA Enterprise anahtarı; Firestore/Storage/Functions için zorlama.
 - Web API anahtarı için HTTP referrer kısıtlaması.
 - Storage → Firestore cross-service izni.
+- **Storage CORS (F6.3):** pdf.js PDF'i indirme URL'sinden `fetch` ile okur. Bucket'a hosting kökeni için GET CORS kuralı (`gsutil cors set cors.json gs://<bucket>`; `origin: ["https://<hosting-alanı>"]`, `method: ["GET"]`, `maxAgeSeconds: 3600`). Yoksa PDF açılmaz (emülatörde gerekmez).
 - Functions parametreleri: `ENFORCE_APP_CHECK=true`, `WEBAUTHN_RP_ID` (hosting alan adı), `WEBAUTHN_ORIGINS` (`https://…`), `AUDIT_IP_SALT` secret.
 - MFA ve e-posta doğrulaması (D20, D21): `config/security` dokümanı **oluşturulmaz** (yoksa ikisi de zorunlu) veya `requireMfa: true`, `requireEmailVerified: true` yazılır. `false` yazılmamalı; emülatör dışında `false` görülürse alarm (F9.2).
 - WebAuthn RP ID = hosting domaini.
