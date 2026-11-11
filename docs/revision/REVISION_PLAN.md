@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F7.5. **F7 tamamlandı; bütün modüller gerçek veride, sahte veri bekçisi istisnasız.** `invokeWithFallback` ve izin listesi silindi; Firebase yapılandırması eksikse kök yerleşim açık bir hata sayfası gösterir. Testler: unit 244, rules 57, functions 102, e2e E2E_COUNT.
+- **Son tamamlanan adım:** F7.5. **F7 tamamlandı; bütün modüller gerçek veride, sahte veri bekçisi istisnasız.** `invokeWithFallback` ve izin listesi silindi; Firebase yapılandırması eksikse kök yerleşim açık bir hata sayfası gösterir. Testler: unit 244, rules 57, functions 102, e2e 101 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
 - **Sıradaki iş:** F8.1 metin ve erişilebilirlik (bkz. §F8.1).
   - Önce `@axe-core/playwright` ekle (`npm i -D`, sürüm sabitlenmiş) ve `e2e/a11y.spec.ts` yaz. Kapsam: giriş, kayıt, ana sayfa (admin+hekim), yoklama, sınavlar, materyaller, hesaplayıcılar, yönetim paneli (3 sekme), hesap güvenliği.
