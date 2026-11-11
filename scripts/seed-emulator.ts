@@ -20,6 +20,7 @@ import {
   SEED_INVITATION,
   SEED_MATERIALS,
   SEED_PASSWORD,
+  SEED_QUIZ,
   SEED_QUIZ_MEDIA,
   SEED_USERS,
   type SeedUser,
@@ -36,6 +37,7 @@ const hosts = {
   FIREBASE_AUTH_EMULATOR_HOST: `${emu.auth.host}:${emu.auth.port}`,
   FIREBASE_STORAGE_EMULATOR_HOST: `${emu.storage.host}:${emu.storage.port}`,
 };
+const FIXTURES_DIR = path.join(import.meta.dirname, "fixtures");
 
 function fail(message: string): never {
   console.error(`\n✖ Seed iptal edildi: ${message}\n`);
@@ -87,6 +89,98 @@ async function resetEmulators(bucket: { deleteFiles(options: { force: boolean })
   }
   await bucket.deleteFiles({ force: true });
   console.log("• Emülatör verisi sıfırlandı (Auth, Firestore, Storage).");
+}
+
+/**
+ * Sınav seed'i: istemci SDK'sıyla emülatöre giriş yapılıp gerçek callable'lar çağrılır; yanıtlar ortak
+ * sözleşmelerle (`CALLABLES`) doğrulanır. Döndürülen metin özet satırıdır.
+ */
+async function seedQuizzes(admin: SeedUser): Promise<string> {
+  const { initializeApp: initClientApp } = await import("firebase/app");
+  const {
+    connectAuthEmulator,
+    getAuth: getClientAuth,
+    signInWithEmailAndPassword,
+    signOut,
+  } = await import("firebase/auth");
+  const { connectFunctionsEmulator, getFunctions, httpsCallable } = await import("firebase/functions");
+  const { CALLABLES } = await import("../functions/src/shared/schemas");
+  const { REGION } = await import("../functions/src/shared/constants");
+  const { parseNineFieldQuizCsv } = await import("../functions/src/shared/quizCsv");
+  type Name = keyof typeof CALLABLES;
+
+  const app = initClientApp({ projectId: PROJECT_ID, apiKey: "demo-api-key" }, "seed-client");
+  const clientAuth = getClientAuth(app);
+  connectAuthEmulator(clientAuth, `http://${hosts.FIREBASE_AUTH_EMULATOR_HOST}`, { disableWarnings: true });
+  const functions = getFunctions(app, REGION);
+  connectFunctionsEmulator(functions, emu.functions.host, emu.functions.port);
+
+  async function call<N extends Name>(name: N, data: unknown) {
+    try {
+      const res = await httpsCallable(functions, name)(data);
+      return CALLABLES[name].response.parse(res.data) as import("zod").output<(typeof CALLABLES)[N]["response"]>;
+    } catch (err) {
+      throw new Error(`${name}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  async function as<T>(email: string, work: () => Promise<T>): Promise<T> {
+    await signInWithEmailAndPassword(clientAuth, email, SEED_PASSWORD);
+    try {
+      return await work();
+    } finally {
+      await signOut(clientAuth);
+    }
+  }
+
+  const parsed = parseNineFieldQuizCsv(readFileSync(path.join(FIXTURES_DIR, SEED_QUIZ.csvFile), "utf8"));
+  if (parsed.errors.length) fail(`Sınav CSV'si geçersiz: ${parsed.errors[0].message}`);
+  const q = SEED_QUIZ;
+
+  const quizId = await as(admin.email, async () => {
+    const draft = await call("saveQuizDraft", {
+      title: q.title,
+      durationMinutes: q.durationMinutes,
+      revealPolicy: q.revealPolicy,
+      sourceFileName: q.csvFile,
+      questions: parsed.questions,
+    });
+    const pub = await call("publishQuiz", { quizId: draft.quizId });
+    if (!pub.published) fail("Seed sınavı yayınlanamadı (devam eden girişim var).");
+    return draft.quizId;
+  });
+
+  const scores: string[] = [];
+  for (const attempt of q.attempts) {
+    const user = SEED_USERS.find((u) => u.uid === attempt.uid);
+    if (!user) fail(`Sınav girişimindeki kullanıcı bulunamadı: ${attempt.uid}`);
+    const result = await as(user.email, async () => {
+      const started = await call("startQuizAttempt", { quizId });
+      const responses = Object.fromEntries(
+        started.questions.map((question, i) => {
+          const correctAnswers = parsed.questions[i].correctAnswers;
+          if (attempt.correct[i]) return [question.questionId, correctAnswers];
+          const wrong =
+            question.questionType === "Text Input"
+              ? "Bilmiyorum"
+              : (question.options.find((o) => !correctAnswers.includes(o)) ?? question.options[0]);
+          return [question.questionId, [wrong]];
+        })
+      );
+      return call("submitQuizAttempt", { quizId, responses, tabSwitchCount: 0 });
+    });
+    scores.push(`${user.fullName} ${result.score}`);
+  }
+
+  await as(admin.email, async () => {
+    await call("closeQuiz", { quizId });
+    await call("saveQuizDraft", {
+      title: q.draftTitle,
+      durationMinutes: 15,
+      sourceFileName: q.csvFile,
+      questions: parsed.questions.slice(0, 1),
+    });
+  });
+  return `1 kapanmış sınav (gerçek callable'larla; puanlar: ${scores.join(", ")}) + 1 taslak sınav.`;
 }
 
 async function main() {
@@ -268,14 +362,22 @@ async function main() {
   await batch.commit();
   console.log(`• 1 kapanmış yoklama oturumu (${a.records.length} kayıt + ${absent.length} katılmadı).`);
 
+  // --- 7) Sınavlar: GERÇEK callable'larla (F5.1) ------------------------------
+  // Sınav verisi istemcinin yapacağı gibi üretilir (taslak → yayın → giriş → sunucuda puanlama → kapanış);
+  // Firestore'a doğrudan sınav/girişim yazılmaz. Bu yüzden Functions emülatörü gereklidir.
+  if (!functionsRunning) {
+    fail(
+      "Sınav verisi gerçek callable'larla yüklenir; Functions emülatörü çalışmıyor. 'npm run emulators' ile başlatın."
+    );
+  }
+  const quizSummary = await seedQuizzes(admin);
+  console.log(`• ${quizSummary}`);
+
   console.log(`
 ✔ Seed tamamlandı (proje: ${PROJECT_ID}).
   Ortak şifre: ${SEED_PASSWORD}
   Admin: ${admin.email}
   Diğer hesaplar: scripts/fixtures/README.md
-  Sınavlar: F5.1'de callable'lar üzerinden eklenecek (bkz. REVISION_PLAN).${
-    functionsRunning ? "" : "\n  ⚠ Functions emülatörü çalışmıyor; tetikleyiciler (ör. claim senkronu) devre dışı."
-  }
 `);
 }
 

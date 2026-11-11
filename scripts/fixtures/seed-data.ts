@@ -155,3 +155,21 @@ export const SEED_ATTENDANCE = {
     // seed-asistan-4 katılmadı: seed, sunucunun kapanışta yaptığı gibi "absent" kaydı yazar (D22).
   ],
 };
+
+/**
+ * Sınav seed'i (F5.1): GERÇEK callable'larla yüklenir (puanlama sunucuda). Admin `quiz-ornek.csv`'yi taslak
+ * olarak kaydedip yayınlar; asistanlar girip farklı doğruluklarla teslim eder; admin sınavı kapatır.
+ * `correct[i]`: i. soruya doğru yanıt verir mi. Ayrıca yayınlanmamış bir taslak bırakılır.
+ */
+export const SEED_QUIZ = {
+  csvFile: "quiz-ornek.csv",
+  title: "Pediatrik Acil Vakalar: Örnek Sınav",
+  durationMinutes: 20,
+  revealPolicy: "after_close" as const,
+  attempts: [
+    { uid: "seed-asistan-1", correct: [true, true, true] },
+    { uid: "seed-asistan-2", correct: [true, false, true] },
+    { uid: "seed-asistan-3", correct: [true, false, false] },
+  ],
+  draftTitle: "Taslak: Kawasaki Hastalığı Tekrar",
+};

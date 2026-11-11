@@ -180,12 +180,17 @@ describe("CALLABLES kayıt defteri", () => {
         .map((s) => s.trim())
         .filter(Boolean)
     );
-    // Tetikleyiciler ve zamanlanmış işler callable değildir.
-    const triggers = ["syncUserClaims", "closeExpiredLecturesJob"];
+    // Tetikleyiciler ve zamanlanmış işler callable değildir. İşler `scheduled.ts`'ten okunur (elle liste yok).
+    const scheduled = readFileSync(path.join(root, "functions", "src", "scheduled.ts"), "utf8");
+    const jobs = [...scheduled.matchAll(/export const (\w+) = onSchedule/g)].map((m) => m[1]);
+    const triggers = ["syncUserClaims", ...jobs];
     const callables = exported.filter((n) => !triggers.includes(n));
     expect(callables).toHaveLength(Object.keys(CALLABLES).length);
     expect(callables.filter((n) => !(n in CALLABLES))).toEqual([]);
     expect(Object.keys(CALLABLES).filter((n) => !callables.includes(n))).toEqual([]);
+    // Deploy edilen yalnızca index.ts'ten dışa aktarılanlardır: unutulan zamanlanmış iş üretimde hiç oluşmaz (F5.1).
+    expect(jobs.length).toBeGreaterThan(1);
+    expect(jobs.filter((n) => !exported.includes(n))).toEqual([]);
   });
 });
 
