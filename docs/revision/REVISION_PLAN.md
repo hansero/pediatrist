@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F8.1. axe ile ana sayfalarda ciddi/kritik erişilebilirlik ihlali 0 (iki ekran boyutu); etiket-ad uyuşmazlıkları ve kaydırılabilir tablo odağı düzeltildi; hata mesajları "ne oldu + ne yapmalı"; yapılandırma mesajı tek kaynakta. Testler: unit 245, rules 57, functions 102, e2e E2E_COUNT.
+- **Son tamamlanan adım:** F8.1. axe ile ana sayfalarda ciddi/kritik erişilebilirlik ihlali 0 (iki ekran boyutu); etiket-ad uyuşmazlıkları ve kaydırılabilir tablo odağı düzeltildi; hata mesajları "ne oldu + ne yapmalı"; yapılandırma mesajı tek kaynakta. Testler: unit 245, rules 57, functions 102, e2e 109 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
 - **Sıradaki iş:** F8.2 performans ve ölü kod (bkz. §F8.2).
   - Saniyelik zamanlayıcılar yalnızca `Countdown`'da kalmalı: `grep -rn "setInterval" src`.
