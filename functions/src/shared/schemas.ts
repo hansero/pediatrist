@@ -16,6 +16,9 @@ import { KVKK_NOTICE_VERSION } from "./consent";
 import { z } from "./zod";
 import { QuizQuestionInput } from "./quizQuestion";
 import {
+  MATERIAL_CATEGORIES,
+  MATERIAL_FILE_TYPES,
+  MATERIAL_UPLOAD,
   DEFAULT_REVEAL_POLICY,
   REVEAL_POLICIES,
   ATTENDANCE_CODE_ALPHABET,
@@ -412,6 +415,57 @@ export const GetAttemptReportResponse = z.object({
   autoSubmitted: z.boolean(),
 });
 
+// --- Materyaller (F6.1) -----------------------------------------------------------
+
+const materialFields = {
+  title: requiredText("Materyal başlığı", LIMITS.titleLength),
+  description: optionalText("Açıklama", LIMITS.descriptionLength),
+  category: z.enum(MATERIAL_CATEGORIES, { error: "Kategori listeden seçilmelidir." }),
+  targetYears: z
+    .array(residencyYearSchema, { error: "Hedef kıdem listesi geçersiz." })
+    .min(1, { error: "En az bir hedef kıdem seçin." })
+    .max(RESIDENCY_YEARS.length)
+    .refine((ys) => new Set(ys).size === ys.length, { error: "Hedef kıdem tekrarlanamaz." }),
+  isMandatory: z.boolean({ error: "Zorunluluk evet/hayır olmalıdır." }),
+  allowDownload: z.boolean({ error: "İndirme izni evet/hayır olmalıdır." }),
+};
+
+const materialContentType = z.enum(Object.keys(MATERIAL_UPLOAD.contentTypes) as [string, ...string[]], {
+  error: "Yalnızca PDF, video (MP4/WebM/MOV) veya görsel (PNG/JPEG/WebP) yüklenebilir. Sunumları PDF olarak yükleyin.",
+});
+
+/** Taslak + yükleme yolu. Dosyayı istemci bu yola yükler (Storage kuralı admin, tür ve boyut denetler). */
+export const CreateMaterialRequest = z.object({
+  ...materialFields,
+  fileName: requiredText("Dosya adı", LIMITS.fileNameLength),
+  contentType: materialContentType,
+  sizeBytes: z
+    .number({ error: "Dosya boyutu geçersiz." })
+    .int()
+    .positive({ error: "Dosya boş." })
+    .max(MATERIAL_UPLOAD.maxMb * 1024 * 1024, { error: `Dosya en fazla ${MATERIAL_UPLOAD.maxMb} MB olabilir.` }),
+});
+export const CreateMaterialResponse = z.object({ materialId: z.string(), storagePath: z.string() });
+
+/** Yükleme bitti: sunucu dosyayı Storage'da denetler (var mı, tür, boyut) ve yayınlar. */
+export const FinalizeMaterialUploadRequest = z.object({ materialId: docId("Materyal") });
+export const FinalizeMaterialUploadResponse = z.object({
+  published: z.literal(true),
+  sizeBytes: z.number(),
+  fileType: z.enum(MATERIAL_FILE_TYPES),
+});
+
+export const UpdateMaterialRequest = z.object({ materialId: docId("Materyal") }).extend(
+  Object.fromEntries(Object.entries(materialFields).map(([k, v]) => [k, v.optional()])) as {
+    [K in keyof typeof materialFields]: z.ZodOptional<(typeof materialFields)[K]>;
+  }
+);
+export const UpdateMaterialResponse = z.object({ updated: z.literal(true) });
+
+/** Doküman, Storage dosyası ve bütün okuma ilerlemeleri silinir. */
+export const DeleteMaterialRequest = z.object({ materialId: docId("Materyal") });
+export const DeleteMaterialResponse = z.object({ deleted: z.literal(true), progressDeleted: z.number() });
+
 // --- Kayıt defteri --------------------------------------------------------------
 
 /**
@@ -440,6 +494,10 @@ export const CALLABLES = {
   deleteQuizDraft: { request: DeleteQuizDraftRequest, response: DeleteQuizDraftResponse },
   saveAttemptDraft: { request: SaveAttemptDraftRequest, response: SaveAttemptDraftResponse },
   getAttemptReport: { request: GetAttemptReportRequest, response: GetAttemptReportResponse },
+  createMaterial: { request: CreateMaterialRequest, response: CreateMaterialResponse },
+  finalizeMaterialUpload: { request: FinalizeMaterialUploadRequest, response: FinalizeMaterialUploadResponse },
+  updateMaterial: { request: UpdateMaterialRequest, response: UpdateMaterialResponse },
+  deleteMaterial: { request: DeleteMaterialRequest, response: DeleteMaterialResponse },
 } as const;
 
 export type CallableName = keyof typeof CALLABLES;

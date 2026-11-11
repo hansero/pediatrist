@@ -314,7 +314,7 @@ export interface QuizAttemptDraftDoc<T> {
 
 export type MaterialStatus = "draft" | "published";
 
-/** `materials/{materialId}` (F6.1'de callable'larla kesinleşir; seed bu şemayı yazar). */
+/** `materials/{materialId}`: yalnızca callable'lar yazar (F6.1). */
 export interface MaterialDoc<T> {
   title: string;
   description: string;
@@ -328,8 +328,11 @@ export interface MaterialDoc<T> {
   sizeBytes: number;
   uploadedBy: string;
   uploadedByName: string;
+  /** `draft`: yükleme bekleniyor (hekime görünmez); `published`: dosya sunucuda doğrulandı (F6.1). */
   status: MaterialStatus;
   createdAt: T;
+  publishedAt?: T;
+  updatedAt?: T;
 }
 
 /** `materials/{materialId}/progress/{uid}` (F2.1 kural şeması ile aynı alanlar). */

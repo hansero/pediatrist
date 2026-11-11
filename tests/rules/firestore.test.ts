@@ -40,6 +40,7 @@ beforeEach(async () => {
   await env.withSecurityRulesDisabled(async (c) => {
     const db = c.firestore();
     await db.collection("materials").doc("m1").set({ title: "Materyal", status: "published" });
+    await db.collection("materials").doc("draft1").set({ title: "Taslak", status: "draft" });
     await db.collection("materials").doc("m1").collection("progress").doc(other.uid).set({ uid: other.uid });
     await db.collection("attendance_logs").doc(`s1_${resident.uid}`).set({ uid: resident.uid, sessionId: "s1" });
     await db.collection("attendance_logs").doc(`s1_${other.uid}`).set({ uid: other.uid, sessionId: "s1" });
@@ -268,6 +269,15 @@ describe("materyal okuma ilerlemesi", () => {
     await assertFails(ref(resident, other.uid).set(progress(other.uid)));
     await assertFails(ref(resident, other.uid).get());
     await assertFails(ref(pending).set(progress(pending.uid)));
+  });
+
+  it("F6.1: taslak materyale ilerleme yazılamaz; taslak dokümanı hekime görünmez, admin görür", async () => {
+    await assertFails(as(resident).doc(`materials/draft1/progress/${resident.uid}`).set(progress(resident.uid)));
+    await assertFails(as(resident).doc(`materials/olmayan/progress/${resident.uid}`).set(progress(resident.uid)));
+    await assertFails(as(resident).collection("materials").doc("draft1").get());
+    await assertSucceeds(as(admin).collection("materials").doc("draft1").get());
+    await assertFails(as(resident).collection("materials").get());
+    await assertSucceeds(as(resident).collection("materials").where("status", "==", "published").get());
   });
 
   it("admin bütün materyallerin ilerlemesini tek sorguda (collectionGroup) okur; asistan okuyamaz", async () => {

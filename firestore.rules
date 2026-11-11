@@ -110,13 +110,16 @@ service cloud.firestore {
     // Modül 1: Eğitim materyalleri
     // ===================================================================================
     match /materials/{materialId} {
-      allow read: if isActive();
-      allow write: if false; // F6.1: createMaterial / updateMaterial / deleteMaterial
+      // Taslak (yükleme bekleyen) yalnızca admin'e görünür; hekim listesi `status == 'published'` ile sorgular.
+      allow read: if isAdmin() || (isActive() && resource.data.status == 'published');
+      allow write: if false; // yalnızca callable'lar: createMaterial / finalizeMaterialUpload / updateMaterial / deleteMaterial
 
       // Kişisel okuma ilerlemesi: yalnızca sahibi, yalnızca tanımlı alanlarla yazar.
       match /progress/{uid} {
         allow read: if (isSelf(uid) && isActive()) || isAdmin();
+        // Yalnızca yayındaki materyale (taslağa / silinmişe ilerleme yazılmaz, F6.1).
         allow create, update: if isSelf(uid) && isActive()
+          && get(/databases/$(database)/documents/materials/$(materialId)).data.status == 'published'
           && request.resource.data.keys().hasOnly(['uid', 'secondsSpent', 'lastPage', 'completed', 'updatedAt'])
           && request.resource.data.keys().hasAll(['uid', 'secondsSpent', 'lastPage', 'completed', 'updatedAt'])
           && request.resource.data.uid == uid

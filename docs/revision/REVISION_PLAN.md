@@ -71,7 +71,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F5.4 | Hekim paneli + karne + admin analitiği | M | ✅ | C3, Kullanılabilirlik |
 | F5.5 | Sınav testleri + mock bekçisi temizliği | M | ✅ | §8 |
 | **F6** | **Materyaller modülü (gerçek)** | | | |
-| F6.1 | Backend callable'ları + kurallar | M | ⬜ | C11, S12 |
+| F6.1 | Backend callable'ları + kurallar | M | ✅ | C11, S12 |
 | F6.2 | Admin yükleme / düzenleme / silme / okunma raporu | M | ⬜ | C11 |
 | F6.3 | Görüntüleyici (pdf.js / video) + ilerleme takibi | L | ⬜ | C11, S13 |
 | F6.4 | Materyal testleri + mock bekçisi temizliği | S | ⬜ | §8 |
@@ -101,22 +101,16 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F5.5. **F5 sınav modülü tamamlandı.** Süre dolumu otomatik teslimi e2e'si ve karnede kalıcı "süre doldu" notu. Testler: unit 221, rules 56, functions 92, e2e 83 (+3 bilinçli atlanan: 2 ekran boyutu, 1 süre dolumu telefonda). CI e2e adımı zaman sınırı 10 → 20 dk.
+- **Son tamamlanan adım:** F6.1. Materyal backend'i (create → Storage → finalize doğrulaması → yayın; update; delete Storage + ilerleme), kurallar, seed callable'larla. Testler: unit 221, rules 57, functions 98, e2e 83 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F6.1 (M) materyal backend'i (bkz. §F6.1). Mevcut durum: `materials` seed'de doğrudan yazılıyor; istemci `AdminMaterialManager` ve sayfası mock (izin listesinde, F6.2).
-  1. Sözleşmeler (`shared/schemas.ts`): `createMaterial`, `finalizeMaterialUpload`, `updateMaterial`, `deleteMaterial`.
-     - `MATERIAL_UPLOAD` sabitleri (D19: PDF/video/görsel, pptx ve SVG yok).
-     - Kategori ve kıdem ortak listeden (`MATERIAL_CATEGORIES`, `RESIDENCY_YEARS`).
-  2. `functions/src/materialsService.ts`:
-     - `createMaterial` → `status: "draft"` doküman + yükleme yolu `materials/{id}/{güvenli-ad}`.
-     - İstemci Storage'a yükler (kural: admin, tür ve boyut).
-     - `finalizeMaterialUpload`: dosya var mı, boyut ve MIME (Storage metadata) → `status: "published"`, `sizeBytes`, `contentType`, `fileType`.
-     - `updateMaterial`: meta veriler.
-     - `deleteMaterial`: Storage dosyası + `progress` alt koleksiyonu + doküman.
-     - Hepsi denetim kaydı; `uploadedBy` ve `uploadedByName` profilden.
-  3. Kurallar: `materials` hekime yalnızca `published` ve hedef kıdem? (F2.1 kurallarını kontrol et.) `progress/{uid}` şeması (S12) F2.1'de var.
-  4. Seed: materyaller callable'larla mı? `createMaterial` → Storage'a admin SDK ile yükleme → `finalizeMaterialUpload`. Ya da doğrudan yazım D1 seed istisnası. Karar: sınavdaki gibi gerçek callable'larla.
-  5. Testler: `functions/test/materials.test.ts` (Storage emülatörü `test:functions`'ta var).
+- **Sıradaki iş:** F6.2 (M) admin materyal yönetimi (bkz. §F6.2). Mevcut: `src/components/materials/AdminMaterialManager.tsx` ve `materials/page.tsx` mock (izin listesinde).
+  - Admin listesi: `materials orderBy createdAt desc` canlı (admin taslakları da görür; taslak = yükleme yarım kalmış, silinebilir).
+  - Yükleme formu: başlık, açıklama, kategori (ortak liste), hedef kıdemler (çoklu), zorunlu, indirme izni, dosya.
+    - Akış: `createMaterial` → `uploadBytesResumable(storagePath)` (ilerleme çubuğu, **iptal**) → `finalizeMaterialUpload`.
+    - İptal/hata: taslağı `deleteMaterial` ile temizle.
+  - Düzenle (`updateMaterial`), sil (`ConfirmDialog`, `deleteMaterial`; silinen ilerleme sayısı toast'ta).
+  - Okunma raporu: materyal bazında `materials/{id}/progress` (admin okur). Hedef kitle = hedef kıdemdeki etkin asistanlar (`useActiveDoctors`). Tamamlayan / başlayan / başlamayan; CSV.
+  - Hekim tarafı (görüntüleyici) F6.3; o zamana kadar `materials/page.tsx` hekim dalı izin listesinde kalır.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -1176,6 +1170,25 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `updateMaterial`.
   - `deleteMaterial`: Storage dosyası + `progress` alt koleksiyonu silinir.
 - Hepsi denetim kaydı yazar. `uploadedBy` sunucuda profilden gelir.
+- **✅ Uygulanan:**
+  - **Sözleşmeler:**
+    - Kategori `MATERIAL_CATEGORIES`, hedef kıdem `RESIDENCY_YEARS` (en az 1, tekrarsız), içerik türü `MATERIAL_UPLOAD` (PDF / video / görsel; pptx ve SVG yok, D19; mesaj "Sunumları PDF olarak yükleyin").
+    - Boyut ≤ 150 MB. `LIMITS.descriptionLength`.
+  - **`functions/src/materialsService.ts`:**
+    - `createMaterial` → `draft` + yükleme yolu `materials/{id}/{ascii-ad}.{içerik türünden uzantı}`. Dosya adındaki uzantıya güvenilmez.
+    - `finalizeMaterialUpload`: Storage'da dosya **gerçekten var mı**, metadata'daki tür beyanla aynı ve izinli mi, boyut sınırda mı → `published`. Boyut ve tür Storage'daki gerçek değerlerle yazılır.
+    - `updateMaterial`: yalnızca meta veri.
+    - `deleteMaterial`: önce Storage öneki, sonra `recursiveDelete` (doküman + bütün `progress`). Denetimde silinen ilerleme sayısı.
+    - `uploadedBy` ve `uploadedByName` admin profilinden. Her işlem denetim kaydı yazar.
+  - **Kurallar:**
+    - Taslak materyal hekime görünmez (`resource.data.status == 'published'`; hekim listesi bu filtreyle sorgular).
+    - İlerleme yalnızca yayındaki materyale yazılır (taslak/silinmiş/olmayan → ret).
+    - **Storage okuma kuralına materyal durumu eklenmedi (bilinçli):** Storage kuralları istek başına sınırlı Firestore okuması yapabiliyor; `isActive()` zaten profil + güvenlik ayarı okuyor. Taslak dosyasının yolu rastgele kimlik içerir, liste izni de yok.
+  - **Seed:** materyaller artık gerçek callable'larla (`createMaterial` → Storage'a yükleme → `finalizeMaterialUpload`). Seed Functions emülatörü olmadan açık hatayla durur.
+  - **İstemci:** 4 callable bağlandı (UI F6.2).
+  - **Testler:**
+    - functions +6 (`materials.test.ts`): akış ve profilden yükleyen; dosyasız/tür uyuşmazlığında yayın reddi; pptx, SVG, boyut, kıdem ve kategori reddi; hekim reddi; güncelleme; silmede Storage + ilerleme + doküman; güvenli ad.
+    - rules +1: taslak görünmezliği, ilerleme yazımı, liste sorgusu filtresi.
 
 #### F6.2 Admin yönetimi (M)
 - **Dosyalar:** `src/components/materials/admin/*`

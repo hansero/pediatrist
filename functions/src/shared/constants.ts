@@ -136,6 +136,7 @@ export const LIMITS = {
   personNameLength: 120,
   excuseNoteLength: 200,
   fileNameLength: 200,
+  descriptionLength: 2000,
   idLength: 128,
   /** WebAuthn yanıtındaki base64url alanlar (imza, authenticatorData, attestation) için üst sınır. */
   webAuthnFieldLength: 16_384,

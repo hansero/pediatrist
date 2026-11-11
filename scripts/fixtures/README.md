@@ -36,7 +36,7 @@ Davet: kod `DAVET-TEST-001`, e-posta `davetli@pediatrist.test` (hesap yok; kayı
 
 | Veri | Ayrıntı |
 |---|---|
-| Materyaller | 2 PDF (`files/*.pdf`) Storage'a `materials/{id}/` altında + `materials/{id}` dokümanları |
+| Materyaller | **Gerçek callable'larla**: 2 PDF (`files/*.pdf`) için `createMaterial` → Storage'a yükleme → `finalizeMaterialUpload` (sunucu dosyayı doğrulayıp yayınlar) |
 | Sınav görseli | `quiz_media/steeple_sign.png` (CSV fixture'ı buna başvurur) |
 | Yoklama | 1 kapanmış ders: asistan 1–2 katıldı, asistan 3 mazeretli, asistan 4 katılmadı |
 | Sınavlar | **Gerçek callable'larla** (Functions emülatörü gerekir): `quiz-ornek.csv` taslak → yayın; asistan 1/2/3 teslim (puan 100/67/33, sunucuda puanlanır); sınav kapatıldı (`after_close`, karne açık). Ayrıca 1 taslak sınav (1 soru) |

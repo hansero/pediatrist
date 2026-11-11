@@ -77,7 +77,12 @@ async function assertEmulatorsRunning() {
 }
 
 // --- 2) Sıfırlama -------------------------------------------------------------
-async function resetEmulators(bucket: { deleteFiles(options: { force: boolean }): Promise<unknown> }) {
+interface SeedBucket {
+  deleteFiles(options: { force: boolean }): Promise<unknown>;
+  file(path: string): { save(data: Buffer, options: { contentType: string; resumable: boolean }): Promise<unknown> };
+}
+
+async function resetEmulators(bucket: SeedBucket) {
   const fsBase = `http://${hosts.FIRESTORE_EMULATOR_HOST}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
   const authBase = `http://${hosts.FIREBASE_AUTH_EMULATOR_HOST}/emulator/v1/projects/${PROJECT_ID}/accounts`;
   for (const [name, url] of [
@@ -95,7 +100,7 @@ async function resetEmulators(bucket: { deleteFiles(options: { force: boolean })
  * Sınav seed'i: istemci SDK'sıyla emülatöre giriş yapılıp gerçek callable'lar çağrılır; yanıtlar ortak
  * sözleşmelerle (`CALLABLES`) doğrulanır. Döndürülen metin özet satırıdır.
  */
-async function seedQuizzes(admin: SeedUser): Promise<string> {
+async function seedViaCallables(admin: SeedUser, bucket: SeedBucket): Promise<string[]> {
   const { initializeApp: initClientApp } = await import("firebase/app");
   const {
     connectAuthEmulator,
@@ -131,6 +136,29 @@ async function seedQuizzes(admin: SeedUser): Promise<string> {
       await signOut(clientAuth);
     }
   }
+
+  // Materyaller: createMaterial → dosya Storage'a (istemcinin yükleyeceği yola) → finalizeMaterialUpload.
+  const materialIds = await as(admin.email, async () => {
+    const ids: string[] = [];
+    for (const m of SEED_MATERIALS) {
+      const data = readFileSync(path.join(FILES_DIR, m.file.local));
+      const created = await call("createMaterial", {
+        title: m.title,
+        description: m.description,
+        category: m.category,
+        targetYears: m.targetYears,
+        isMandatory: m.isMandatory,
+        allowDownload: m.allowDownload,
+        fileName: m.file.name,
+        contentType: m.file.contentType,
+        sizeBytes: data.byteLength,
+      });
+      await bucket.file(created.storagePath).save(data, { contentType: m.file.contentType, resumable: false });
+      await call("finalizeMaterialUpload", { materialId: created.materialId });
+      ids.push(created.materialId);
+    }
+    return ids;
+  });
 
   const parsed = parseNineFieldQuizCsv(readFileSync(path.join(FIXTURES_DIR, SEED_QUIZ.csvFile), "utf8"));
   if (parsed.errors.length) fail(`Sınav CSV'si geçersiz: ${parsed.errors[0].message}`);
@@ -180,7 +208,10 @@ async function seedQuizzes(admin: SeedUser): Promise<string> {
       questions: parsed.questions.slice(0, 1),
     });
   });
-  return `1 kapanmış sınav (gerçek callable'larla; puanlar: ${scores.join(", ")}) + 1 taslak sınav.`;
+  return [
+    `${materialIds.length} materyal (PDF; gerçek callable'larla, Storage'da doğrulanıp yayınlandı).`,
+    `1 kapanmış sınav (gerçek callable'larla; puanlar: ${scores.join(", ")}) + 1 taslak sınav.`,
+  ];
 }
 
 async function main() {
@@ -258,35 +289,11 @@ async function main() {
   console.log("• 1 davet.");
 
   // --- 5) Storage dosyaları + materyaller ------------------------------------
-  for (const m of SEED_MATERIALS) {
-    const storagePath = `materials/${m.id}/${m.file.name}`;
-    const data = readFileSync(path.join(FILES_DIR, m.file.local));
-    await bucket.file(storagePath).save(data, { contentType: m.file.contentType, resumable: false });
-    await db
-      .collection("materials")
-      .doc(m.id)
-      .set({
-        title: m.title,
-        description: m.description,
-        category: m.category,
-        targetYears: m.targetYears,
-        isMandatory: m.isMandatory,
-        allowDownload: m.allowDownload,
-        fileType: "pdf",
-        storagePath,
-        contentType: m.file.contentType,
-        sizeBytes: data.byteLength,
-        uploadedBy: admin.uid,
-        uploadedByName: `${admin.title} ${admin.fullName}`,
-        status: "published",
-        createdAt: Timestamp.fromMillis(now - 7 * 86_400_000),
-      });
-  }
   for (const media of SEED_QUIZ_MEDIA) {
     const data = readFileSync(path.join(FILES_DIR, media.local));
     await bucket.file(media.path).save(data, { contentType: media.contentType, resumable: false });
   }
-  console.log(`• ${SEED_MATERIALS.length} materyal (PDF) + ${SEED_QUIZ_MEDIA.length} sınav görseli (Storage).`);
+  console.log(`• ${SEED_QUIZ_MEDIA.length} sınav görseli (Storage).`);
 
   // --- 6) Kapanmış yoklama oturumu (attendanceService şeması) ---------------
   const a = SEED_ATTENDANCE;
@@ -362,16 +369,16 @@ async function main() {
   await batch.commit();
   console.log(`• 1 kapanmış yoklama oturumu (${a.records.length} kayıt + ${absent.length} katılmadı).`);
 
-  // --- 7) Sınavlar: GERÇEK callable'larla (F5.1) ------------------------------
-  // Sınav verisi istemcinin yapacağı gibi üretilir (taslak → yayın → giriş → sunucuda puanlama → kapanış);
-  // Firestore'a doğrudan sınav/girişim yazılmaz. Bu yüzden Functions emülatörü gereklidir.
+  // --- 7) Materyaller ve sınavlar: GERÇEK callable'larla (F5.1, F6.1) ----------
+  // Veri istemcinin yapacağı gibi üretilir (materyal: taslak → Storage'a yükleme → sunucuda doğrulama ve yayın;
+  // sınav: taslak → yayın → giriş → sunucuda puanlama → kapanış). Firestore'a doğrudan yazılmaz; bu yüzden
+  // Functions emülatörü gereklidir.
   if (!functionsRunning) {
     fail(
-      "Sınav verisi gerçek callable'larla yüklenir; Functions emülatörü çalışmıyor. 'npm run emulators' ile başlatın."
+      "Materyal ve sınav verisi gerçek callable'larla yüklenir; Functions emülatörü çalışmıyor. 'npm run emulators' ile başlatın."
     );
   }
-  const quizSummary = await seedQuizzes(admin);
-  console.log(`• ${quizSummary}`);
+  for (const line of await seedViaCallables(admin, bucket)) console.log(`• ${line}`);
 
   console.log(`
 ✔ Seed tamamlandı (proje: ${PROJECT_ID}).
