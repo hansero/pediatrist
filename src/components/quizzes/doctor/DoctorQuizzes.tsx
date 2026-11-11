@@ -15,6 +15,8 @@ import { REVEAL_POLICY_LABEL } from "@/lib/quiz/admin";
 import { resumableAttempt, useMyAttempts, usePublishedQuiz, type MyAttempt } from "@/lib/quiz/doctor";
 import { QuizExam, type SubmitResponse } from "../exam/QuizExam";
 import { AttemptReport, type ReportData } from "../report/AttemptReport";
+import { ScoreTrend } from "../ScoreTrend";
+import { summarizeScores } from "@/lib/quiz/analytics";
 
 type StartResponse = CallableResponse<"startQuizAttempt">;
 const dateTime = new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" });
@@ -90,6 +92,9 @@ export function DoctorQuizzes({ session }: { session: ClinicMemberSession }) {
   const quiz = published.data;
   const mine = quiz && attempts.data ? (attempts.data.find((a) => a.quizId === quiz.id) ?? null) : null;
   const submitted = (attempts.data ?? []).filter((a) => a.status === "submitted");
+  const progress = summarizeScores(
+    submitted.map((a) => ({ score: a.score ?? 0, submittedAtMs: a.submittedAtMs ?? 0 }))
+  );
 
   return (
     <div className="attendance-admin">
@@ -169,7 +174,9 @@ export function DoctorQuizzes({ session }: { session: ClinicMemberSession }) {
                 )}
                 {mine?.status === "submitted" && (
                   <div className="ui-actions">
-                    <span className="mono-num">Puanınız: {mine.score ?? "—"}</span>
+                    <span>
+                      Puanınız: <strong className="mono-num">{mine.score ?? "—"}</strong>
+                    </span>
                     <Button
                       variant="secondary"
                       onClick={() => void openReport.run(mine)}
@@ -179,6 +186,43 @@ export function DoctorQuizzes({ session }: { session: ClinicMemberSession }) {
                       Karneyi görüntüle
                     </Button>
                   </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {submitted.length > 0 && (
+            <Card title="Gelişimim" description="Teslim ettiğiniz sınavlardaki puanlarınız (0–100).">
+              <div className="auth-stack">
+                <dl className="lecture-stats" aria-label="Sınav özetim">
+                  <div>
+                    <dt>Sınav</dt>
+                    <dd className="mono-num">{progress.count}</dd>
+                  </div>
+                  <div>
+                    <dt>Son puan</dt>
+                    <dd className="mono-num">{progress.latest ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Ortalama</dt>
+                    <dd className="mono-num">{progress.average ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>En yüksek</dt>
+                    <dd className="mono-num">{progress.best ?? "—"}</dd>
+                  </div>
+                </dl>
+                {submitted.length > 1 && (
+                  <ScoreTrend
+                    label="Puan gelişimim"
+                    points={submitted.map((a) => ({
+                      id: a.attemptId,
+                      label: a.quizTitle,
+                      atMs: a.submittedAtMs ?? 0,
+                      score: a.score ?? 0,
+                      detail: `${a.correctCount ?? 0}/${a.totalQuestions ?? 0} doğru`,
+                    }))}
+                  />
                 )}
               </div>
             </Card>

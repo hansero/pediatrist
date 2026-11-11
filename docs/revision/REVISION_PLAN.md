@@ -68,7 +68,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F5.1 | Backend: soruların attempt ile teslimi, `revealPolicy`, taslak kayıt, transaction | L | ✅ | C3, C7, S6, S7 |
 | F5.2 | Admin sınav stüdyosu (taslak, yayın, kapatma, görsel yükleme, arşiv) | L | ✅ | C3 |
 | F5.3 | Sınav ekranı (sunucu süresi, kalıcı yanıtlar, görseller, uyarılar) | M | ✅ | C3, C8 (sınav) |
-| F5.4 | Hekim paneli + karne + admin analitiği | M | ⬜ | C3, Kullanılabilirlik |
+| F5.4 | Hekim paneli + karne + admin analitiği | M | ✅ | C3, Kullanılabilirlik |
 | F5.5 | Sınav testleri + mock bekçisi temizliği | M | ⬜ | §8 |
 | **F6** | **Materyaller modülü (gerçek)** | | | |
 | F6.1 | Backend callable'ları + kurallar | M | ⬜ | C11, S12 |
@@ -101,17 +101,18 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F5.3. Sınav ekranı (sunucu süresi + saat farkı, otomatik kayıt kuyruğu, devam, uyarılar, otomatik teslim, erişilebilirlik, görsel büyütme); F5.4'ten hekim kartı, teslim karnesi ve "Sınav sonuçlarım" öne alındı; eski hekim akışı ve mock silindi. Testler: unit 215, rules 56, functions 92, e2e 78 (+2 ekran boyutuna özel atlanan).
+- **Son tamamlanan adım:** F5.4. Sınav analitiği: admin "Sonuçlar" (özet, soru oranları, süzgeçler, karne, CSV) ve "Hekimler" (uid'e göre gelişim grafiği), hekim "Gelişimim". Testler: unit 221, rules 56, functions 92, e2e 82 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F5.4 (M); kalanlar:
-  - **Hekim gelişimi:** `useMyAttempts` verisinden zaman içinde puan grafiği. Erişilebilir tablo yedeğiyle (dataviz kuralı: grafik + tablo); tekrar eden sınav yok.
-  - **Admin analitiği** (`components/quizzes/admin/Analytics.tsx`, QuizAdmin'e "Sonuçlar" sekmesi):
-    - Kaynak `quiz_attempts`; sınav seçimi `where quizId == X orderBy submittedAt desc` (indeks var). Hekim bazında **uid'e göre** gruplama, sayfalı.
-    - Filtreler: kıdem, geç/otomatik teslim.
-    - Satırdan `getAttemptReport` (admin her zaman tam karne).
-    - Sınav sonuçları CSV (`downloadCsv`).
-    - Soru bazında doğru oranı (girişimlerdeki `results`).
-  - Ardından F5.5: süre dolumu otomatik teslimi e2e (1 dk'lık sınav; telefonda atlanabilir), CSV + görsel → after_close akışı zaten F5.2/F5.3 e2e'lerinde var.
+- **Sıradaki iş:** F5.5 (M) sınav testlerinin tamamlanması (bkz. §F5.5):
+  - **Kapsananlar** (F5.2–F5.4 e2e'leri):
+    - CSV + görsel → önizleme → after_close yayın; hekim başlar → yanıtlar → yeniler → korunur → teslim → doğru cevapları göremez.
+    - Admin kapatır → tam karne; immediate akışı.
+  - **Eksik:** süre dolumu otomatik teslimi e2e.
+    - 1 dk'lık sınav yayınla, hekim bir soruyu yanıtlasın, süre dolunca otomatik teslim ve karne görünsün.
+    - 60 sn+ sürer: tek ekran boyutunda koş, diğerinde `test.skip`.
+    - İsteğe bağlı: sunucu saatini taklit etmeden, sayfa kapalıyken `finalizeExpiredAttempts` yolu functions testinde zaten var.
+  - Mock bekçisi: `quizzes/*` artık izin listesinde değil (F5.3). Doğrula ve plana yaz.
+  - Sonra F6 (materyaller).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -1116,6 +1117,27 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Karne `getAttemptReport` ile alınır. `after_close` politikasında "Doğru cevaplar sınav kapandığında açılacak" yazar.
   - Gelişim grafiği erişilebilir bir tablo yedeğiyle birlikte gösterilir.
   - Admin analitiği `quiz_attempts` ile **uid'e göre** gruplanır, sayfalı ve filtrelidir. Karne inceleme için `getAttemptReport` kullanılır. Uydurma karne üretimi (`sampleGraded`) **silinir**.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - Hekim kartı, karne ve geçmiş F5.3'te yapıldı (bkz. F5.3). Uydurma karne üretimi F5.2'de silindi.
+  - **Analitik mantığı** `src/lib/quiz/analytics.ts` (saf, birim testli): `toAttemptRow` (yalnızca teslim edilmiş), `summarizeScores` (ortalama/medyan yuvarlanır, son puan en yeni teslim), `questionStats`, `groupByDoctor` (**uid'e göre**: aynı adlı iki hekim karışmaz, adı değişen bölünmez; en düşük ortalama önce), `filterAttempts` (kıdem, uzman, teslim türü), `attemptsCsv`.
+    - Okuma: `quizId + submittedAt desc` (mevcut indeks) ve tüm sınavlar için `submittedAt desc` (tek alanlı). 500 sınırı, aşılırsa açık uyarı.
+  - **Admin "Sonuçlar" sekmesi** (`QuizResults`):
+    - Sınav seçimi (taslak hariç) ve özet: teslim, ortalama, medyan, sınavda (`attemptCount − teslim`).
+    - **Soru bazında doğru oranı** "meter list" (ad + çubuk + metin değer; çubuk süs).
+    - Kıdem ve teslim türü süzgeçleri; 50'şer sayfa. Satırdan `getAttemptReport` (admin'e tam karne).
+    - CSV (`;`, teslim türü, dakika).
+  - **Admin "Hekimler" sekmesi** (`DoctorProgress`): bütün sınavlardaki teslimler uid'e göre; satırdan puan gelişimi grafiği, teslim listesi ve karne.
+  - **Puan grafiği** (`ScoreTrend`, dataviz yöntemiyle):
+    - Biçim: zaman içinde tek seri → çizgi. Tek eksen 0–100. Tek seri olduğu için lejant yok; başlık adlandırır.
+    - Renk `--clinical-primary`; doğrulayıcı (`validate_palette.js`, açık yüzey) bütün kontrollerden geçti. Uygulamada koyu tema yok.
+    - 2 px çizgi, 8 px işaret + 2 px yüzey halkası, kılcal ızgara, uçta değer etiketi (metin rengi).
+    - Fare: kılavuz + ipucu. Klavye: odak + ←/→/Home/End, `aria-live` duyuru. Tablo karşılığı aynı sayfada (sonuç tabloları).
+  - **Hekim "Gelişimim" kartı:** sınav sayısı, son puan, ortalama, en yüksek; 2+ teslimde grafik.
+  - **Testler:**
+    - unit +6 (`analytics.test.ts`).
+    - e2e +2 (`e2e/quiz-results.spec.ts`, iki ekran boyutu):
+      - Seed sınavında 3/67/67, soru oranları 3/3·1/3·2/3, kıdem süzgeci, CSV içeriği, admin'e tam karne.
+      - Hekim ikinci sınavını teslim eder → kendi grafiği ve klavye duyurusu → admin Hekimler sekmesinde uid'e göre gelişim ve karne.
 
 #### F5.5 Sınav testleri (M)
 - **Dosyalar:** `e2e/quiz.spec.ts`
