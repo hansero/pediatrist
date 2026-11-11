@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CallableResponse } from "@shared/schemas";
 import { Alert } from "@/components/ui/Alert";
+import { ListLimitNotice } from "@/components/ui/ListLimitNotice";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
@@ -194,6 +195,12 @@ export function DoctorQuizzes({ session }: { session: ClinicMemberSession }) {
           {submitted.length > 0 && (
             <Card title="Gelişimim" description="Teslim ettiğiniz sınavlardaki puanlarınız (0–100).">
               <div className="auth-stack">
+                <ListLimitNotice
+                  truncated={attempts.truncated}
+                  cap={attempts.cap}
+                  what="sınav girişimi"
+                  hint="Özet ve grafik yalnızca bunları kapsar."
+                />
                 <dl className="lecture-stats" aria-label="Sınav özetim">
                   <div>
                     <dt>Sınav</dt>

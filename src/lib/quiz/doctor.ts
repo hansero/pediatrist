@@ -3,7 +3,7 @@
 import { collection, limit, onSnapshot, query, where, type DocumentData, type Timestamp } from "firebase/firestore";
 import { QUIZ_SUBMIT_GRACE_MS } from "@shared/constants";
 import { COLLECTIONS } from "@shared/types";
-import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
+import { useCapped, useFirestoreSnapshot, type CappedState, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { toQuizSummary, type QuizSummary } from "./admin";
 
@@ -63,12 +63,12 @@ export function toMyAttempt(id: string, d: DocumentData): MyAttempt {
  * Hekimin bütün girişimleri (canlı). Doküman tek tek okunmaz: kural `uid == me` içeren sorguyu açar.
  * Devam eden girişim yayındaki sınava ait olmayabilir (sınav erken kapandıysa süresi sürer, F5.1).
  */
-export function useMyAttempts(uid: string, count = 200): LiveState<MyAttempt[]> {
-  return useFirestoreSnapshot<MyAttempt[]>(
+export function useMyAttempts(uid: string, count = 200): CappedState<MyAttempt> {
+  const state = useFirestoreSnapshot<MyAttempt[]>(
     (onData, onError) => {
       const db = initPediatristFirebase()?.db;
       if (!db) return null;
-      const q = query(collection(db, COLLECTIONS.quizAttempts), where("uid", "==", uid), limit(count));
+      const q = query(collection(db, COLLECTIONS.quizAttempts), where("uid", "==", uid), limit(count + 1));
       return onSnapshot(
         q,
         (snap) =>
@@ -82,6 +82,7 @@ export function useMyAttempts(uid: string, count = 200): LiveState<MyAttempt[]> 
     },
     [uid, count]
   );
+  return useCapped(state, count);
 }
 
 /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toUserMessage, NOT_CONFIGURED_MESSAGE } from "@/lib/errors";
 
 export type LiveState<T> =
@@ -29,4 +29,19 @@ export function useFirestoreSnapshot<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
   return state;
+}
+
+/** Üst sınırlı liste: `truncated` doğruysa sınırdan fazla kayıt vardır ve liste eksiktir. */
+export type CappedState<T> = LiveState<T[]> & { truncated: boolean; cap: number };
+
+/**
+ * Sınırlı canlı liste (F8.2). Sorgu `limit(cap + 1)` ile yapılır; fazladan gelen tek kayıt gösterilmez, yalnızca
+ * listenin kırpıldığını bildirir. Böylece sınır aşıldığında liste sessizce eksik kalmaz: ekran bunu söyler.
+ */
+export function useCapped<T>(state: LiveState<T[]>, cap: number): CappedState<T> {
+  const data = state.data;
+  const items = useMemo(() => (data && data.length > cap ? data.slice(0, cap) : data), [data, cap]);
+  const truncated = Boolean(data && data.length > cap);
+  if (state.status !== "ready") return { ...state, truncated: false, cap };
+  return { status: "ready", data: items ?? [], error: "", truncated, cap };
 }

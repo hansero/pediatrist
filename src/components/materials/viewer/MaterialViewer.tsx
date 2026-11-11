@@ -153,7 +153,12 @@ export function MaterialViewer({
               aria-label={material.title}
               onTimeUpdate={(e) => {
                 const v = e.currentTarget;
-                if (v.duration > 0) setWatched((w) => Math.max(w, v.currentTime / v.duration));
+                // `timeupdate` saniyede birkaç kez gelir; durum yalnızca %1'lik adımlarda değişir (F8.2:
+                // görüntüleyicinin her olayda yeniden çizilmesini önler; eşik %90, adım yeterince ince).
+                if (v.duration > 0) {
+                  const fraction = Math.floor((v.currentTime / v.duration) * 100) / 100;
+                  setWatched((w) => (fraction > w ? fraction : w));
+                }
               }}
             >
               <track kind="captions" />

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RESIDENCY_YEARS } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
+import { ListLimitNotice } from "@/components/ui/ListLimitNotice";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DataTable, type Column } from "@/components/ui/DataTable";
@@ -132,6 +133,7 @@ export function QuizResults() {
       >
         <div className="auth-stack">
           {quizzes.error && <Alert tone="critical">{quizzes.error}</Alert>}
+          <ListLimitNotice truncated={quizzes.truncated} cap={quizzes.cap} what="en yeni sınav" />
           {quizzes.status === "ready" && options.length === 0 ? (
             <EmptyState title="Henüz yayınlanmış sınav yok" />
           ) : (

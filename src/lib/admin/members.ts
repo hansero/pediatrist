@@ -16,7 +16,7 @@ import {
 } from "firebase/firestore";
 import type { AuditResourceType, AuditSeverity, MemberStatus, Role } from "@shared/constants";
 import { COLLECTIONS } from "@shared/types";
-import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
+import { useCapped, useFirestoreSnapshot, type CappedState, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 
@@ -72,17 +72,20 @@ export const STATUS_LABEL: Record<MemberStatus, string> = {
 };
 export const ROLE_LABEL: Record<Role, string> = { admin: "Eğitim sorumlusu", user: "Hekim" };
 
+export const MEMBER_LIST_LIMIT = 1000;
+
 /** Bütün üyeler (canlı). Sıralama istemcide: önce onay bekleyenler, sonra ada göre. */
-export function useMembers(): LiveState<MemberRow[]> {
-  return useFirestoreSnapshot<MemberRow[]>((onData, onError) => {
+export function useMembers(): CappedState<MemberRow> {
+  const state = useFirestoreSnapshot<MemberRow[]>((onData, onError) => {
     const firestore = initPediatristFirebase()?.db;
     if (!firestore) return null;
     return onSnapshot(
-      query(collection(firestore, COLLECTIONS.users), limit(1000)),
+      query(collection(firestore, COLLECTIONS.users), limit(MEMBER_LIST_LIMIT + 1)),
       (snap) => onData(sortMembers(snap.docs.map((d) => toMemberRow(d.id, d.data())))),
       onError
     );
   }, []);
+  return useCapped(state, MEMBER_LIST_LIMIT);
 }
 
 const STATUS_ORDER: Record<MemberStatus, number> = { pending: 0, active: 1, suspended: 2 };

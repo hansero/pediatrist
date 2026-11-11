@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { QuizStatus } from "@shared/types";
 import { Alert } from "@/components/ui/Alert";
+import { ListLimitNotice } from "@/components/ui/ListLimitNotice";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -105,6 +106,12 @@ export function QuizList({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="attendance-admin">
       {quizzes.status === "error" && <Alert tone="critical">{quizzes.error}</Alert>}
+      <ListLimitNotice
+        truncated={quizzes.truncated}
+        cap={quizzes.cap}
+        what="en yeni sınav"
+        hint="Daha eski sınavların soruları Arşiv sekmesindedir."
+      />
       {live && (
         <Card
           title={live.title}

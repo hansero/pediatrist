@@ -4,7 +4,7 @@ import { collection, limit, onSnapshot, orderBy, query, type DocumentData, type 
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { MATERIAL_UPLOAD, type MaterialFileType } from "@shared/constants";
 import { COLLECTIONS, type MaterialStatus } from "@shared/types";
-import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
+import { useCapped, useFirestoreSnapshot, type CappedState, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import type { MemberSummary } from "@/lib/attendance/live";
 import type { CsvCell } from "@/lib/csv";
 import { AppError, notConfiguredError } from "@/lib/errors";
@@ -67,16 +67,17 @@ export function formatBytes(bytes: number): string {
 export const yearsLabel = (years: readonly number[]) => (years.length ? years.map((y) => `${y}. yıl`).join(", ") : "—");
 
 /** Admin: bütün materyaller (taslak dahil), yeniden eskiye. */
-export function useMaterials(count = 200): LiveState<MaterialView[]> {
-  return useFirestoreSnapshot<MaterialView[]>(
+export function useMaterials(count = 200): CappedState<MaterialView> {
+  const state = useFirestoreSnapshot<MaterialView[]>(
     (onData, onError) => {
       const db = initPediatristFirebase()?.db;
       if (!db) return null;
-      const q = query(collection(db, COLLECTIONS.materials), orderBy("createdAt", "desc"), limit(count));
+      const q = query(collection(db, COLLECTIONS.materials), orderBy("createdAt", "desc"), limit(count + 1));
       return onSnapshot(q, (snap) => onData(snap.docs.map((d) => toMaterialView(d.id, d.data()))), onError);
     },
     [count]
   );
+  return useCapped(state, count);
 }
 
 // --- Yükleme ---------------------------------------------------------------------------------------

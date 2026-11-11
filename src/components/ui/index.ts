@@ -8,6 +8,7 @@ export { DataTable, type Column, type DataTableProps } from "./DataTable";
 export { Dialog, type DialogProps } from "./Dialog";
 export { Drawer, type DrawerProps } from "./Drawer";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
+export { ListLimitNotice } from "./ListLimitNotice";
 export { Field, type FieldControlProps, type FieldProps } from "./Field";
 export { PageHeader, type PageHeaderProps } from "./PageHeader";
 export { StatusChip, type StatusChipProps } from "./StatusChip";

@@ -10,6 +10,7 @@ import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
+import { ListLimitNotice } from "@/components/ui/ListLimitNotice";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
@@ -191,6 +192,12 @@ export function MemberList({ selfUid }: { selfUid: string }) {
             </button>
           ))}
         </div>
+        <ListLimitNotice
+          truncated={members.truncated}
+          cap={members.cap}
+          what="üye"
+          hint="Aradığınız üye listede yoksa platform yöneticisine bildirin."
+        />
         <DataTable
           caption="Üye listesi"
           captionHidden

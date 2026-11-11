@@ -83,7 +83,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F7.5 | `invokeWithFallback` ve tüm fallback'lerin silinmesi; bekçi listesi boş | S | ✅ | C1 (final) |
 | **F8** | **Erişilebilirlik, metin, performans cilası** | | | |
 | F8.1 | UX metni sadeleştirme + a11y düzeltmeleri + axe testleri | M | ✅ | Görsel hiyerarşi, Erişilebilirlik |
-| F8.2 | Performans (timer izolasyonu), ölü kod, `admin.ts` kararı | S | ⬜ | §7 |
+| F8.2 | Performans (timer izolasyonu), ölü kod, `admin.ts` kararı | S | ✅ | §7 |
 | **F9** | **Uyum (KVKK) ve operasyon** | | | |
 | F9.1 | Aydınlatma metni, rıza sürümü, üye silme ve veri dışa aktarımı | M | ⬜ | §9 |
 | F9.2 | Denetim kaydı TTL, hız sınırı, alarm, yedekleme runbook'u | S | ⬜ | S10, §8 |
@@ -101,14 +101,13 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F8.1. axe ile ana sayfalarda ciddi/kritik erişilebilirlik ihlali 0 (iki ekran boyutu); etiket-ad uyuşmazlıkları ve kaydırılabilir tablo odağı düzeltildi; hata mesajları "ne oldu + ne yapmalı"; yapılandırma mesajı tek kaynakta. Testler: unit 245, rules 57, functions 102, e2e 109 (+3 bilinçli atlanan).
+- **Son tamamlanan adım:** F8.2. **F8 tamamlandı.** Sessiz liste kırpılması yerine açık uyarı (`useCapped`), video ilerlemesinde gereksiz yeniden çizim giderildi, ölü kod (Admin SDK başlatıcısı, eski kanca, `server-only`, 72 satır CSS) silindi. Testler: unit 250, rules 57, functions 102, e2e E2E_COUNT.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F8.2 performans ve ölü kod (bkz. §F8.2).
-  - Saniyelik zamanlayıcılar yalnızca `Countdown`'da kalmalı: `grep -rn "setInterval" src`.
-    - Ana sayfanın 30 sn saati (`useMinuteClock`) ve materyal ilerleme kaydı (15 sn) bilinçli; sayfa geneli yeniden çizim yapıyorsa izole et.
-  - Büyük listelerde sayfalama: üye listesi 1000, davet 200, materyal 200 sınırı var. Sınıra yaklaşınca uyarı ya da "daha fazla" düğmesi.
-  - `src/lib/firebase/admin.ts`, `firebase-admin` ve `server-only` kök bağımlılıkları: kullanılmıyorsa silinir (`grep -rn "firebase/admin\|server-only" src`). Seed betiği `firebase-admin`'i kullanıyor mu kontrol et (`scripts/`); kullanıyorsa devDependency'ye taşı.
-  - Karar notu (plan): sunucu tarafı rota koruması bu revizyonda yok.
+- **Sıradaki iş:** F9.1 KVKK (bkz. §F9.1). Önce mevcut durumu oku: `/kvkk` sayfası, `@shared/consent` (`KVKK_NOTICE_VERSION`), `completeRegistration` rıza yazımı F3.5'te yapıldı.
+  - Eksikleri belirle: rıza sürümü değişince yeniden onay (oturum açıkken engelleyen ekran + `acceptConsent` callable'ı).
+  - `deleteMember` callable'ı: Auth kullanıcısı silinir, profil anonimleştirilir, girişim / yoklama logu / materyal ilerlemesindeki ad alanları temizlenir, denetim kaydı. Kendi hesabını ve son etkin admini silme engeli (updateMemberAccess ile aynı kurallar). Yönetim panelinde adı yazarak onay.
+  - `exportMemberData` callable'ı: üyenin verisinin JSON dökümü (profil, girişimler, yoklama logları, ilerleme).
+  - Aydınlatma metni kurum hukuk birimince onaylanmalı: "taslak" işareti korunur. **Bu bir kullanıcı kararı; metnin içeriğini uydurma.**
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1433,6 +1432,20 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `verifyRealTimeAttendance` için `concurrency` ve `minInstances` ayarları belgelenir.
 
 ---
+
+- **✅ Uygulanan F8.2 (sapmalar ve eklemeler):**
+  - **Zamanlayıcı taraması** (`grep setInterval|setTimeout src`): saniyelik durum güncelleyen tek yer `Countdown`.
+    - Materyal görüntüleyicinin saniyelik sayacı yalnızca bir `ref` artırır (yeniden çizim yok). Ana sayfa saati 30 sn. Diğerleri tek seferlik `setTimeout` (projektör kodu dönüşü, yanıt kaydı gecikmesi, boşta kalma, toast).
+    - Düzeltilen: video `timeupdate` (saniyede birkaç kez) her olayda görüntüleyiciyi yeniden çiziyordu. İzlenme oranı artık %1'lik adımlarla güncellenir (en fazla 100 güncelleme; %90 eşiği etkilenmez).
+  - **Sessiz liste kırpılması giderildi:** `useCapped` (sorgu `limit(sınır + 1)`; fazladan kayıt gösterilmez, yalnızca `truncated` bildirir) ve `ListLimitNotice`.
+    - Uygulananlar: üyeler (1000), admin materyalleri (200), sınavlar (100; liste ve sonuç ekranı), hekimin girişimleri (200; "Gelişimim" özeti).
+    - Zaten açıkça "Son N" yazanlar aynen kaldı: davetler (200), kişisel katılım geçmişi (100). Raporlar F4.5/F5.4'ten beri kırpılmayı bildiriyor.
+    - Tam sayfalama eklenmedi: klinik ölçeğinde sınırlar yıllarca yeter ve arşiv/denetim/raporlar zaten sayfalı. Sınır aşılırsa ekran bunu söyler. Birim testli (sınır altı, tam sınır, sınır + 1, dizi kimliği, yükleniyor/hata).
+  - **Ölü kod:**
+    - `src/lib/firebase/admin.ts` (hiç çağrılmayan sunucu Admin SDK başlatıcısı) ve `src/lib/firebase/hooks.ts` (kullanılmayan `useLiveQuery`; hatayı "Veriler yüklenemedi" diye yutan eski kanca) silindi.
+    - `server-only` kaldırıldı. `firebase-admin` kökte yalnızca seed betiği için gerekli: `devDependencies`'e taşındı (sürüm aynı). `.env.example`'daki sunucu Admin SDK değişkenleri silindi (okuyan kod kalmadı).
+    - Kullanılmayan CSS kuralları silindi (72 satır): `.grid-4`, `.nav-section-label`, `.question-nav-*`, `.progress-track/fill`, `.kpi-row`. Tarama: stil dosyalarındaki her sınıf `src/` içinde aranır; `btn-${variant}` gibi dinamik adlar elle doğrulandı.
+  - **Karar notu aynen geçerli:** sunucu tarafı rota koruması (oturum çerezi + middleware) bu revizyonda yok; veri koruması kurallarda ve callable'larda.
 
 ### F9 — Uyum ve operasyon
 

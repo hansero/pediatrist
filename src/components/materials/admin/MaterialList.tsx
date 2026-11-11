@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { MaterialCategory, ResidencyYear } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
+import { ListLimitNotice } from "@/components/ui/ListLimitNotice";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -110,6 +111,12 @@ export function MaterialList({ onUpload }: { onUpload: () => void }) {
         actions={<Button onClick={onUpload}>Materyal yükle</Button>}
       >
         {materials.error && <Alert tone="critical">{materials.error}</Alert>}
+        <ListLimitNotice
+          truncated={materials.truncated}
+          cap={materials.cap}
+          what="en yeni materyal"
+          hint="Eskileri görmek için kullanılmayan materyalleri silin."
+        />
         <DataTable
           caption="Materyal listesi"
           captionHidden

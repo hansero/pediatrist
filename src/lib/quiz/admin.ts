@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { DEFAULT_REVEAL_POLICY, QUESTION_TYPES, type QuestionType, type RevealPolicy } from "@shared/constants";
 import { COLLECTIONS, type QuizStatus } from "@shared/types";
-import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
+import { useCapped, useFirestoreSnapshot, type CappedState } from "@/hooks/useFirestoreSnapshot";
 import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 
@@ -76,16 +76,17 @@ export const REVEAL_POLICY_LABEL: Record<RevealPolicy, string> = {
 };
 
 /** Admin: bütün sınavlar (yeniden eskiye, son 100), canlı. */
-export function useQuizzes(count = 100): LiveState<QuizSummary[]> {
-  return useFirestoreSnapshot<QuizSummary[]>(
+export function useQuizzes(count = 100): CappedState<QuizSummary> {
+  const state = useFirestoreSnapshot<QuizSummary[]>(
     (onData, onError) => {
       const db = initPediatristFirebase()?.db;
       if (!db) return null;
-      const q = query(collection(db, COLLECTIONS.quizzes), orderBy("createdAt", "desc"), limit(count));
+      const q = query(collection(db, COLLECTIONS.quizzes), orderBy("createdAt", "desc"), limit(count + 1));
       return onSnapshot(q, (snap) => onData(snap.docs.map((d) => toQuizSummary(d.id, d.data()))), onError);
     },
     [count]
   );
+  return useCapped(state, count);
 }
 
 // --- Arşiv --------------------------------------------------------------------------------------

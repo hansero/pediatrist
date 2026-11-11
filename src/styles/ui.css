@@ -1042,12 +1042,6 @@
   background: var(--clinical-primary);
 }
 
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: var(--space-3);
-}
-
 /* Materyal yönetimi (F6.2) */
 .checkbox-row {
   display: flex;
