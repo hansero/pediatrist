@@ -12,6 +12,9 @@ import { toMaterialView, type MaterialView } from "./admin";
  * `status == published` içermek zorunda) ve kendi `progress/{uid}` dokümanını okur/yazar.
  */
 
+/** Materyali doğrudan açan bağlantı parametresi (`/materials?materyal=<id>`, ana sayfadaki zorunlu materyal). */
+export const MATERIAL_PARAM = "materyal";
+
 /** Yayındaki materyaller (yeniden eskiye, istemcide sıralanır: tek alanlı filtre, ek indeks gerekmez). */
 export function usePublishedMaterials(): LiveState<MaterialView[]> {
   return useFirestoreSnapshot<MaterialView[]>((onData, onError) => {

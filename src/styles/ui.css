@@ -1184,3 +1184,26 @@
   letter-spacing: 0.12em;
   font-weight: 700;
 }
+
+/* --- Ana sayfa (F7.3) --- */
+.next-step {
+  border-left: 4px solid var(--clinical-primary);
+}
+
+.next-step h2 {
+  font-size: 1.35rem;
+}
+
+.kpi-grid {
+  margin: 0;
+}
+
+.kpi-grid dd {
+  margin: 0;
+}
+
+.metric-warning {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--status-warning);
+}

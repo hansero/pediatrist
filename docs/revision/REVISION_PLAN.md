@@ -78,7 +78,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F7** | **Admin paneli, dashboard, hesaplayıcılar** | | | |
 | F7.1 | Üye paneli (onay/askı/rol, onay diyalogları) + davet yönetimi | M | ✅ | C10, Kullanılabilirlik |
 | F7.2 | Denetim kaydı görüntüleyici (gerçek `audit_logs`) | S | ✅ | C10 |
-| F7.3 | Durum odaklı dashboard + gerçek KPI'lar | M | ⬜ | C10, Görsel hiyerarşi |
+| F7.3 | Durum odaklı dashboard + gerçek KPI'lar | M | ✅ | C10, Görsel hiyerarşi |
 | F7.4 | Hesaplayıcılar: dürüst "yakında" durumu + `calculators_config` | S | ⬜ | Kullanılabilirlik |
 | F7.5 | `invokeWithFallback` ve tüm fallback'lerin silinmesi; bekçi listesi boş | S | ⬜ | C1 (final) |
 | **F8** | **Erişilebilirlik, metin, performans cilası** | | | |
@@ -101,15 +101,13 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F7.1 + F7.2. Yönetim paneli gerçek veriyle çalışıyor: canlı üye listesi; onay, yeniden etkinleştirme, askı, rol ve kıdem işlemleri; cihaz ve iki aşamalı doğrulama sıfırlama (`resetMemberMfa`); davetler; sayfalı ve süzgeçli denetim kayıtları. Mock silindi. Testler: unit 235, rules 57, functions 100, e2e 95 (+3 bilinçli atlanan).
+- **Son tamamlanan adım:** F7.3. Ana sayfa durum odaklı: tek birincil eylem (hekim: ders → sınav → zorunlu materyal; admin: ders → başvuru → sınav), sunucu sayımlı göstergeler, boş/yükleniyor/hata durumları. Mock silindi. Testler: unit 243, rules 57, functions 100, e2e E2E_COUNT.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F7.3 dashboard (bkz. §F7.3). `dashboard/page.tsx` sabit KPI'lar ("76 / 100", "1 Hekim", "Canlı Ders Açık") ile izin listesinde.
-  - Ana kart duruma göre tek bir birincil eylem gösterir: canlı ders → "Yoklamaya katıl"; yayında sınav → "Sınava başla / devam et" (`resumableAttempt` hazır); yoksa zorunlu materyal.
-  - KPI'lar `getCountFromServer` / `getAggregateFromServer`:
-    - Admin: bekleyen üye, son 30 gün katılım oranı (D22 paydası), aktif sınav katılımı.
-    - Hekim: sınav ortalaması, tamamlanan zorunlu materyal, katılım oranı.
-    - Gerekebilecek indeksleri `firestore.indexes.json`'a ekle. Her KPI'nın boş ve yükleniyor hali olmalı.
-  - Sonra F7.4 hesaplayıcılar ("Yakında", D8 + `updateCalculatorConfig` callable). Ardından F7.5: `invokeWithFallback` silinir, izin listesi dosyası kaldırılır.
+- **Sıradaki iş:** F7.4 hesaplayıcılar (bkz. §F7.4, D8).
+  - `calculators/page.tsx`: "Maksimum doz güvenlik kilidi" gibi çalışmayan iddialar kaldırılır; kartlar "Yakında"/"planlanan".
+  - Admin protokol notu `calculators_config/{id}` dokümanına `updateCalculatorConfig` callable'ı ile yazılır (kural istemci yazımını kapalı tutar; `guards.ts` + denetim kaydı + functions testi). Katalog tanımları ürün metadata'sıdır, kalabilir.
+  - Önce `calculators/page.tsx` ve `src/lib/pediatrics/index.ts`'i oku; mock bekçisi bu dosyaları izin listesinde tutmuyor, ama sahte "aktif" iddiası kontrol edilmeli.
+  - Ardından F7.5: `invokeWithFallback` silinir, `scripts/no-mock-allowlist.json` (yalnızca `callables.ts`) kaldırılır, yapılandırılmamış Firebase için açık hata sayfası.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1328,6 +1326,21 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
     - Admin: bekleyen üye sayısı, son 30 gün katılım oranı, aktif sınav katılımı.
     - Hekim: sınav ortalaması, tamamlanan zorunlu materyal, katılım oranı.
   - Her KPI boş durum ve yükleniyor halini destekler. Sabit sayı **yoktur**.
+
+- **✅ Uygulanan F7.3 (sapmalar ve eklemeler):**
+  - **Karar mantığı saf ve birim testli** (`src/lib/dashboard`, 8 test):
+    - `doctorNextStep`: öncelik sırası açık derse katılım (kaydı yoksa; mazeretli/katıldı sayılır) → süresi işleyen girişim (`resumableAttempt`) → yayındaki, girmediği ve kapanış zamanı geçmemiş sınav → tamamlamadığı zorunlu materyal (en eski yayın önce) → "Bekleyen işiniz yok".
+    - `adminNextStep`: süren ders → onay bekleyen başvuru → yayındaki sınav → yok. Yok durumunda ikincil bağlantılar (ders başlat, sınav hazırla, materyal yükle) gösterilir.
+    - Ana kart canlı veriden (ders, kayıt, sınav, girişim, materyal) hesaplanır; 30 sn'lik saatle ders bitişi ve sınav süresi yeniden değerlendirilir. Sayfa yenilenmeden güncellenir (e2e: admin başka tarayıcıda ders başlatır / mazeret girer / sınavı kapatır).
+  - **Göstergeler sunucu sayımıdır**, sabit sayı yoktur. Yükleniyorken "Hesaplanıyor…", hatada Türkçe hata kutunun içinde, veri yoksa "—" ve açıklama.
+    - Hekim: sınav ortalaması (puanlanmış teslimler), zorunlu materyal (kendi `progress/{uid}` dokümanları, kural genişletilmedi), derse katılım (`getCountFromServer`, D22 paydası; %70 altı uyarı).
+    - Admin: onay bekleyen başvuru (`getCountFromServer`), son 30 gün katılım (kapanmış derslerin `presentCount`/`absentCount` toplamı, `getAggregateFromServer`; mevcut `status + startedAt` indeksi), yayındaki sınavda teslim / çözen / etkin hekim. "Göstergeleri yenile" düğmesi.
+  - **Ek:** ana sayfadaki "Materyali aç" doğrudan görüntüleyiciyi açar (`/materials?materyal=<id>`, `MATERIAL_PARAM`). Listeye dönünce parametre silinir; materyal yayından kalktıysa uyarı gösterilir.
+  - **İndeksler:** `attendance_logs (uid, status)` ve `quiz_attempts (quizId, status)` sayım sorguları için eklendi (emülatör indeks denetlemez; üretimde açık olsun).
+  - **Mock temizliği:** eski dashboard (sabit "Canlı Ders Açık", "76 / 100", "1 Hekim", modül çipleri, satır içi stiller) silindi. **`dashboard/page.tsx` izin listesinden çıktı**; listede yalnızca `callables.ts` (F7.5) kaldı.
+  - **e2e:** `dashboard.spec.ts` (2 test × 2 proje). `fixtures/admin.ts`'te `createMember` (etkin/bekleyen, kıdem) var.
+    - Hekim akışı: yeni hekimin boş göstergeleri → yayındaki sınav → canlı ders (yenilemeden) → admin mazereti → zorunlu materyal → doğrudan görüntüleyici.
+    - Admin akışı: onay bekleyen sayısı emülatörden okunur, ana kartta ve göstergede aynıdır; onaydan sonra bir azalır.
 
 #### F7.4 Hesaplayıcılar (S)
 - **Dosyalar:** `src/app/(protected)/calculators/page.tsx`, `src/lib/pediatrics/index.ts`, `functions/src/calculatorsService.ts` (opsiyonel)

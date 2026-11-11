@@ -1,19 +1,24 @@
 import { expect, type Page } from "@playwright/test";
 import firebaseJson from "../../firebase.json";
 import { writeDocument } from "./emulator";
+import { REGISTRATION_PASSWORD } from "./registration";
 
 /**
  * Yönetim paneli (F7.1) yardımcıları. Seed hesaplarını (ör. bekleyen@) bozmamak için her test kendi üyesini
  * oluşturur: Auth emülatöründe hesap + `users/{uid}` (onay bekliyor). Yalnızca emülatör.
  */
-export async function createPendingMember(email: string, fullName: string): Promise<string> {
+export async function createMember(
+  email: string,
+  fullName: string,
+  { status = "pending", residencyYear = 2 }: { status?: "pending" | "active"; residencyYear?: number } = {}
+): Promise<string> {
   const { auth } = firebaseJson.emulators;
   const res = await fetch(
     `http://${auth.host}:${auth.port}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-api-key`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: "Deneme-Sifre-2026", returnSecureToken: true }),
+      body: JSON.stringify({ email, password: REGISTRATION_PASSWORD, returnSecureToken: true }),
     }
   );
   if (!res.ok) throw new Error(`Test üyesi oluşturulamadı (HTTP ${res.status})`);
@@ -23,13 +28,15 @@ export async function createPendingMember(email: string, fullName: string): Prom
     title: "Asistan Dr.",
     fullName,
     email,
-    residencyYear: 2,
+    residencyYear,
     role: "user",
-    status: "pending",
+    status,
     createdAt: new Date(),
   });
   return localId;
 }
+
+export const createPendingMember = (email: string, fullName: string) => createMember(email, fullName);
 
 /** Üyeler sekmesinde e-postası eşleşen satır (sayfa /admin değilse açılır). */
 export async function memberRow(admin: Page, email: string) {

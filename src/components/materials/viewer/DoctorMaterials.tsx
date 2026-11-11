@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MATERIAL_CATEGORIES, RESIDENCY_YEARS } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +10,13 @@ import { Field } from "@/components/ui/Field";
 import { StatusChip } from "@/components/ui/StatusChip";
 import type { ClinicMemberSession } from "@/lib/auth/types";
 import { FILE_TYPE_LABEL, yearsLabel, type MaterialView } from "@/lib/materials/admin";
-import { filterMaterials, useMyProgress, usePublishedMaterials, type YearFilter } from "@/lib/materials/doctor";
+import {
+  filterMaterials,
+  MATERIAL_PARAM,
+  useMyProgress,
+  usePublishedMaterials,
+  type YearFilter,
+} from "@/lib/materials/doctor";
 import { MaterialViewer } from "./MaterialViewer";
 
 /**
@@ -25,7 +31,34 @@ export function DoctorMaterials({ session }: { session: ClinicMemberSession }) {
   const list = filterMaterials(materials.data ?? [], { year, category });
   const open = (materials.data ?? []).find((m) => m.id === openId) ?? null;
 
-  if (open) return <OpenMaterial material={open} session={session} onClose={() => setOpenId(null)} />;
+  // Ana sayfadan gelen bağlantı (`?materyal=<id>`): materyal yüklenince açılır; kapatınca parametre silinir.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get(MATERIAL_PARAM);
+    if (id) setOpenId(id);
+  }, []);
+
+  function close() {
+    setOpenId(null);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has(MATERIAL_PARAM)) {
+      url.searchParams.delete(MATERIAL_PARAM);
+      window.history.replaceState(window.history.state, "", url);
+    }
+  }
+
+  if (open) return <OpenMaterial material={open} session={session} onClose={close} />;
+  if (openId && materials.status === "ready" && !open) {
+    return (
+      <div className="attendance-admin">
+        <Alert tone="warning">Bu materyal artık yayında değil.</Alert>
+        <div className="ui-actions">
+          <Button variant="secondary" onClick={close}>
+            Materyallere dön
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="attendance-admin">
