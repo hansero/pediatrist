@@ -62,7 +62,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F4.2 | WebAuthn passkey ile cihaz bağlama | L | ✅ | S1, C2 (biyometrik) |
 | F4.3 | Admin: ders başlat/bitir + projektör kiosk sayfası (QR, wake lock) | M | ✅ | C2, C8 (projektör) |
 | F4.4 | Hekim: QR deep-link ile yoklama + kişisel geçmiş | M | ✅ | C2 |
-| F4.5 | Ders/katılımcı raporları + CSV | M | ⬜ | C2, Kullanılabilirlik |
+| F4.5 | Ders/katılımcı raporları + CSV | M | ✅ | C2, Kullanılabilirlik |
 | F4.6 | Yoklama e2e testleri + mock bekçisi temizliği | M | ⬜ | §8 |
 | **F5** | **Sınav modülü (gerçek)** | | | |
 | F5.1 | Backend: soruların attempt ile teslimi, `revealPolicy`, taslak kayıt, transaction | L | ⬜ | C3, C7, S6, S7 |
@@ -101,15 +101,17 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F4.4 + D22. Ders kapanırken "katılmadı" kayıtları (kapanışın her yolunda), mazeretle düzeltme, hekimin kişisel katılım geçmişi ve oranı, admin son derslerde katılmadı sütunu. Testler: unit 188, rules 54, functions 77, e2e 58 (+2 ekran boyutuna özel atlanan).
+- **Son tamamlanan adım:** F4.5. Yoklama raporları sekmelerde (Canlı ders | Ders raporu | Hekim karnesi): ders raporu (özet, döküm, sonradan mazeret, CSV), hekim karnesi (oran, %70 eşiği `ATTENDANCE_WARN_RATE`, döküm, iki CSV). Testler: unit 199, rules 55, functions 77, e2e 64 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F4.5 (M) yoklama raporları + CSV (admin):
-  - Ders bazlı rapor: ders seçimi → katılan/mazeretli/katılmadı listesi (`records` alt koleksiyonu; kapanmış derste D22 sayesinde eksiksiz), oran = katıldı/(katıldı+katılmadı).
-  - Hekim bazlı karne: `attendance_logs where uid == X orderBy sessionStartedAt desc` (admin okur); dönem filtresi (tarih aralığı); `summarizeHistory` yeniden kullanılır.
-  - Eşik uyarısı: oranı %70 altındaki hekimler (eşik ortak sabit `ATTENDANCE_WARN_RATE`).
-  - CSV dışa aktarım `src/lib/csv.ts → downloadCsv` (`;`, BOM, formül koruması) — ders ve hekim raporları.
-  - Sekmeler `Tabs` primitifiyle (Canlı ders | Ders raporu | Hekim karnesi).
-  - e2e: ders raporu seed dersini doğru sayılarla gösterir; CSV indirilir ve içeriği doğrulanır.
+- **Sıradaki iş:** F4.6 (M) yoklama testlerinin tamamlanması:
+  - Mevcut kapsam: `e2e/attendance.spec.ts` uçtan uca akış, raporlar, D22 ve sanal doğrulayıcı (F4.3–F4.5).
+  - Eksik senaryolar:
+    - Yanlış kod hata mesajı verir.
+    - Süresi geçmiş (iki pencere önceki) kod reddedilir. Gerekirse functions testindeki saat kaydırmasıyla ya da beklemeden, sunucuya eski kod gönderilerek.
+    - Kayıtsız cihazla katılım reddi, arayüz mesajıyla.
+    - Mazeretten sonra rapor oranı.
+  - Mock bekçisi: `attendance/*` allowlist'te zaten yok (F4.3'te çıkarıldı). Kontrol et ve plana yaz.
+  - Sonra F5 (sınav modülü).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -888,6 +890,34 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Katılımcı bazlı rapor: `attendance_logs where uid==X` + o kullanıcının beklenen oturum sayısı.
   - <%70 uyarısı gerçek veriyle hesaplanır.
   - CSV, `downloadCsv` (`;`) ile alınır.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **Sekmeler** (`Tabs` primitifi): Canlı ders | Ders raporu | Hekim karnesi. İki rapor aynı tarih aralığını paylaşır (varsayılan son 90 gün, iki gün de dahil, yerel saat; ters veya geçersiz aralık alan hatası verir, sorgu yapılmaz).
+  - **Saf rapor mantığı** `src/lib/attendance/reports.ts`: `rangeBounds`, `buildLectureReport`, `buildDoctorReport`, CSV üreticileri, `slugify`. Okumalar tek seferlik (`getDocs`), "Yenile" ile yeniden okunur. Eski isteğin geç gelen sonucu yenisinin üzerine yazılmaz.
+  - **Ders raporu** (`reports/LectureReport.tsx`):
+    - Aralıktaki kapanmış dersler (`status == closed`, `startedAt` aralığı, mevcut `status+startedAt desc` indeksi). Sapma: sayfalama yerine tarih aralığı ve 200 ders sınırı; sınır aşılırsa açık uyarı verilir.
+    - Seçilen dersin `records` alt koleksiyonu canlı dinlenir. Özet: beklenen, katıldı, mazeretli, katılmadı, oran (+ eşik altı çipi ve uyarısı).
+    - Tablo: hekim, kıdem, durum, katılım saati, mazeret notu.
+    - **Sonradan mazeret** (kapanmış derste katılmadı → mazeretli, D22): `ExcuseDialog` ayrı dosyaya taşındı, canlı listeyle ortak. Düzenlemede mevcut not dolu açılır; not, canlı güncellemelerde silinmez.
+  - **Oran paydası (sapma):** planda `expectedAttendees.length` yazıyordu. Bunun yerine D22 ve kişisel geçmişle aynı tanım kullanılıyor: katıldı / (katıldı + katılmadı). Mazeretliler paydaya girmez; "Beklenen" ayrıca gösterilir.
+  - **Hekim karnesi** (`reports/DoctorReport.tsx`):
+    - Kaynak `attendance_logs where sessionStartedAt` aralığı (tek alanlı indeks, 5000 log sınırı, aşılırsa uyarı), hekim başına toplanır.
+    - Sapma: hekim başına ayrı sorgu yerine tek aralık sorgusu. D22 ile beklenen ders sayısı = o hekimin loglarının sayısı.
+    - Süren ders hariç tutulur: katılmadı kayıtları kapanışta yazılır, dahil edilseydi oran yükselirdi.
+    - Etkin olup aralıkta dersi olmayan hekim oransız görünür. Etkin olmayan üyenin geçmişi logdaki adla, "(etkin değil)" işaretiyle kalır.
+    - Sıra: eşik altındakiler önce, en düşük oran başta.
+    - Özet uyarı: kaç hekimin, kimlerin eşik altında olduğu.
+    - Hekim seçilince ders dökümü açılır, odak dökümü taşır.
+  - **Eşik** ortak sabit `ATTENDANCE_WARN_RATE = 0.7` (`functions/src/shared/constants.ts`). Tam %70 uyarı vermez. Eşik altı yalnızca renkle değil, "Eşik altında" metniyle de belirtilir.
+  - **CSV** (`downloadCsv`: `;`, BOM, formül koruması):
+    - Ders raporu: her satırda dersin bilgisi + hekim, kıdem, durum, saat, not, beklenen listede.
+    - Hekim karnesi: sayılar, oran (%), eşik altında.
+    - Hekim dökümü.
+    - Tarihler `YYYY-AA-GG SS:DD`. Dosya adları ASCII (`yoklama-2026-11-09-sabah-olgu-…csv`).
+  - `AttendanceRecordView.residencyYear`, `LogItem`/`toLogItem` (kişisel geçmiş de bunu kullanır).
+  - **Testler:**
+    - unit +11 (`tests/unit/attendance/reports.test.ts`): aralık, eşik sınırı, ders özeti, hekim toplama/sıralama/süren ders hariç/etkin olmayan üye, CSV satırları ve formül koruması, dosya adları.
+    - rules +1: admin aralık sorguları geçer, asistan reddedilir.
+    - e2e +3 (iki ekran boyutu): seed dersi sayıları (%67 eşik altı) ve CSV içeriği; hekim karnesi (asistan-4 %0, uyarı, döküm, iki CSV); kendi açtığı ve kapattığı derste herkes katılmadı → sonradan mazeret → sayılar canlı → düzenlemede not dolu.
 
 #### F4.6 Yoklama testleri (M)
 - **Dosyalar:** `e2e/attendance.spec.ts`

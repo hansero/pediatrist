@@ -17,9 +17,17 @@ describe("buildRoster (canlı katılım listesi)", () => {
       { expectedAttendees: ["a", "b", "c"] },
       [doctor("a", "Zeynep"), doctor("b", "Ali"), doctor("c", "Çağla", null, false), doctor("d", "Deniz")],
       [
-        { uid: "a", fullName: "Zeynep", title: "Dr.", status: "present", verifiedAtMs: 1 },
-        { uid: "d", fullName: "Deniz", title: "Dr.", status: "present", verifiedAtMs: 2 },
-        { uid: "c", fullName: "Çağla", title: "Dr.", status: "excused", verifiedAtMs: 3, excuseNote: "İzin" },
+        { uid: "a", fullName: "Zeynep", title: "Dr.", residencyYear: 2, status: "present", verifiedAtMs: 1 },
+        { uid: "d", fullName: "Deniz", title: "Dr.", residencyYear: 2, status: "present", verifiedAtMs: 2 },
+        {
+          uid: "c",
+          fullName: "Çağla",
+          title: "Dr.",
+          residencyYear: 2,
+          status: "excused",
+          verifiedAtMs: 3,
+          excuseNote: "İzin",
+        },
       ]
     );
     expect(rows.map((r) => [r.uid, r.record?.status ?? "none", r.expected])).toEqual([
@@ -35,7 +43,7 @@ describe("buildRoster (canlı katılım listesi)", () => {
     const rows = buildRoster(
       { expectedAttendees: [] },
       [],
-      [{ uid: "x", fullName: "Eski Üye", title: "Dr.", status: "present", verifiedAtMs: 1 }]
+      [{ uid: "x", fullName: "Eski Üye", title: "Dr.", residencyYear: 2, status: "present", verifiedAtMs: 1 }]
     );
     expect(rows[0]).toMatchObject({ name: "Dr. Eski Üye", hasDevice: null });
   });

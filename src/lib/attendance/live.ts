@@ -43,6 +43,7 @@ export interface AttendanceRecordView {
   uid: string;
   fullName: string;
   title: string;
+  residencyYear: number | null;
   status: AttendanceStatus;
   verifiedAtMs: number | null;
   excuseNote?: string;
@@ -80,6 +81,7 @@ export function toRecord(d: DocumentData): AttendanceRecordView {
     uid: String(d.uid ?? ""),
     fullName: String(d.fullName ?? ""),
     title: String(d.title ?? ""),
+    residencyYear: typeof d.residencyYear === "number" ? d.residencyYear : null,
     status: d.status === "excused" || d.status === "absent" ? d.status : "present",
     verifiedAtMs: ms(d.verifiedAt),
     excuseNote: typeof d.excuseNote === "string" && d.excuseNote ? d.excuseNote : undefined,
@@ -183,7 +185,7 @@ export function useMyRecord(sessionId: string | null, uid: string): LiveState<At
   );
 }
 
-/** Admin: son kapanmış dersler (ayrıntılı raporlar F4.5). */
+/** Admin: son kapanmış dersler (ayrıntılı raporlar: `reports.ts`, F4.5). */
 export function useRecentLectures(count = 10): LiveState<Lecture[]> {
   return useSnapshot<Lecture[]>(
     (onData, onError) => {
@@ -246,9 +248,36 @@ export interface HistoryItem {
   excuseNote?: string;
 }
 
+/** `attendance_logs` satırı: dersin ve hekimin düz kopyası (raporlar ve kişisel geçmiş). */
+export interface LogItem extends HistoryItem {
+  uid: string;
+  fullName: string;
+  /** Hekimin ünvanı (ör. "Asistan Dr."); `title` dersin başlığıdır. */
+  memberTitle: string;
+  residencyYear: number | null;
+}
+
+export function toLogItem(v: DocumentData): LogItem {
+  const r = toRecord(v);
+  return {
+    sessionId: String(v.sessionId ?? ""),
+    title: String(v.sessionTitle ?? ""),
+    lecturer: String(v.lecturer ?? ""),
+    category: String(v.category ?? ""),
+    startedAtMs: ms(v.sessionStartedAt),
+    status: r.status,
+    verifiedAtMs: r.verifiedAtMs,
+    excuseNote: r.excuseNote,
+    uid: r.uid,
+    fullName: r.fullName,
+    memberTitle: r.title,
+    residencyYear: r.residencyYear,
+  };
+}
+
 /** Hekim: kendi katılım geçmişi (`attendance_logs`, kurallar yalnızca kendi kayıtlarını açar). D22 ile katılmadığı dersler de var. */
-export function useMyAttendanceHistory(uid: string, count = 100): LiveState<HistoryItem[]> {
-  return useSnapshot<HistoryItem[]>(
+export function useMyAttendanceHistory(uid: string, count = 100): LiveState<LogItem[]> {
+  return useSnapshot<LogItem[]>(
     (onData, onError) => {
       const db = initPediatristFirebase()?.db;
       if (!db) return null;
@@ -258,27 +287,7 @@ export function useMyAttendanceHistory(uid: string, count = 100): LiveState<Hist
         orderBy("sessionStartedAt", "desc"),
         limit(count)
       );
-      return onSnapshot(
-        q,
-        (snap) =>
-          onData(
-            snap.docs.map((d) => {
-              const v = d.data();
-              const r = toRecord(v);
-              return {
-                sessionId: String(v.sessionId ?? ""),
-                title: String(v.sessionTitle ?? ""),
-                lecturer: String(v.lecturer ?? ""),
-                category: String(v.category ?? ""),
-                startedAtMs: ms(v.sessionStartedAt),
-                status: r.status,
-                verifiedAtMs: r.verifiedAtMs,
-                excuseNote: r.excuseNote,
-              };
-            })
-          ),
-        onError
-      );
+      return onSnapshot(q, (snap) => onData(snap.docs.map((d) => toLogItem(d.data()))), onError);
     },
     [uid, count]
   );

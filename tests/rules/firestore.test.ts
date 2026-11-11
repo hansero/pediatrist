@@ -189,6 +189,25 @@ describe("kişisel veri izolasyonu", () => {
     await assertSucceeds(as(admin).collection("attendance_logs").get());
   });
 
+  it("yoklama raporu sorguları (F4.5): admin tarih aralığıyla okur, asistan okuyamaz", async () => {
+    const since = new Date(Date.now() - 90 * 86_400_000);
+    const logsInRange = (c: ReturnType<typeof as>) =>
+      c.collection("attendance_logs").where("sessionStartedAt", ">=", since).orderBy("sessionStartedAt", "desc").get();
+    const closedInRange = (c: ReturnType<typeof as>) =>
+      c
+        .collection("attendance_sessions")
+        .where("status", "==", "closed")
+        .where("startedAt", ">=", since)
+        .orderBy("startedAt", "desc")
+        .get();
+    await assertSucceeds(logsInRange(as(admin)));
+    await assertSucceeds(closedInRange(as(admin)));
+    await assertSucceeds(as(admin).collection("attendance_sessions").doc("old1").collection("records").get());
+    await assertFails(logsInRange(as(resident)));
+    await assertFails(closedInRange(as(resident)));
+    await assertFails(as(resident).collection("attendance_sessions").doc("old1").collection("records").get());
+  });
+
   it("asistan başkasının sınav girişimini okuyamaz", async () => {
     await assertFails(as(resident).collection("quiz_attempts").doc(`q1_${other.uid}`).get());
   });

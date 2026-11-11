@@ -9,10 +9,10 @@ import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Countdown } from "@/components/ui/Countdown";
 import { DataTable, type Column } from "@/components/ui/DataTable";
-import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import {
@@ -26,7 +26,11 @@ import {
   type MemberSummary,
 } from "@/lib/attendance/live";
 import type { ClinicMemberSession } from "@/lib/auth/types";
-import { endLectureSession, markAttendanceExcused, startLectureSession } from "@/lib/firebase/callables";
+import { endLectureSession, startLectureSession } from "@/lib/firebase/callables";
+import { DoctorReport } from "../reports/DoctorReport";
+import { LectureReport } from "../reports/LectureReport";
+import { ExcuseDialog } from "./ExcuseDialog";
+import { defaultReportRange, type ReportRange } from "@/lib/attendance/reports";
 
 const timeFormat = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const dateTimeFormat = new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" });
@@ -35,19 +39,50 @@ export const projectorPath = (sessionId: string) => `/attendance/projector/${enc
 
 /**
  * Eğitim sorumlusu yoklama ekranı (F4.3). Bütün veriler Firestore'dan canlı okunur; bütün işlemler
- * callable'larla, sonuç beklenerek yapılır (iyimser başarı yok). Ayrıntılı raporlar F4.5.
+ * callable'larla, sonuç beklenerek yapılır (iyimser başarı yok). Raporlar (F4.5) ayrı sekmelerde.
  */
 export function AdminAttendance({ session }: { session: ClinicMemberSession }) {
   const live = useLiveLecture();
+  // Rapor sekmeleri aynı tarih aralığını paylaşır; sekme değişince korunur.
+  const [range, setRange] = useState<ReportRange>(() => defaultReportRange());
+  const liveId = live.status === "ready" ? (live.data?.id ?? null) : null;
 
   return (
-    <div className="attendance-admin">
-      {live.status === "error" && <Alert tone="critical">{live.error}</Alert>}
-      {live.status === "loading" && <p className="page-header-subtitle">Canlı ders kontrol ediliyor…</p>}
-      {live.status === "ready" &&
-        (live.data ? <LiveLecturePanel lecture={live.data} /> : <StartLectureForm session={session} />)}
-      <RecentLectures />
-    </div>
+    <Tabs
+      label="Yoklama bölümleri"
+      items={[
+        {
+          id: "live",
+          label: "Canlı ders",
+          content: (
+            <div className="attendance-admin">
+              {live.status === "error" && <Alert tone="critical">{live.error}</Alert>}
+              {live.status === "loading" && <p className="page-header-subtitle">Canlı ders kontrol ediliyor…</p>}
+              {live.status === "ready" &&
+                (live.data ? <LiveLecturePanel lecture={live.data} /> : <StartLectureForm session={session} />)}
+              <RecentLectures />
+            </div>
+          ),
+        },
+        {
+          id: "lecture-report",
+          label: "Ders raporu",
+          content: <LectureReport range={range} onRangeChange={setRange} />,
+        },
+        {
+          id: "doctor-report",
+          label: "Hekim karnesi",
+          content: (
+            <DoctorReport
+              range={range}
+              onRangeChange={setRange}
+              liveSessionId={liveId}
+              liveReady={live.status !== "loading"}
+            />
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -308,63 +343,12 @@ function LiveRoster({ lecture }: { lecture: Lecture }) {
         error={records.error || doctors.error}
         empty={<EmptyState title="Bu ders için beklenen hekim yok" />}
       />
-      <ExcuseDialog sessionId={lecture.id} row={excusing} onClose={() => setExcusing(null)} />
+      <ExcuseDialog
+        sessionId={lecture.id}
+        target={excusing && { uid: excusing.uid, name: excusing.name, excuseNote: excusing.record?.excuseNote }}
+        onClose={() => setExcusing(null)}
+      />
     </Card>
-  );
-}
-
-function ExcuseDialog({ sessionId, row, onClose }: { sessionId: string; row: RosterRow | null; onClose: () => void }) {
-  const toast = useToast();
-  const [note, setNote] = useState("");
-  const save = useAsyncAction(markAttendanceExcused);
-  const noteRef = React.useRef<HTMLTextAreaElement>(null);
-
-  function close() {
-    if (save.pending) return;
-    setNote("");
-    save.reset();
-    onClose();
-  }
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!row) return;
-    if (await save.run({ sessionId, targetUid: row.uid, excuseNote: note })) {
-      toast.show(`${row.name} mazeretli olarak işaretlendi.`, { tone: "success" });
-      close();
-    }
-  }
-
-  return (
-    <Dialog open={row !== null} onClose={close} title="Mazeret gir" description={row?.name} initialFocusRef={noteRef}>
-      <form className="auth-stack" onSubmit={onSubmit} noValidate>
-        {save.error && <Alert tone="critical">{save.error}</Alert>}
-        <Field
-          label="Mazeret notu"
-          hint={`En fazla ${LIMITS.excuseNoteLength} karakter (ör. nöbet ertesi, yıllık izin).`}
-        >
-          {(p) => (
-            <textarea
-              {...p}
-              ref={noteRef}
-              className="form-textarea"
-              rows={3}
-              maxLength={LIMITS.excuseNoteLength}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          )}
-        </Field>
-        <div className="ui-dialog-actions">
-          <Button variant="secondary" onClick={close} disabled={save.pending}>
-            Vazgeç
-          </Button>
-          <Button type="submit" loading={save.pending} loadingText="Kaydediliyor…">
-            Kaydet
-          </Button>
-        </div>
-      </form>
-    </Dialog>
   );
 }
 

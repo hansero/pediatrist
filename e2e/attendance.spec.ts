@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import type { Download, Locator, Page } from "@playwright/test";
 import { ACCOUNTS, loginAs } from "./fixtures/auth";
 import { closeLiveLectures, deleteField } from "./fixtures/emulator";
 import { expect, expectNoHorizontalOverflow, guardedContext, test } from "./fixtures/test";
@@ -119,4 +121,149 @@ test("kişisel geçmiş: katılmadığı ders 'Katılmadım' olarak görünür, 
   const rate = page.locator("dl.history-stats > div").filter({ has: page.getByText("Katılım oranı", { exact: true }) });
   const zero = new Intl.NumberFormat("tr-TR", { style: "percent", maximumFractionDigits: 0 }).format(0);
   await expect(rate.locator("dd")).toHaveText(zero);
+});
+
+// --- F4.5: raporlar ------------------------------------------------------------------------------
+
+const SEED_LECTURE = { id: "seed-ders-001", title: "Sabah Olgu Sunumu: Ateşli Süt Çocuğuna Yaklaşım" };
+
+/** `<dl>` içinde etiketiyle eşleşen değer. */
+const stat = (scope: Locator, label: string) =>
+  scope
+    .locator("dl > div")
+    .filter({ has: scope.page().getByText(label, { exact: true }) })
+    .locator("dd");
+
+async function downloadText(page: Page, trigger: Locator): Promise<{ download: Download; text: string }> {
+  const [download] = await Promise.all([page.waitForEvent("download"), trigger.click()]);
+  return { download, text: readFileSync((await download.path())!, "utf8") };
+}
+
+const csvLines = (text: string) =>
+  text
+    .replace(/^\uFEFF/, "")
+    .trimEnd()
+    .split("\r\n");
+
+async function openAdminTab(page: Page, tab: "Ders raporu" | "Hekim karnesi") {
+  await loginAs(page, ACCOUNTS.admin);
+  await page.goto("/attendance");
+  await page.getByRole("tab", { name: tab }).click();
+  await expect(page.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
+}
+
+test("ders raporu: seed dersi sayıları, eşik uyarısı ve CSV (F4.5)", async ({ page }) => {
+  await openAdminTab(page, "Ders raporu");
+  await page.getByLabel("Ders", { exact: true }).selectOption(SEED_LECTURE.id);
+  const detail = page.getByRole("region", { name: SEED_LECTURE.title });
+
+  // Seed: 4 beklenen; 2 katıldı, 1 mazeretli, 1 katılmadı → 2 / (2 + 1) = %67 (< %70).
+  await expect(stat(detail, "Beklenen")).toHaveText("4");
+  await expect(stat(detail, "Katıldı")).toHaveText("2");
+  await expect(stat(detail, "Mazeretli")).toHaveText("1");
+  await expect(stat(detail, "Katılmadı")).toHaveText("1");
+  await expect(stat(detail, "Katılım oranı")).toContainText("67");
+  await expect(stat(detail, "Katılım oranı")).toContainText("Eşik altında");
+  await expect(detail.getByRole("status").filter({ hasText: "eşiğinin altında" })).toBeVisible();
+
+  const table = detail.getByRole("table");
+  await expect(table.getByRole("row").filter({ hasText: "Zeynep Ergin" })).toContainText("Katılmadı");
+  await expect(table.getByRole("row").filter({ hasText: "Emre Koç" })).toContainText("Nöbet ertesi");
+  await expectNoHorizontalOverflow(page);
+
+  const { download, text } = await downloadText(
+    page,
+    detail.getByRole("button", { name: "Ders raporunu CSV olarak indir" })
+  );
+  expect(download.suggestedFilename()).toMatch(
+    /^yoklama-\d{4}-\d{2}-\d{2}-sabah-olgu-sunumu-atesli-sut-cocuguna-yaklasim\.csv$/
+  );
+  expect(text.startsWith("\uFEFF")).toBe(true);
+  const lines = csvLines(text);
+  expect(lines[0]).toBe("Ders;Tarih;Eğitici;Kategori;Hekim;Kıdem;Durum;Katılım saati;Mazeret notu;Beklenen listede");
+  expect(lines).toHaveLength(5);
+  expect(lines.find((l) => l.includes("Zeynep Ergin"))).toContain(";4. yıl;Katılmadı;;;Evet");
+  expect(lines.find((l) => l.includes("Emre Koç"))).toContain(";Mazeretli;;Nöbet ertesi;Evet");
+  expect(lines.find((l) => l.includes("Kerem Yalçın"))).toMatch(/;Katıldı;\d{4}-\d{2}-\d{2} \d{2}:\d{2};;Evet$/);
+});
+
+test("hekim karnesi: eşik altındaki hekim işaretli, ders dökümü ve CSV (F4.5)", async ({ page }) => {
+  await openAdminTab(page, "Hekim karnesi");
+  const karne = page.getByRole("table", { name: "Hekim karnesi" });
+  // Asistan-4 hiçbir derse katılmadı (seed + e2e dersleri): oran %0, eşik altında ve uyarıda adı geçer.
+  const row = karne.getByRole("row").filter({ hasText: "Zeynep Ergin" });
+  await expect(row).toContainText("%0");
+  await expect(row).toContainText("Eşik altında");
+  await expect(page.getByRole("status").filter({ hasText: "katılım oranı %70'in altında" })).toContainText(
+    "Zeynep Ergin"
+  );
+  await expectNoHorizontalOverflow(page);
+
+  const summary = await downloadText(page, page.getByRole("button", { name: "Hekim karnesini CSV olarak indir" }));
+  expect(summary.download.suggestedFilename()).toMatch(/^hekim-karnesi-\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.csv$/);
+  const lines = csvLines(summary.text);
+  expect(lines[0]).toBe("Hekim;Kıdem;Üyelik;Katıldı;Mazeretli;Katılmadı;Katılım oranı (%);Eşik altında (%70)");
+  expect(lines.find((l) => l.startsWith("Asistan Dr. Zeynep Ergin;"))).toMatch(
+    /^Asistan Dr\. Zeynep Ergin;4\. yıl;Etkin;0;0;[1-9]\d*;0;Evet$/
+  );
+
+  await row.getByRole("button", { name: "Asistan Dr. Zeynep Ergin: ders dökümü" }).click();
+  const detail = page.getByRole("region", { name: "Asistan Dr. Zeynep Ergin: ders dökümü" });
+  await expect(detail.getByRole("row").filter({ hasText: SEED_LECTURE.title })).toContainText("Katılmadı");
+  const csv = await downloadText(
+    page,
+    detail.getByRole("button", { name: "Asistan Dr. Zeynep Ergin dökümünü CSV olarak indir" })
+  );
+  expect(csv.download.suggestedFilename()).toMatch(/^hekim-karnesi-asistan-dr-zeynep-ergin-/);
+  const detailLines = csvLines(csv.text);
+  expect(detailLines[0]).toBe("Hekim;Tarih;Ders;Eğitici;Kategori;Durum;Katılım saati;Mazeret notu");
+  expect(detailLines.find((l) => l.includes(SEED_LECTURE.title))).toContain(";Katılmadı;;");
+  await detail.getByRole("button", { name: "Kapat" }).click();
+  await expect(detail).toHaveCount(0);
+});
+
+test("ders raporu: kapanmış derste katılmadı → sonradan mazeret, sayılar canlı güncellenir (F4.5, D22)", async ({
+  page,
+}, testInfo) => {
+  await closeLiveLectures();
+  const title = `E2E rapor dersi ${testInfo.project.name} ${Date.now()}`;
+  await loginAs(page, ACCOUNTS.admin);
+  await page.goto("/attendance");
+  await page.getByLabel("Ders başlığı").fill(title);
+  await page.getByRole("button", { name: "Yoklamayı başlat" }).click();
+  const liveCard = page.getByRole("region", { name: title });
+  await liveCard.getByRole("button", { name: "Dersi bitir" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Dersi bitir" }).click();
+  await expect(page.getByRole("button", { name: "Yoklamayı başlat" })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Ders raporu" }).click();
+  const select = page.getByLabel("Ders", { exact: true });
+  const value = await select.locator("option", { hasText: title }).getAttribute("value");
+  await select.selectOption(value!);
+  const detail = page.getByRole("region", { name: title });
+
+  // Kimse katılmadı: kapanışta beklenen herkese "katılmadı" yazıldı (D22).
+  const expected = Number(await stat(detail, "Beklenen").textContent());
+  expect(expected).toBeGreaterThanOrEqual(4);
+  await expect(stat(detail, "Katılmadı")).toHaveText(String(expected));
+  await expect(stat(detail, "Katılım oranı")).toContainText("%0");
+
+  const name = "Asistan Dr. Kerem Yalçın";
+  await detail.getByRole("button", { name: `${name}: mazeret gir` }).click();
+  const dialog = page.getByRole("dialog", { name: "Mazeret gir" });
+  await dialog.getByLabel("Mazeret notu").fill("Yıllık izin");
+  await dialog.getByRole("button", { name: "Kaydet" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: `${name} mazeretli olarak işaretlendi.` })).toBeVisible();
+
+  await expect(stat(detail, "Mazeretli")).toHaveText("1");
+  await expect(stat(detail, "Katılmadı")).toHaveText(String(expected - 1));
+  await expect(detail.getByRole("row").filter({ hasText: name })).toContainText("Yıllık izin");
+
+  // Düzenlemede mevcut not dolu gelir.
+  await detail.getByRole("button", { name: `${name}: mazereti düzenle` }).click();
+  const editDialog = page.getByRole("dialog", { name: "Mazereti düzenle" });
+  await expect(editDialog.getByLabel("Mazeret notu")).toHaveValue("Yıllık izin");
+  await editDialog.getByRole("button", { name: "Vazgeç" }).click();
+  await expect(editDialog).toHaveCount(0);
 });

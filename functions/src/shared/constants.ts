@@ -37,6 +37,12 @@ export const ATTENDANCE_SLOT_MS = 15_000;
 export const ATTENDANCE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const ATTENDANCE_CODE_LENGTH = 6;
 
+/**
+ * Katılım uyarı eşiği (F4.5): katıldı / (katıldı + katılmadı) bu değerin altındaysa hekim raporda işaretlenir.
+ * Mazeretli dersler paydaya girmez.
+ */
+export const ATTENDANCE_WARN_RATE = 0.7;
+
 /** WebAuthn tören (kayıt/yoklama) challenge'ının geçerlilik süresi (F4.2). */
 export const WEBAUTHN_CHALLENGE_TTL_MS = 2 * 60_000;
 
