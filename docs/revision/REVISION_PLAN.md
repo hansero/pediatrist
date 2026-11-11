@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F8.2. **F8 tamamlandı.** Sessiz liste kırpılması yerine açık uyarı (`useCapped`), video ilerlemesinde gereksiz yeniden çizim giderildi, ölü kod (Admin SDK başlatıcısı, eski kanca, `server-only`, 72 satır CSS) silindi. Testler: unit 250, rules 57, functions 102, e2e E2E_COUNT.
+- **Son tamamlanan adım:** F8.2. **F8 tamamlandı.** Sessiz liste kırpılması yerine açık uyarı (`useCapped`), video ilerlemesinde gereksiz yeniden çizim giderildi, ölü kod (Admin SDK başlatıcısı, eski kanca, `server-only`, 72 satır CSS) silindi. Testler: unit 250, rules 57, functions 102, e2e 109 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
 - **Sıradaki iş:** F9.1 KVKK (bkz. §F9.1). Önce mevcut durumu oku: `/kvkk` sayfası, `@shared/consent` (`KVKK_NOTICE_VERSION`), `completeRegistration` rıza yazımı F3.5'te yapıldı.
   - Eksikleri belirle: rıza sürümü değişince yeniden onay (oturum açıkken engelleyen ekran + `acceptConsent` callable'ı).
