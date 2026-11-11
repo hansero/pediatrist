@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F7.3. Ana sayfa durum odaklı: tek birincil eylem (hekim: ders → sınav → zorunlu materyal; admin: ders → başvuru → sınav), sunucu sayımlı göstergeler, boş/yükleniyor/hata durumları. Mock silindi. Testler: unit 243, rules 57, functions 100, e2e E2E_COUNT.
+- **Son tamamlanan adım:** F7.3. Ana sayfa durum odaklı: tek birincil eylem (hekim: ders → sınav → zorunlu materyal; admin: ders → başvuru → sınav), sunucu sayımlı göstergeler, boş/yükleniyor/hata durumları. Mock silindi. Testler: unit 243, rules 57, functions 100, e2e 99 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
 - **Sıradaki iş:** F7.4 hesaplayıcılar (bkz. §F7.4, D8).
   - `calculators/page.tsx`: "Maksimum doz güvenlik kilidi" gibi çalışmayan iddialar kaldırılır; kartlar "Yakında"/"planlanan".
