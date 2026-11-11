@@ -67,7 +67,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F5** | **Sınav modülü (gerçek)** | | | |
 | F5.1 | Backend: soruların attempt ile teslimi, `revealPolicy`, taslak kayıt, transaction | L | ✅ | C3, C7, S6, S7 |
 | F5.2 | Admin sınav stüdyosu (taslak, yayın, kapatma, görsel yükleme, arşiv) | L | ✅ | C3 |
-| F5.3 | Sınav ekranı (sunucu süresi, kalıcı yanıtlar, görseller, uyarılar) | M | ⬜ | C3, C8 (sınav) |
+| F5.3 | Sınav ekranı (sunucu süresi, kalıcı yanıtlar, görseller, uyarılar) | M | ✅ | C3, C8 (sınav) |
 | F5.4 | Hekim paneli + karne + admin analitiği | M | ⬜ | C3, Kullanılabilirlik |
 | F5.5 | Sınav testleri + mock bekçisi temizliği | M | ⬜ | §8 |
 | **F6** | **Materyaller modülü (gerçek)** | | | |
@@ -101,17 +101,17 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F5.2. Admin sınav stüdyosu: liste, yayın (force onayı), kapatma, taslak düzenleme/silme, CSV içe aktarma + önizleme, görsel yükleme, arşiv + içe aktarılabilir CSV. Testler: unit 209, rules 56, functions 92, e2e 74 (+2 ekran boyutuna özel atlanan).
+- **Son tamamlanan adım:** F5.3. Sınav ekranı (sunucu süresi + saat farkı, otomatik kayıt kuyruğu, devam, uyarılar, otomatik teslim, erişilebilirlik, görsel büyütme); F5.4'ten hekim kartı, teslim karnesi ve "Sınav sonuçlarım" öne alındı; eski hekim akışı ve mock silindi. Testler: unit 215, rules 56, functions 92, e2e 78 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F5.3 (M) sınav ekranı (bkz. §F5.3). Hekim tarafı `quizzes/page.tsx → LegacyDoctorQuizzes` (mock; `ClinicalExamRunner`, `INITIAL_ACTIVE_QUESTIONS`).
-  - Yayındaki sınav: `quizzes where status == published` (kurallar hekime açık).
-  - `startQuizAttempt` → sorular + `deadlineMs` + `savedResponses`. Countdown `deadlineMs` ile.
-  - `saveAttemptDraft` ≈3 sn debounce; sayfa yenilenince devam.
-  - Görseller `QuizImage` (F5.2) + büyütme. Süre uyarıları: 5 dk ve 1 dk, `aria-live`.
-  - Süre bitince otomatik teslim; `submitting` kilidi. "Sınavdan ayrıl" onayı ("süre devam eder").
-  - `fieldset/legend`; gezgin `aria-label="Soru 3, yanıtlandı"`; `useIdleExempt()`.
-  - Teslim sonrası yanıt: `revealed=false` ise "Doğru cevaplar sınav kapanınca açılır" (F5.4 karnesi ayrıntılı).
-  - F5.4'te hekim paneli/karne/analitik ile sayfa izin listesinden çıkar.
+- **Sıradaki iş:** F5.4 (M); kalanlar:
+  - **Hekim gelişimi:** `useMyAttempts` verisinden zaman içinde puan grafiği. Erişilebilir tablo yedeğiyle (dataviz kuralı: grafik + tablo); tekrar eden sınav yok.
+  - **Admin analitiği** (`components/quizzes/admin/Analytics.tsx`, QuizAdmin'e "Sonuçlar" sekmesi):
+    - Kaynak `quiz_attempts`; sınav seçimi `where quizId == X orderBy submittedAt desc` (indeks var). Hekim bazında **uid'e göre** gruplama, sayfalı.
+    - Filtreler: kıdem, geç/otomatik teslim.
+    - Satırdan `getAttemptReport` (admin her zaman tam karne).
+    - Sınav sonuçları CSV (`downloadCsv`).
+    - Soru bazında doğru oranı (girişimlerdeki `results`).
+  - Ardından F5.5: süre dolumu otomatik teslimi e2e (1 dk'lık sınav; telefonda atlanabilir), CSV + görsel → after_close akışı zaten F5.2/F5.3 e2e'lerinde var.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -1065,6 +1065,48 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Erişilebilirlik: `<fieldset><legend>`, gezgin butonlarında `aria-label="Soru 3, yanıtlandı"`.
   - `useIdleExempt()` ile kilit muafiyeti alınır.
   - Sekme değişimi sayımı "bilgi amaçlı" olarak etiketlenir.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **Sınav ekranı** (`exam/QuizExam.tsx`, `exam/ExamQuestion.tsx`):
+    - Sorular, `deadlineMs` ve kaydedilmiş yanıtlar `startQuizAttempt`'ten gelir.
+    - **Saat farkı:** sözleşmeye `serverNowMs` eklendi. İstemci, isteğin ortasına göre farkı hesaplar ve `Countdown clockOffsetMs`'e verir; cihaz saati yanlışsa geri sayım ve otomatik teslim kaymaz.
+    - Uyarılar 5 dk ve 1 dk kala (`aria-live`). Süre bitince otomatik teslim.
+    - **Tek teslim kilidi:** onay diyaloğu ve süre bitimi aynı anda teslim edemez (sunucu da reddeder).
+  - **Yanıt kaydı:** son değişiklikten 3 sn sonra ve soru değiştirirken (`createSaveQueue`):
+    - Aynı anda tek istek; arada gelenlerden yalnızca en sonuncusu gönderilir.
+    - Döngü çıkışı ile durum temizliği aynı eşzamanlı adımda: değer kaybolmaz. Başarısız değer bekletilip yeniden denenir. Birim testli.
+    - Durum satırı (`aria-live`): "Değişiklikler birazdan kaydedilecek…" / "Kaydediliyor…" / "Yanıtlar kaydedildi (saat)" / hata.
+    - **e2e'nin yakaladığı hata:** kayıt sürerken yazılan yanıt, o kayıt bitince "kaydedildi" diye gösteriliyordu. Düzeltildi: yeni değişiklik varsa durum "birazdan kaydedilecek" kalır.
+    - Kaydedilmemiş değişiklik varken sayfadan çıkışta tarayıcı uyarısı. `useIdleExempt()`.
+  - **Erişilebilirlik:**
+    - Seçenekler `<fieldset><legend>`; tek seçim radyo, çoklu seçim onay kutusu.
+    - Açık uçlu: `maxLength` + karakter sayacı.
+    - Gezgin: `aria-label="Soru 3, yanıtlandı"`, `aria-current="step"`; yanıtlanmış soru renge ek olarak alt çizgili.
+    - Soru değişince odak soru başlığına. Dokunma hedefleri ≥ 44 px.
+  - **Görseller:** gerçek `<img>` (alt "Soru N görseli") ve "Görseli büyüt" diyaloğu. CSV'de alt metin sütunu yok; soru numarasıyla adlandırılıyor.
+  - **"Sınavdan ayrıl":** onay metni sürenin DURMADIĞINI ve bitiş saatini söyler; yanıtlar kaydedilip panele dönülür.
+  - **Sekme değişimi** sayılır ve teslimde gönderilir (bilgi amaçlı, puanı etkilemez; denetimde WARN).
+  - **F5.4'ten öne alınanlar** (eski hekim akışını tamamen kaldırabilmek için):
+    - Hekim sınav kartı (`doctor/DoctorQuizzes.tsx`): yayında sınav yok / başlanmadı / devam ediyor / teslim edildi.
+      - Devam eden girişime sayfa açılınca kendiliğinden dönülür (yenileme). Bilerek ayrıldıysa dönülmez.
+      - Kapatılmış sınavda süresi süren girişim de devam ettirilebilir.
+      - **Tam e2e koşusunun yakaladığı durum:** hekimin aynı anda iki devam eden girişimi olabilir (A'dayken admin B'yi zorla yayınladı, hekim B'ye de girdi). Kendiliğinden dönüş artık yayındaki sınavın girişimini tercih ediyor; karar yayındaki sınav yüklendikten sonra veriliyor (`resumableAttempt(..., preferQuizId)`, birim testli). Ayrıca F5.2 e2e'sinin hazırlık girişimi giriş yapamayan bekleyen üyeye taşındı.
+    - Girişimler `quiz_attempts where uid == me` ile okunur. Olmayan dokümanı tek tek okumak kuralda reddediliyor; sorgu kurala uyar.
+    - Teslim karnesi (`report/AttemptReport.tsx`):
+      - Puan ve soru başına Doğru/Yanlış (metinle).
+      - Karne kapalıysa "Doğru cevaplar … itibarıyla açılacak" (`revealAtMs`). Açıksa doğru cevap ve öğrenme noktası.
+      - Geç ve otomatik teslim notları.
+    - "Sınav sonuçlarım" tablosu: geçmiş girişimler ve `getAttemptReport` ile karne.
+  - **Mock temizliği:**
+    - Eski `ClinicalExamRunner`, `DoctorGrowthDashboard`, `InstantFeedbackReport` ve sayfadaki `INITIAL_ACTIVE_QUESTIONS` / `FALLBACK_USER_SESSION` / mock girişimler silindi.
+    - `quiz-parser`'daki kullanılmayan eski tipler ve `downloadQuizLogsAsCsv` da silindi.
+    - **`quizzes/page.tsx` izin listesinden çıktı** (planda F5.5'teydi). İzin listesi 5 dosya.
+  - **Testler:**
+    - unit +6: kayıt sırası (tek istek / son değer, yarışsız ardışık, hata ve yeniden deneme), devam edilebilir girişim, yanıtlandı, eşleme.
+    - functions: `serverNowMs` doğrulaması.
+    - e2e +2 (`e2e/quiz-exam.spec.ts`, iki ekran boyutu; ortak `e2e/fixtures/quiz.ts`, `publishForce`):
+      - after_close: başla → yanıtla → "birazdan kaydedilecek"→"kaydedildi" → görsel büyüt → yenile → yanıtlar geri gelir → eksik soru onayı → teslim → %67, doğru cevap ve öğrenme notu YOK → admin kapatır → sonuçlarımdan karne → öğrenme notu ve doğru cevap görünür.
+      - immediate: başla → ayrıl (süre durmaz uyarısı) → panelden devam (yanıt korunmuş) → hepsini doğru yanıtla → teslim → 100 ve tam karne.
+    - Süre dolumu otomatik teslimi e2e'si F5.5'te. Sunucu tarafı functions testlerinde var.
 
 #### F5.4 Hekim paneli, karne, admin analitiği (M)
 - **Dosyalar:** `src/components/quizzes/doctor/*`, `src/components/quizzes/report/*`, `src/components/quizzes/admin/Analytics.tsx`

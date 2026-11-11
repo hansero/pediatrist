@@ -507,6 +507,7 @@ export const startQuizAttempt = defineCallable("startQuizAttempt", "member", asy
     attemptId,
     quizTitle: outcome.title,
     deadlineMs: outcome.deadlineMs,
+    serverNowMs: quizClock.now(),
     resumed: outcome.resumed,
     revealPolicy: outcome.policy,
     questions: attemptQuestions(questions),

@@ -6,10 +6,8 @@
  * - Puanlama YALNIZCA sunucuda yapılır (CLAUDE.md kural 5); istemcide puanlama fonksiyonu yoktur.
  */
 import type { QuestionType } from "@shared/constants";
-import type { NormalizedQuizQuestion } from "@shared/quizQuestion";
 import { NINE_FIELD_CSV_HEADERS } from "@shared/quizCsv";
-import type { GradedItem } from "@shared/types";
-import { downloadCsv, toCsv } from "@/lib/csv";
+import { toCsv } from "@/lib/csv";
 
 export {
   NINE_FIELD_CSV_HEADERS,
@@ -19,81 +17,6 @@ export {
   type CsvRowError,
 } from "@shared/quizCsv";
 export { normalizeClinicalAnswer, parsePipeSeparatedOptions } from "@shared/quizQuestion";
-
-export type QuizQuestionType = QuestionType;
-
-/** CSV'den ayrıştırılmış, sunucuya gönderilmeye hazır soru (id / orderIndex sunucuda atanır). */
-export type QuizQuestionInput = NormalizedQuizQuestion;
-
-/**
- * Standart 9 Alanlı (A–I) Klinik Vaka Soru Veri Modeli (Firestore Native)
- */
-export interface NineFieldClinicalQuestion {
-  id: string;
-  orderIndex: number;
-  caseContent: string; // 1 (A): Soru İçeriği (Klinik Vaka Sunumu ve Hasta Öyküsü)
-  imageUrl: string; // 2 (B): Soru Görseli (Firebase Cloud Storage Görsel Yolu / URL)
-  questionText: string; // 3 (C): Sorunun Kendi (Vakanın altındaki doğrudan soru cümlesi)
-  questionType: QuizQuestionType; // 4 (D): Soru Tipi (Single Choice | Multiple Choice | Text Input)
-  maxLength: number; // 5 (E): Maximum Length (Text Input için karakter sınırı)
-  optionsRaw: string; // 6 (F): Seçenekler ( | ile ayırın)
-  optionsArray: string[]; // 7 (G): Seçenekler (JSON Array - sistem tarafından otomatik dönüştürülür)
-  correctAnswers: string[]; // 8 (H): Doğru Seçenek (JSON Array - tekli/çoklu/açık uçlu varyasyonlar)
-  feedbackText: string; // 9 (I): Feedback_Text (Doğru/yanlış bağımsız pedagojik Öğrenme Noktası)
-}
-
-/** Sunucunun ürettiği karne satırı (ortak tip). */
-export type GradedQuestionFeedback = GradedItem;
-
-export interface DoctorQuizAttemptLog {
-  attemptId: string;
-  quizId: string;
-  quizTitle: string;
-  uid: string;
-  doctorName: string;
-  residencyYear: number | null;
-  submittedAt: string;
-  /** Sunucu kayıtlı başlangıç (ms) ve kullanılan süre (sn) — admin log dashboard'u için */
-  startedAtMs?: number;
-  submittedAtMs?: number;
-  durationSeconds?: number;
-  status?: "in_progress" | "submitted";
-  lateSubmission?: boolean;
-  score: number;
-  correctCount: number;
-  totalQuestions: number;
-  tabSwitchCount: number;
-  gradedReport: GradedQuestionFeedback[];
-}
-
-/** Tek tıkla sınav sonuç loglarını CSV olarak indirir. */
-export function downloadQuizLogsAsCsv(attempts: DoctorQuizAttemptLog[]): void {
-  downloadCsv(
-    `pediatrist_sinav_sonuclari_${new Date().toISOString().slice(0, 10)}.csv`,
-    [
-      "AttemptID",
-      "SinavAdi",
-      "HekimAdi",
-      "KidemYili",
-      "Tarih",
-      "Puan",
-      "DogruSayisi",
-      "ToplamSoru",
-      "SekmeDegistirmeSayisi",
-    ],
-    attempts.map((a) => [
-      a.attemptId,
-      a.quizTitle,
-      a.doctorName,
-      a.residencyYear,
-      a.submittedAt,
-      a.score,
-      a.correctCount,
-      a.totalQuestions,
-      a.tabSwitchCount,
-    ])
-  );
-}
 
 /** 9 alanlı soru (arşivden veya önizlemeden). */
 export interface NineFieldQuestionLike {

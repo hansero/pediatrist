@@ -100,6 +100,7 @@ describe("sınav: soruların teslimi, ara kayıt, teslim (F5.1)", () => {
       savedResponses: {},
     });
     expect(first.questions.map((q) => q.questionId)).toEqual(["q_001", "q_002", "q_003"]);
+    expect(Math.abs(first.serverNowMs - Date.now())).toBeLessThan(5_000);
     expect(first.questions[0].imagePath).toBe(questions[0].imageUrl);
     for (const q of first.questions) {
       expect(q).not.toHaveProperty("correctAnswers");

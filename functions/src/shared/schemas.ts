@@ -353,6 +353,8 @@ export const StartQuizAttemptResponse = z.object({
   attemptId: z.string(),
   quizTitle: z.string(),
   deadlineMs: z.number(),
+  /** Yanıt anındaki sunucu saati: istemci, cihaz saati yanlışsa geri sayımı buna göre düzeltir. */
+  serverNowMs: z.number(),
   resumed: z.boolean(),
   revealPolicy,
   questions: z.array(AttemptQuestionSchema),

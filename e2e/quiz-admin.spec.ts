@@ -1,8 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import type { Locator, Page } from "@playwright/test";
-import { ACCOUNTS, loginAs } from "./fixtures/auth";
 import { findDocIds, writeDocument } from "./fixtures/emulator";
+import { createDraft, openStudio, publish, quizRow, SAMPLE_CSV, stat } from "./fixtures/quiz";
 import { expect, expectNoHorizontalOverflow, test } from "./fixtures/test";
 
 /**
@@ -10,50 +9,7 @@ import { expect, expectNoHorizontalOverflow, test } from "./fixtures/test";
  * Her test kendi benzersiz başlıklı sınavlarını oluşturur (iki ekran boyutu aynı emülatör verisinde koşar).
  */
 const FIXTURES = path.join(__dirname, "..", "scripts", "fixtures");
-const SAMPLE_CSV = readFileSync(path.join(FIXTURES, "quiz-ornek.csv"));
 const PNG = readFileSync(path.join(FIXTURES, "files", "steeple_sign.png"));
-
-async function openStudio(page: Page, tab?: "Yeni sınav" | "Görseller" | "Arşiv") {
-  await loginAs(page, ACCOUNTS.admin);
-  await page.goto("/quizzes");
-  await expect(page.getByRole("heading", { level: 1, name: "Sınav yönetimi" })).toBeVisible();
-  if (tab) await page.getByRole("tab", { name: tab }).click();
-}
-
-const quizRow = (page: Page, title: string) =>
-  page.getByRole("table", { name: "Sınav listesi" }).getByRole("row").filter({ hasText: title });
-
-async function createDraft(page: Page, title: string, policy: "Sınav kapanınca (önerilen)" | "Teslimde hemen") {
-  await page.getByRole("tab", { name: "Yeni sınav" }).click();
-  await page
-    .getByLabel("Soru dosyası (CSV)")
-    .setInputFiles({ name: "quiz-ornek.csv", mimeType: "text/csv", buffer: SAMPLE_CSV });
-  await expect(page.getByText("quiz-ornek.csv: 3 soru")).toBeVisible();
-  await page.getByLabel("Sınav başlığı").fill(title);
-  await page.getByLabel("Süre (dakika)").fill("15");
-  await page.getByLabel(policy).check();
-  await page.getByRole("button", { name: "Taslak olarak kaydet" }).click();
-  await expect(
-    page.getByRole("status").filter({ hasText: `"${title}" taslak olarak kaydedildi (3 soru).` })
-  ).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Sınavlar" })).toHaveAttribute("aria-selected", "true");
-  await expect(quizRow(page, title)).toContainText("Taslak");
-}
-
-async function publish(page: Page, title: string) {
-  await quizRow(page, title)
-    .getByRole("button", { name: `${title}: yayınla` })
-    .click();
-  const dialog = page.getByRole("dialog", { name: "Sınavı yayınla" });
-  await dialog.getByRole("button", { name: "Yayınla" }).click();
-  return dialog;
-}
-
-const stat = (scope: Locator, label: string) =>
-  scope
-    .locator("dl > div")
-    .filter({ has: scope.page().getByText(label, { exact: true }) })
-    .locator("dd");
 
 test("stüdyo: seed sınavları listelenir; görsel yükleme, CSV hataları ve eksik görsel engeli (F5.2)", async ({
   page,
@@ -153,9 +109,11 @@ test("taslak → düzenle → yayınla → sınavda hekim varken yeni yayın ona
 
   // Bir hekim sınavda (test hazırlığı: süresi devam eden girişim).
   const [quizId] = await findDocIds("quizzes", "title", renamed);
-  await writeDocument(`quiz_attempts/${quizId}_seed-asistan-4`, {
+  // Hazırlık verisi giriş yapamayan (onay bekleyen) bir üyeye yazılır: başka testlerin hekimlerini etkilemesin.
+  await writeDocument(`quiz_attempts/${quizId}_seed-bekleyen`, {
     quizId,
-    uid: "seed-asistan-4",
+    quizTitle: renamed,
+    uid: "seed-bekleyen",
     status: "in_progress",
     deadline: new Date(Date.now() + 10 * 60_000),
   });

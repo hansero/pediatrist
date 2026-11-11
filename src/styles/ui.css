@@ -789,3 +789,154 @@
 .nowrap {
   white-space: nowrap;
 }
+
+/* Sınav ekranı ve karne (F5.3) */
+.exam {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.exam-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+}
+
+.exam-bar-title {
+  min-width: 0;
+}
+
+.exam-bar-title h2 {
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.exam-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.exam-countdown {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.exam-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.exam-pill {
+  min-width: var(--tap-target, 44px);
+  min-height: var(--tap-target, 44px);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Yanıtlanmış soru renge ek olarak alt çizgiyle de ayrılır (WCAG 1.4.1). */
+.exam-pill.answered {
+  background: var(--clinical-primary-soft);
+  border-color: var(--clinical-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.exam-pill[aria-current="step"] {
+  outline: 2px solid var(--clinical-primary);
+  outline-offset: 2px;
+}
+
+.exam-question {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.exam-question h3:focus {
+  outline: none;
+}
+
+.exam-question h3:focus-visible {
+  outline: 2px solid var(--clinical-primary);
+  outline-offset: 2px;
+}
+
+.exam-options legend {
+  margin-bottom: var(--space-2);
+}
+
+.exam-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  min-height: var(--tap-target, 44px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.exam-option input {
+  margin-top: 0.2rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+
+.exam-option.selected {
+  border-color: var(--clinical-primary);
+  background: var(--clinical-primary-soft);
+}
+
+.exam-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.exam-submit-early {
+  justify-content: flex-end;
+}
+
+.zoom-body {
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.zoom-body img {
+  max-width: none;
+  width: 100%;
+  height: auto;
+}
+
+.report-score {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--clinical-primary);
+}
+
+.report-items {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
