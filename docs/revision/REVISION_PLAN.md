@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F9.1. KVKK altyapısı: sürüm değişince yeniden onay (`acceptConsent` + onay ekranı), üye silme (`deleteMember`: hesap ve profil silinir, kayıtlar addan arındırılır), kişisel veri dökümü (`exportMemberData`: üye kendisi, admin herkes için), "taslak metin" uyarısı. Testler: unit 255, rules 57, functions 109, e2e E2E_COUNT.
+- **Son tamamlanan adım:** F9.1. KVKK altyapısı: sürüm değişince yeniden onay (`acceptConsent` + onay ekranı), üye silme (`deleteMember`: hesap ve profil silinir, kayıtlar addan arındırılır), kişisel veri dökümü (`exportMemberData`: üye kendisi, admin herkes için), "taslak metin" uyarısı. Testler: unit 255, rules 57, functions 109, e2e 113 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
 - **Sıradaki iş:** F9.2 operasyon (bkz. §F9.2).
   - `audit_logs.expireAt` alanı (`auditLogger.ts`'te tek yerde) + TTL politikası. **Saklama süresi kullanıcı kararı** (plan örneği 2 yıl): sormadan sabitleme; `functions/src/config.ts`'te parametre + `DEPLOY.md`'de karar notu.
