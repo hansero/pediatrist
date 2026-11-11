@@ -95,6 +95,37 @@ export function downloadQuizLogsAsCsv(attempts: DoctorQuizAttemptLog[]): void {
   );
 }
 
+/** 9 alanlı soru (arşivden veya önizlemeden). */
+export interface NineFieldQuestionLike {
+  caseContent: string;
+  imageUrl: string;
+  questionText: string;
+  questionType: QuestionType;
+  maxLength: number;
+  optionsArray: string[];
+  correctAnswers: string[];
+  feedbackText: string;
+}
+
+/**
+ * Soruları 9 sütunlu İÇE AKTARILABİLİR CSV satırlarına çevirir (F5.2 arşiv dışa aktarımı). Seçenekler JSON
+ * sütunundan yazılır (6. sütun boş). `extra` sütunlar 9 sütundan SONRA eklenir; ayrıştırıcı yalnızca ilk 9
+ * sütunu okuduğu için dosya aynen yeniden yüklenebilir.
+ */
+export function toNineFieldCsvRows(questions: readonly NineFieldQuestionLike[]): string[][] {
+  return questions.map((q) => [
+    q.caseContent,
+    q.imageUrl,
+    q.questionText,
+    q.questionType,
+    q.questionType === "Text Input" ? String(q.maxLength) : "",
+    "",
+    q.questionType === "Text Input" ? "" : JSON.stringify(q.optionsArray),
+    JSON.stringify(q.correctAnswers),
+    q.feedbackText,
+  ]);
+}
+
 /**
  * Admin'in indirebileceği 9 sütunlu boş şablon + 3 örnek satır (doldurma kılavuzu).
  * Örnek satırlar yalnızca biçimi gösterir; şablon gerçek ayrıştırıcıdan hatasız geçer (birim testi).

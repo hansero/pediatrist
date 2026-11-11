@@ -67,3 +67,23 @@ describe("WebAuthn (passkey) tarayıcı hataları (F4.2)", () => {
     expect(toAppError(Object.assign(new Error("x"), { name: "NotAllowedError" })).code).toBe("internal");
   });
 });
+
+describe("Storage ve Firestore istemci hataları (F5.2)", () => {
+  const firebaseError = (code: string) =>
+    Object.assign(new Error("Firebase: Error (" + code + ")."), { code, name: "FirebaseError" });
+
+  it("Storage kodları Türkçe; bilinmeyen Storage kodu teknik ayrıntı sızdırmaz", () => {
+    expect(toAppError(firebaseError("storage/unauthorized"))).toMatchObject({ code: "permission-denied" });
+    expect(toUserMessage(firebaseError("storage/unauthorized"))).toContain("dosya türü/boyutu");
+    expect(toUserMessage(firebaseError("storage/object-not-found"))).toBe("Dosya bulunamadı.");
+    expect(toAppError(firebaseError("storage/bilinmeyen")).code).toBe("internal");
+  });
+
+  it("öneksiz Firestore kodu varsayılan Türkçe metne eşlenir; Firebase olmayan hata eşlenmez", () => {
+    expect(toAppError(firebaseError("permission-denied"))).toMatchObject({
+      code: "permission-denied",
+      message: "Bu işlem için yetkiniz yok.",
+    });
+    expect(toAppError(Object.assign(new Error("x"), { code: "permission-denied" })).code).toBe("internal");
+  });
+});

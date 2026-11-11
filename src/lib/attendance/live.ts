@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   collection,
   doc,
@@ -13,7 +12,7 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { COLLECTIONS, type AttendanceStatus } from "@shared/types";
-import { toUserMessage } from "@/lib/errors";
+import { useFirestoreSnapshot as useSnapshot } from "@/hooks/useFirestoreSnapshot";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 
 /**
@@ -49,10 +48,8 @@ export interface AttendanceRecordView {
   excuseNote?: string;
 }
 
-export type LiveState<T> =
-  | { status: "loading"; data: null; error: "" }
-  | { status: "ready"; data: T; error: "" }
-  | { status: "error"; data: null; error: string };
+import type { LiveState } from "@/hooks/useFirestoreSnapshot";
+export type { LiveState };
 
 const ms = (v: unknown): number | null =>
   v && typeof (v as Timestamp).toMillis === "function" ? (v as Timestamp).toMillis() : null;
@@ -91,24 +88,6 @@ export function toRecord(d: DocumentData): AttendanceRecordView {
 /** Süresi dolmuş ama henüz kapatılmamış ders (zamanlayıcı en geç 5 dk içinde kapatır) canlı sayılmaz. */
 export function isLectureOpen(lecture: Lecture | null, nowMs = Date.now()): lecture is Lecture {
   return Boolean(lecture && lecture.status === "live" && lecture.endsAtMs > nowMs);
-}
-
-function useSnapshot<T>(
-  subscribe: (onData: (value: T) => void, onError: (err: unknown) => void) => (() => void) | null,
-  deps: unknown[]
-): LiveState<T> {
-  const [state, setState] = useState<LiveState<T>>({ status: "loading", data: null, error: "" });
-  useEffect(() => {
-    setState({ status: "loading", data: null, error: "" });
-    const unsubscribe = subscribe(
-      (data) => setState({ status: "ready", data, error: "" }),
-      (err) => setState({ status: "error", data: null, error: toUserMessage(err) })
-    );
-    if (!unsubscribe) setState({ status: "error", data: null, error: "Sunucu bağlantısı yapılandırılmamış." });
-    return () => unsubscribe?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-  return state;
 }
 
 /** Canlı ders (en fazla bir tane; tek canlı ders kilidi sunucuda, F4.1). */

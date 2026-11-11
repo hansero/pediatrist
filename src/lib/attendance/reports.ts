@@ -7,6 +7,7 @@ import { COLLECTIONS, type AttendanceStatus } from "@shared/types";
 import { AppError, toUserMessage } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import type { CsvCell } from "@/lib/csv";
+import { slugify } from "@/lib/slug";
 import {
   summarizeHistory,
   toLecture,
@@ -262,19 +263,7 @@ export function csvDateTime(msValue: number | null): string {
   return `${toDateInput(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-const TR_ASCII: Record<string, string> = { ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u", â: "a", î: "i", û: "u" };
-
-/** Dosya adı için: Türkçe harfler ASCII'ye, diğer her şey tireye. */
-export function slugify(text: string, max = 60): string {
-  const slug = text
-    .toLocaleLowerCase("tr")
-    .replace(/[çğıöşüâîû]/g, (c) => TR_ASCII[c] ?? c)
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, max)
-    .replace(/-+$/g, "");
-  return slug || "rapor";
-}
+export { slugify } from "@/lib/slug";
 
 export function lectureReportCsv(lecture: Lecture, report: LectureReport): CsvExport {
   return {

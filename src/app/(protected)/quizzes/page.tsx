@@ -5,18 +5,11 @@ import { NineFieldClinicalQuestion, DoctorQuizAttemptLog } from "@/lib/quiz-pars
 import { DoctorGrowthDashboard } from "@/components/quizzes/DoctorGrowthDashboard";
 import { ClinicalExamRunner } from "@/components/quizzes/ClinicalExamRunner";
 import { InstantFeedbackReport } from "@/components/quizzes/InstantFeedbackReport";
-import { AdminQuizStudio } from "@/components/quizzes/AdminQuizStudio";
-import { AdminCentralAnalytics } from "@/components/quizzes/AdminCentralAnalytics";
+import { QuizAdmin } from "@/components/quizzes/admin/QuizAdmin";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 import type { ClinicMemberSession } from "@/lib/auth/types";
-import {
-  toUserMessage,
-  invokeWithFallback,
-  saveQuizDraft,
-  publishQuiz,
-  startQuizAttempt,
-  submitQuizAttempt,
-} from "@/lib/firebase/callables";
+import { toUserMessage, invokeWithFallback, startQuizAttempt, submitQuizAttempt } from "@/lib/firebase/callables";
 
 const INITIAL_ACTIVE_QUESTIONS: NineFieldClinicalQuestion[] = [
   {
@@ -101,37 +94,39 @@ const FALLBACK_USER_SESSION: ClinicMemberSession = {
 };
 
 /**
- * MODÜL 4 — ONLINE QUIZ VE KLİNİK VAKA DEĞERLENDİRME SAYFASI (/quizzes)
- *
- * ROL AYRIMI:
- * - User (`role === "user"`): YALNIZCA yayındaki sınava katılır, sınav sorularını çözer, anında
- *   `Feedback_Text` karnesini görür ve kendi eski + şimdiki sınavlarının loglarını kişisel
- *   dashboard (`DoctorGrowthDashboard`) üzerinden takip eder. Hiçbir Admin yetkisi veya sekmesi görmez.
- * - Admin (`role === "admin"`): 9 sütunlu CSV dosyası yükler, sınavı önizler, sınav süresini (dk)
- *   belirler, yayına alır (`AdminQuizStudio`) ve tüm kullanıcıların + tüm sınavların loglarını
- *   merkezi dashboard (`AdminCentralAnalytics`) üzerinden takip eder.
+ * Sınavlar (/quizzes). Eğitim sorumlusu: sınav stüdyosu (F5.2; gerçek veri, callable'lar).
+ * Hekim: GEÇİCİ olarak eski akış (F5.3/F5.4'te gerçek veriye geçer).
  */
 export default function OnlineQuizzesPage() {
+  const { session } = useClinicSession();
+  if (!session) return null;
+  if (session.role === "admin") {
+    return (
+      <>
+        <PageHeader
+          title="Sınav yönetimi"
+          description="CSV ile sınav hazırlayın, önizleyin, yayınlayın ve kapatın. Puanlama sunucuda yapılır."
+        />
+        <QuizAdmin />
+      </>
+    );
+  }
+  return <LegacyDoctorQuizzes />;
+}
+
+/**
+ * GEÇİCİ: hekim sınav akışı hâlâ eski (mock karışık) koddur; F5.3 (sınav ekranı) ve F5.4 (hekim paneli,
+ * karne) ile gerçek veriye geçer ve bu dosya mock bekçisi izin listesinden çıkar.
+ */
+function LegacyDoctorQuizzes() {
   const { session: ctxSession } = useClinicSession();
   const activeSession = ctxSession ?? FALLBACK_USER_SESSION;
-  const isAdmin = activeSession.role === "admin";
+  const isAdmin = false;
 
   const [userStage, setUserStage] = useState<"dashboard" | "exam" | "feedback">("dashboard");
-  const [activeQuizTitle, setActiveQuizTitle] = useState<string>(
-    "Kasım 2026 — 1. Hafta Çocuk Acil, Kawasaki ve Solunum Acilleri Sınavı"
-  );
-  const [activeQuizDurationMinutes, setActiveQuizDurationMinutes] = useState<number>(15);
-  const [activeQuestions, setActiveQuestions] = useState<NineFieldClinicalQuestion[]>(INITIAL_ACTIVE_QUESTIONS);
-  const [archivedQuestions, setArchivedQuestions] = useState<
-    Array<NineFieldClinicalQuestion & { sourceQuizTitle: string; archivedAt: string }>
-  >([
-    {
-      ...INITIAL_ACTIVE_QUESTIONS[0],
-      id: "arch_oct_1",
-      sourceQuizTitle: "Ekim 2026 — Yenidoğan ve Sıvı Elektrolit Sınavı",
-      archivedAt: "2026-10-28",
-    },
-  ]);
+  const activeQuizTitle = "Kasım 2026 — 1. Hafta Çocuk Acil, Kawasaki ve Solunum Acilleri Sınavı";
+  const activeQuizDurationMinutes = 15;
+  const activeQuestions: NineFieldClinicalQuestion[] = INITIAL_ACTIVE_QUESTIONS;
 
   const [allAttempts, setAllAttempts] = useState<DoctorQuizAttemptLog[]>([
     {
@@ -209,50 +204,7 @@ export default function OnlineQuizzesPage() {
         </div>
       )}
 
-      {isAdmin ? (
-        inspectedAttempt ? (
-          <InstantFeedbackReport attempt={inspectedAttempt} onBackToDashboard={() => setInspectedAttempt(null)} />
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.35rem" }}>
-            <AdminCentralAnalytics allAttempts={allAttempts} onInspectAttempt={(att) => openAttemptReport(att)} />
-            <AdminQuizStudio
-              activeQuizTitle={activeQuizTitle}
-              activeQuizDurationMinutes={activeQuizDurationMinutes}
-              activeQuestions={activeQuestions}
-              archivedQuestions={archivedQuestions}
-              onPublishQuizFromCsv={async (newTitle, durationMins, newQuestions) => {
-                const { data } = await invokeWithFallback(
-                  () =>
-                    saveQuizDraft({
-                      title: newTitle,
-                      durationMinutes: durationMins,
-                      closesAtMs: null,
-                      sourceFileName: "klinik_vaka_sinavi.csv",
-                      questions: newQuestions,
-                    }),
-                  async () => ({ quizId: `quiz_${Date.now()}`, questionCount: newQuestions.length })
-                );
-                await invokeWithFallback(
-                  () => publishQuiz({ quizId: data.quizId, durationMinutes: durationMins }),
-                  () => ({ published: true, archivedPreviousCount: 1 })
-                );
-
-                const nowDate = new Date().toISOString().split("T")[0];
-                const movedToArchive = activeQuestions.map((q) => ({
-                  ...q,
-                  id: `arch_${Date.now()}_${q.id}`,
-                  sourceQuizTitle: activeQuizTitle,
-                  archivedAt: nowDate,
-                }));
-                setArchivedQuestions((prev) => [...movedToArchive, ...prev]);
-                setActiveQuizTitle(newTitle);
-                setActiveQuizDurationMinutes(durationMins);
-                setActiveQuestions(newQuestions);
-              }}
-            />
-          </div>
-        )
-      ) : userStage === "exam" ? (
+      {userStage === "exam" ? (
         <ClinicalExamRunner
           quizTitle={activeQuizTitle}
           durationMinutes={activeQuizDurationMinutes}

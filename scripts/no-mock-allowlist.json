@@ -1,6 +1,6 @@
 {
   "$comment": "Geçici izin listesi (REVISION_PLAN D1, F0.5). Yalnızca küçülür; her dosya belirtilen adımda temizlenip buradan çıkarılır. F7.5'te bu dosya silinir.",
-  "src/app/(protected)/quizzes/page.tsx": "F5.2",
+  "src/app/(protected)/quizzes/page.tsx": "F5.4",
   "src/app/(protected)/materials/page.tsx": "F6.2",
   "src/components/materials/AdminMaterialManager.tsx": "F6.2",
   "src/app/(protected)/admin/page.tsx": "F7.1",

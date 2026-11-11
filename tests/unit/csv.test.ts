@@ -45,3 +45,17 @@ describe("sınav şablonu", () => {
     expect(res.questions).toHaveLength(3);
   });
 });
+
+describe("9 sütunlu dışa aktarım (F5.2 arşiv)", () => {
+  it("dışa aktarılan sorular aynen yeniden içe aktarılır (ek sütunlar yok sayılır)", async () => {
+    const { toNineFieldCsvRows, NINE_FIELD_CSV_HEADERS } = await import("@/lib/quiz-parser");
+    const { toCsv } = await import("@/lib/csv");
+    const original = parseNineFieldQuizCsv(buildNineFieldCsvTemplate()).questions;
+    expect(original).toHaveLength(3);
+    const rows = toNineFieldCsvRows(original).map((r) => [...r, "Kaynak sınav; 1", "2026-11-11"]);
+    const text = toCsv([...NINE_FIELD_CSV_HEADERS, "Kaynak sınav", "Arşivlenme"], rows);
+    const again = parseNineFieldQuizCsv(text);
+    expect(again.errors).toEqual([]);
+    expect(again.questions).toEqual(original);
+  });
+});

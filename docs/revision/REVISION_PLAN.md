@@ -66,7 +66,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F4.6 | Yoklama e2e testleri + mock bekçisi temizliği | M | ✅ | §8 |
 | **F5** | **Sınav modülü (gerçek)** | | | |
 | F5.1 | Backend: soruların attempt ile teslimi, `revealPolicy`, taslak kayıt, transaction | L | ✅ | C3, C7, S6, S7 |
-| F5.2 | Admin sınav stüdyosu (taslak, yayın, kapatma, görsel yükleme, arşiv) | L | ⬜ | C3 |
+| F5.2 | Admin sınav stüdyosu (taslak, yayın, kapatma, görsel yükleme, arşiv) | L | ✅ | C3 |
 | F5.3 | Sınav ekranı (sunucu süresi, kalıcı yanıtlar, görseller, uyarılar) | M | ⬜ | C3, C8 (sınav) |
 | F5.4 | Hekim paneli + karne + admin analitiği | M | ⬜ | C3, Kullanılabilirlik |
 | F5.5 | Sınav testleri + mock bekçisi temizliği | M | ⬜ | §8 |
@@ -101,18 +101,17 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F5.1. Sınav backend'i: girişimle gelen sorular, revealPolicy + revealAt, taslak CRUD, ara kayıt, transaction'lı teslim, otomatik teslim ve kapanış zamanlayıcısı. Seed gerçek callable'larla. Testler: unit 200, rules 56, functions 92, e2e 68 (+2 ekran boyutuna özel atlanan).
+- **Son tamamlanan adım:** F5.2. Admin sınav stüdyosu: liste, yayın (force onayı), kapatma, taslak düzenleme/silme, CSV içe aktarma + önizleme, görsel yükleme, arşiv + içe aktarılabilir CSV. Testler: unit 209, rules 56, functions 92, e2e 74 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F5.2 (L) admin sınav stüdyosu (bkz. §F5.2). `src/app/(protected)/quizzes/page.tsx` allowlist'te (mock karışık); F5.2 ve F5.3 bu sayfayı gerçek veriye geçirir.
-  - Liste: `quizzes` (taslak/yayında/kapalı; admin okur) ve `attemptCount`.
-  - CSV yükleme: önizleme `parseNineFieldQuizCsv`, sunucuyla aynı şema.
-  - Taslak: düzenle (`updateQuizDraft`) ve sil (`deleteQuizDraft`, onaylı).
-  - Görsel yükleme `quiz_media/` (Storage kuralı ve `QUIZ_MEDIA_UPLOAD` sabitleri hazır).
-  - Yayın: süre, kapanış, revealPolicy seçilir. `{published:false, inProgressCount}` gelirse `ConfirmDialog` ("X kişi devam ediyor") ve `force` ile tekrar çağrı.
-  - Kapatma: `closeQuiz`; `revealAtMs` gösterilir.
-  - Arşiv: `quiz_question_archive` (admin okur).
-  - Analitik: girişimler `quiz_attempts where quizId ==` (indeks var), uid'e göre gruplanır (AUDIT). Karne `getAttemptReport` (admin her zaman tam).
-  - Seed'de 1 kapanmış sınav (3 girişim) ve 1 taslak var. e2e taslağı yayınlayıp kapatabilir.
+- **Sıradaki iş:** F5.3 (M) sınav ekranı (bkz. §F5.3). Hekim tarafı `quizzes/page.tsx → LegacyDoctorQuizzes` (mock; `ClinicalExamRunner`, `INITIAL_ACTIVE_QUESTIONS`).
+  - Yayındaki sınav: `quizzes where status == published` (kurallar hekime açık).
+  - `startQuizAttempt` → sorular + `deadlineMs` + `savedResponses`. Countdown `deadlineMs` ile.
+  - `saveAttemptDraft` ≈3 sn debounce; sayfa yenilenince devam.
+  - Görseller `QuizImage` (F5.2) + büyütme. Süre uyarıları: 5 dk ve 1 dk, `aria-live`.
+  - Süre bitince otomatik teslim; `submitting` kilidi. "Sınavdan ayrıl" onayı ("süre devam eder").
+  - `fieldset/legend`; gezgin `aria-label="Soru 3, yanıtlandı"`; `useIdleExempt()`.
+  - Teslim sonrası yanıt: `revealed=false` ise "Doğru cevaplar sınav kapanınca açılır" (F5.4 karnesi ayrıntılı).
+  - F5.4'te hekim paneli/karne/analitik ile sayfa izin listesinden çıkar.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -1017,6 +1016,42 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Arşiv `quiz_question_archive` sorgusundan (sayfalı) gelir. CSV dışa aktarım vardır.
   - Banner'lar yalnızca sunucu onayından sonra gösterilir.
   - Önizlemede "Cevap anahtarını göster" varsayılan olarak **kapalı**dır.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **Sayfa:** admin `/quizzes` → `QuizAdmin` (gerçek veri). Sekmeler: Sınavlar | Yeni sınav | Görseller | Arşiv.
+    - Eski `AdminQuizStudio.tsx` ve `AdminCentralAnalytics.tsx` silindi; uydurma `sampleGraded`/mock loglar gitti. Admin analitiği F5.4'te gerçek veriyle gelecek.
+    - **Sapma:** hekim akışı sayfa dosyasında geçici olarak eski haliyle duruyor (`LegacyDoctorQuizzes`, F5.3/F5.4). Bu yüzden `quizzes/page.tsx` izin listesinde kaldı; etiketi F5.2 → F5.4. Liste büyümedi: hâlâ 6 dosya.
+  - **Sınavlar** (`QuizList`): `quizzes orderBy createdAt desc` canlı dinlenir.
+    - Duruma göre süzme (sayılarla). Yayındaki sınav ayrı kartta (katılım, yayın, kapanış).
+    - Taslak: Yayınla / Düzenle / Sil. Yayında: Kapat.
+    - Silme ve kapatma `ConfirmDialog` ile, odak "Vazgeç"te.
+    - Toast yalnızca sunucu yanıtından sonra. Kapatma toast'ı devam eden hekim sayısını ve `revealAt` saatini söyler.
+  - **Yayın diyaloğu:** süre, kapanış (`datetime-local`, yerel saat; gelecekte olmalı) ve sonuç gösterimi seçilir. Sonuç gösterimi radyo grubudur, her seçeneğin sonucu açıklanır.
+    - Sunucu `{published:false, inProgressCount}` dönerse diyalog uyarı gösterir ("N hekim hâlâ sınavda… süreleri dolana kadar teslim edebilir") ve "Yine de yayınla" ile `force: true` çağırır.
+  - **Taslak düzenleme:** başlık ve ayarlar; isteğe bağlı olarak yeni CSV ile soru setinin tamamı değiştirilir (`updateQuizDraft`).
+  - **Yeni sınav** (`QuizImport` + `CsvQuestionsPanel` + `useCsvQuestions`):
+    - Ortak `parseNineFieldQuizCsv`. Hatalar satır/alan/mesaj tablosunda gösterilir.
+    - Storage'da olmayan görseller `listQuizMedia` ile satır numarasıyla, kaydetmeden önce engellenir; sunucu da denetler.
+    - Önizlemede görseller gerçek `<img>` (`getDownloadURL`).
+    - "Cevap anahtarını göster" varsayılan kapalı. Doğru seçenek renge ek olarak "Doğru" metniyle işaretlenir.
+    - Önizleme 20'şer soruyla genişletilir. Şablon indirilebilir.
+  - **Görseller** (`QuizMediaManager`): `uploadBytesResumable` ile çoklu yükleme, dosya başına `<progress>`.
+    - Tür ve boyut `QUIZ_MEDIA_UPLOAD` ile denetlenir (Storage kuralıyla aynı).
+    - Dosya adından güvenli yol üretilir (`quizMediaPath`, CSV yol kuralına uyar).
+    - **Aynı adlı görselin üzerine yazılmaz:** yayındaki sınavın görseli sessizce değişmesin.
+    - Yüklü görseller küçük önizleme ve "Yolu kopyala" ile listelenir.
+  - **Arşiv** (`QuizArchive`): `quiz_question_archive orderBy archivedAt desc`, 50'şer sayfa, yüklenen sayfalarda arama.
+    - CSV dışa aktarımı **içe aktarma biçiminde**: 9 sütun + kaynak sınav + tarih (`toNineFieldCsvRows`). Dosya düzenlenip "Yeni sınav"dan aynen yüklenebilir; gidiş-dönüş birim testi var.
+  - **Ortaklaştırılanlar:** `useFirestoreSnapshot` (`src/hooks`, yoklamadan taşındı), `slugify` (`src/lib/slug.ts`), `QuestionPreview` / `QuizImage` (F5.3 sınav ekranı ve karne de kullanacak).
+  - **Hata eşlemesi:** Storage kodları (`storage/unauthorized` → "dosya türü/boyutu kabul edilmiyor" vb.) ve öneksiz Firestore kodları artık Türkçe; önceden "beklenmeyen hata"ya düşüyorlardı.
+  - **Testler:**
+    - unit +9: ayarlar, `datetime-local` gidiş-dönüş, görsel yolu ve dosya denetimi, doküman eşlemeleri, arşiv CSV gidiş-dönüşü, Storage/Firestore hata eşlemesi.
+    - e2e +3 (`e2e/quiz-admin.spec.ts`, iki ekran boyutu):
+      - Seed listesi ve süzme.
+      - Görsel yükleme; aynı ad ve SVG reddi.
+      - CSV satır hatası ve eksik görsel engeli; önizlemede gerçek görsel; anahtarın varsayılan kapalı olması.
+      - Taslak → düzenle → yayınla. Sınavda hekim varken yeni yayın sunucu onayı ister → "Yine de yayınla" → kapat → arşiv CSV içeriği.
+      - Taslak silme (onaylı, sunucuda silindiği doğrulanır).
+    - Yeni e2e fixture: `findDocIds`.
 
 #### F5.3 Sınav ekranı (M)
 - **Dosyalar:** `src/components/quizzes/exam/*` (eski `ClinicalExamRunner.tsx`)

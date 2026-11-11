@@ -201,6 +201,29 @@ function fromWebAuthnError(err: unknown): AppError | null {
   return known ? new AppError(known[0], known[1]) : null;
 }
 
+/** Storage hataları → Türkçe (F5.2: sınav görseli yükleme). */
+const STORAGE_ERRORS: Record<string, [AppErrorCode, string]> = {
+  "storage/unauthorized": ["permission-denied", "Bu dosya için yetkiniz yok ya da dosya türü/boyutu kabul edilmiyor."],
+  "storage/unauthenticated": ["unauthenticated", DEFAULT_ERROR_MESSAGES.unauthenticated],
+  "storage/object-not-found": ["not-found", "Dosya bulunamadı."],
+  "storage/quota-exceeded": ["resource-exhausted", "Depolama kotası doldu. Platform yöneticisine bildirin."],
+  "storage/retry-limit-exceeded": ["unavailable", DEFAULT_ERROR_MESSAGES.unavailable],
+  "storage/canceled": ["failed-precondition", "Yükleme iptal edildi."],
+};
+
+/** Firestore istemci hata kodları önek taşımaz ("permission-denied" gibi); ortak kodlar varsayılan metne eşlenir. */
+const FIRESTORE_CODES = new Set<AppErrorCode>([
+  "invalid-argument",
+  "failed-precondition",
+  "permission-denied",
+  "unauthenticated",
+  "not-found",
+  "already-exists",
+  "deadline-exceeded",
+  "resource-exhausted",
+  "unavailable",
+]);
+
 /** Herhangi bir hatayı `AppError`'a çevirir. */
 export function toAppError(err: unknown): AppError {
   if (err instanceof AppError) return err;
@@ -214,6 +237,13 @@ export function toAppError(err: unknown): AppError {
   }
   if (typeof e?.code === "string" && e.code.startsWith("auth/")) {
     return fromAuthError(e.code);
+  }
+  if (typeof e?.code === "string" && e.code.startsWith("storage/")) {
+    const known = STORAGE_ERRORS[e.code];
+    return known ? new AppError(known[0], known[1]) : new AppError("internal", DEFAULT_ERROR_MESSAGES.internal);
+  }
+  if (typeof e?.code === "string" && FIRESTORE_CODES.has(e.code as AppErrorCode) && e.name === "FirebaseError") {
+    return new AppError(e.code as AppErrorCode, DEFAULT_ERROR_MESSAGES[e.code as AppErrorCode]);
   }
   const webAuthn = fromWebAuthnError(err);
   if (webAuthn) return webAuthn;

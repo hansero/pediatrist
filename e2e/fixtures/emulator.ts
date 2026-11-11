@@ -161,3 +161,19 @@ export async function countAuditLogs(action: string, resourceId: string): Promis
   const rows = (await res.json()) as Array<{ document?: unknown }>;
   return rows.filter((r) => r.document).length;
 }
+
+/** Bir koleksiyonda alanı eşleşen dokümanların kimlikleri (ör. arayüzde görünmeyen sınav kimliği). */
+export async function findDocIds(collectionId: string, field: string, value: string): Promise<string[]> {
+  const res = await fetch(`${BASE}:runQuery`, {
+    method: "POST",
+    headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId }],
+        where: { fieldFilter: { field: { fieldPath: field }, op: "EQUAL", value: { stringValue: value } } },
+      },
+    }),
+  });
+  const rows = (await res.json()) as Array<{ document?: { name: string } }>;
+  return rows.flatMap((r) => (r.document ? [r.document.name.split("/").pop()!] : []));
+}
