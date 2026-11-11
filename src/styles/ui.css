@@ -1161,3 +1161,26 @@
   pointer-events: none;
   overflow-wrap: anywhere;
 }
+
+/* --- Yönetim paneli (F7.1) --- */
+.action-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.action-list > .btn {
+  justify-content: flex-start;
+  min-height: 44px;
+}
+
+.break-all {
+  overflow-wrap: anywhere;
+}
+
+.invite-code {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}

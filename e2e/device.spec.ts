@@ -1,3 +1,4 @@
+import { runMemberAction } from "./fixtures/admin";
 import { ACCOUNTS, loginAs } from "./fixtures/auth";
 import { deleteField, hasField } from "./fixtures/emulator";
 import { expect, guardedContext, test } from "./fixtures/test";
@@ -38,8 +39,7 @@ test("yoklama cihazı: passkey kaydı sunucuda doğrulanır; admin sıfırlayın
   const adminCtx = await guardedContext(await browser.newContext());
   const admin = await adminCtx.newPage();
   await loginAs(admin, ACCOUNTS.admin);
-  await admin.goto("/admin");
-  await admin.locator(`#admin-reset-dev-${UID}`).click();
+  await runMemberAction(admin, EMAIL, "Yoklama cihazını sıfırla", "Cihazı sıfırla", "yoklama cihazı sıfırlandı");
   await expect(user).toHaveURL(/\/login\?neden=oturum-sonlandi$/, { timeout: 15_000 });
   await expect.poll(() => hasField(`users/${UID}`, "webauthn")).toBe(false);
 

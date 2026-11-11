@@ -76,8 +76,8 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F6.3 | Görüntüleyici (pdf.js / video) + ilerleme takibi | L | ✅ | C11, S13 |
 | F6.4 | Materyal testleri + mock bekçisi temizliği | S | ✅ | §8 |
 | **F7** | **Admin paneli, dashboard, hesaplayıcılar** | | | |
-| F7.1 | Üye paneli (onay/askı/rol, onay diyalogları) + davet yönetimi | M | ⬜ | C10, Kullanılabilirlik |
-| F7.2 | Denetim kaydı görüntüleyici (gerçek `audit_logs`) | S | ⬜ | C10 |
+| F7.1 | Üye paneli (onay/askı/rol, onay diyalogları) + davet yönetimi | M | ✅ | C10, Kullanılabilirlik |
+| F7.2 | Denetim kaydı görüntüleyici (gerçek `audit_logs`) | S | ✅ | C10 |
 | F7.3 | Durum odaklı dashboard + gerçek KPI'lar | M | ⬜ | C10, Görsel hiyerarşi |
 | F7.4 | Hesaplayıcılar: dürüst "yakında" durumu + `calculators_config` | S | ⬜ | Kullanılabilirlik |
 | F7.5 | `invokeWithFallback` ve tüm fallback'lerin silinmesi; bekçi listesi boş | S | ⬜ | C1 (final) |
@@ -101,17 +101,17 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F6.3 + F6.4. **F6 materyal modülü tamamlandı.** pdf.js görüntüleyici + yakılı filigran, video/görsel, görünür süre ve sayfa ilerlemesi, kurallı "tamamlandı", indirme izni; mock silindi. Testler: unit 231, rules 57, functions 98, e2e 89 (+3 bilinçli atlanan).
+- **Son tamamlanan adım:** F7.1 + F7.2. Yönetim paneli gerçek veriyle çalışıyor: canlı üye listesi; onay, yeniden etkinleştirme, askı, rol ve kıdem işlemleri; cihaz ve iki aşamalı doğrulama sıfırlama (`resetMemberMfa`); davetler; sayfalı ve süzgeçli denetim kayıtları. Mock silindi. Testler: unit 235, rules 57, functions 100, e2e E2E_COUNT.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F7 (bkz. §F7). İzin listesinde kalan 3 dosya: `admin/page.tsx` (F7.1), `dashboard/page.tsx` (F7.3), `lib/firebase/callables.ts` (`invokeWithFallback`, F7.5).
-  - **Önce F7.1 admin paneli:** `admin/page.tsx` mock üyeler + `invokeWithFallback` ile iyimser başarı.
-    - Gerçek `users` canlı listesi; `updateMemberAccess` sunucu sonucu beklenerek.
-    - Onayla / yeniden etkinleştir ayrımı; askıya al; admin yap (yazarak onay); cihaz ve MFA sıfırlama.
-    - Davetler (`createInvitation` / `revokeInvitation`).
-    - Denetim kayıtları: `audit_logs orderBy timestamp desc`, sayfalı, önem süzgeci.
-  - Sonra F7.3 dashboard (durum odaklı), F7.4 hesaplayıcılar ("Yakında", D8 + `calculators_config`), F7.5 `invokeWithFallback` silinir ve izin listesi dosyası kaldırılır.
+- **Sıradaki iş:** F7.3 dashboard (bkz. §F7.3). `dashboard/page.tsx` sabit KPI'lar ("76 / 100", "1 Hekim", "Canlı Ders Açık") ile izin listesinde.
+  - Ana kart duruma göre tek bir birincil eylem gösterir: canlı ders → "Yoklamaya katıl"; yayında sınav → "Sınava başla / devam et" (`resumableAttempt` hazır); yoksa zorunlu materyal.
+  - KPI'lar `getCountFromServer` / `getAggregateFromServer`:
+    - Admin: bekleyen üye, son 30 gün katılım oranı (D22 paydası), aktif sınav katılımı.
+    - Hekim: sınav ortalaması, tamamlanan zorunlu materyal, katılım oranı.
+    - Gerekebilecek indeksleri `firestore.indexes.json`'a ekle. Her KPI'nın boş ve yükleniyor hali olmalı.
+  - Sonra F7.4 hesaplayıcılar ("Yakında", D8 + `updateCalculatorConfig` callable). Ardından F7.5: `invokeWithFallback` silinir, izin listesi dosyası kaldırılır.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
-- **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
+- **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
 ---
 
@@ -1295,6 +1295,30 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `audit_logs orderBy timestamp desc limit 50` + "daha fazla" (cursor) ile sayfalama.
   - Önem derecesi ve modül filtreleri.
   - İstemcide denetim kaydı üretimi (`recordAudit`) **silinir**.
+
+- **✅ Uygulanan F7.1 + F7.2 (sapmalar ve eklemeler):**
+  - **Sunucu:** yeni `resetMemberMfa` callable'ı (`members.ts`, `defineCallable(..., "admin")`).
+    - Admin SDK ile bütün faktörleri siler (`multiFactor.enrolledFactors: null`).
+    - Aynı batch'te `tokensValidAfter` ve `MEMBER_MFA_RESET` (WARN, `metadata.factorsRemoved`) yazılır; ardından refresh token'lar iptal edilir.
+    - Kendi hesabında `failed-precondition`, olmayan kullanıcıda `not-found`.
+    - Sözleşme `@shared/schemas` `CALLABLES`'ta. Functions testleri 98 → 100 (+ faktör sayısı, self, yetkisiz, olmayan kullanıcı). Auth emülatörü MFA faktöründe `uid` istiyor.
+  - **İndeksler:** `audit_logs (severity, timestamp desc)` ve `(resourceType, severity, timestamp desc)`. Süzgeçler sunucu sorgusudur, istemcide süzme yok.
+  - **İstemci veri katmanı:** `src/lib/admin/members.ts`.
+    - Üyeler (canlı, 1000 sınırı, bekleyenler üstte), `availableActions` (onayla/yeniden etkinleştir ayrı; kendi satırında rol/durum/MFA yok), davet durumu (kullanıldı > iptal > süresi doldu > geçerli).
+    - Denetim sayfası (50'şer, `startAfter` cursor) ve bütün sunucu eylemlerinin Türkçe etiketi.
+    - Birim testi, `functions/src`'deki her eylem dizesinin bir etiketi olduğunu denetler (yeni eylem etiketsiz kalamaz). Unit 231 → 235.
+  - **Arayüz:** `components/admin/{AdminPanel, members/MemberList, invitations/Invitations, audit/AuditLog}`, sekmeler: Üyeler | Davetler | Denetim kayıtları.
+    - Satır başına tek "İşlemler" düğmesi → işlem menüsü (diyalog) → kişiyi ve sonucu söyleyen `ConfirmDialog` → sunucu yanıtından sonra toast. Hata diyalogda kalır.
+    - Eğitim sorumlusu yapma: ad yazılmadan (Türkçe küçük harf/boşluk duyarsız) buton kapalı. Kıdem değiştirme: etiketli `select` diyalogu.
+    - "Yoklama cihazını sıfırla" yalnızca kayıtlı passkey varsa görünür.
+    - Davetler: kod sunucuda üretilir, ekranda gösterilir ve kopyalanır (e-posta gönderimi yok; kod kurum içi kanaldan iletilir). İptal `ConfirmDialog` ile.
+    - Denetim: önem + modül süzgeçleri, "Daha fazla yükle", ayrıntı (`metadata`) `<details>` ile.
+  - **Mock temizliği:** eski `admin/page.tsx` (uydurma üyeler/kayıtlar, istemcide `recordAudit`, `invokeWithFallback`, satır içi stiller) silindi. **`admin/page.tsx` izin listesinden çıktı** (izin listesi 2 dosya: F7.3, F7.5).
+  - **e2e:** yeni `admin-panel.spec.ts` (3 test × 2 proje) ve `fixtures/admin.ts`.
+    - `createPendingMember` Auth emülatörü REST + `users` dokümanıyla kendi üyesini kurar; seed hesapları değişmez.
+    - Yaşam döngüsü: onay → adı yazarak eğitim sorumlusu → yetki kaldırma → kıdem → askı → yeniden etkinleştirme → MFA sıfırlama. Her adım emülatörden doğrulanır.
+    - Kendi satırında işlem yok. Davet: geçersiz e-postada sunucu hatası, oluştur → kod → iptal. Denetim önem süzgeci.
+    - `session.spec` ve `device.spec` eski `#admin-…` kimlikleri yerine menüyü kullanıyor. `session.spec`'te cihaz sıfırlama yerine MFA sıfırlama oturumu sonlandırır: kayıtsız cihazda "cihazı sıfırla" artık gösterilmiyor; cihaz sıfırlamayı `device.spec` kayıtlı passkey ile sınar.
 
 #### F7.3 Dashboard (M)
 - **Dosyalar:** `src/app/(protected)/dashboard/page.tsx`, `src/components/dashboard/*`

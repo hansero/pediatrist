@@ -2,12 +2,13 @@ import { expect, guardedContext, test } from "./fixtures/test";
 import { ACCOUNTS, loginAs } from "./fixtures/auth";
 import { findUserProfileByEmail } from "./fixtures/emulator";
 import { REGISTRATION_PASSWORD, fillRegistration } from "./fixtures/registration";
+import { runMemberAction } from "./fixtures/admin";
 
 /**
  * Canlı oturum (F2.4): asistanın ekranı, admin'in başka bir tarayıcıda yaptığı değişikliğe
  * SAYFA YENİLENMEDEN tepki verir. Seed hesaplarını bozmamak için test kendi kullanıcısını oluşturur.
  */
-test("onay → canlı aktifleşme; cihaz sıfırlama → oturum sonlanır; askıya alma → oturum kapanır", async ({
+test("onay → canlı aktifleşme; iki aşamalı doğrulama sıfırlama → oturum sonlanır; askıya alma → oturum kapanır", async ({
   browser,
 }, testInfo) => {
   const email = `canli.${testInfo.project.name}.${Date.now()}@example.test`;
@@ -22,17 +23,22 @@ test("onay → canlı aktifleşme; cihaz sıfırlama → oturum sonlanır; askı
   await fillRegistration(user, email, { fullName });
   await expect(user).toHaveURL(/\/dashboard$/);
   await expect(user.getByRole("heading", { name: "Başvurunuz onay bekliyor" })).toBeVisible();
-  const uid = String((await findUserProfileByEmail(email))?.uid);
 
   // 2) Admin kendi tarayıcısında onaylar → asistanın ekranı yenilenmeden panele geçer.
   await loginAs(admin, ACCOUNTS.admin);
-  await admin.goto("/admin");
-  await admin.locator(`#admin-approve-${uid}`).click();
+  await runMemberAction(admin, email, "Üyeliği onayla", "Onayla", `${fullName} onaylandı.`);
   await expect(user.getByRole("heading", { level: 1 })).toContainText(fullName, { timeout: 15_000 });
   await expect(user).toHaveURL(/\/dashboard$/);
 
-  // 3) Admin cihaz eşleşmesini sıfırlar → oturum iptal zamanı yazılır → asistanın oturumu kapanır.
-  await admin.locator(`#admin-reset-dev-${uid}`).click();
+  // 3) Admin iki aşamalı doğrulamayı sıfırlar (F7.1) → oturum iptal zamanı yazılır → asistanın oturumu kapanır.
+  //    (Cihaz sıfırlama aynı iptali yapar; device.spec kayıtlı passkey ile sınar.)
+  await runMemberAction(
+    admin,
+    email,
+    "İki aşamalı doğrulamayı sıfırla",
+    "Doğrulamayı sıfırla",
+    "iki aşamalı doğrulaması sıfırlandı"
+  );
   await expect(user).toHaveURL(/\/login\?neden=oturum-sonlandi$/, { timeout: 15_000 });
   await expect(user.getByRole("status").filter({ hasText: "güvenlik nedeniyle sonlandırıldı" })).toBeVisible();
 
@@ -42,7 +48,7 @@ test("onay → canlı aktifleşme; cihaz sıfırlama → oturum sonlanır; askı
   await expect(user.getByRole("heading", { level: 1 })).toContainText(fullName);
 
   // 5) Admin askıya alır → asistanın oturumu anında kapanır.
-  await admin.locator(`#admin-suspend-${uid}`).click();
+  await runMemberAction(admin, email, "Askıya al", "Askıya al", `${fullName} askıya alındı.`);
   await expect(user).toHaveURL(/\/login\?neden=askida$/, { timeout: 15_000 });
   await expect(user.getByRole("status").filter({ hasText: "askıya alındı" })).toBeVisible();
   expect(await findUserProfileByEmail(email)).toMatchObject({ status: "suspended" });

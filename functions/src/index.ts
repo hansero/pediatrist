@@ -8,6 +8,7 @@ export {
   completeRegistration,
   createInvitation,
   revokeInvitation,
+  resetMemberMfa,
 } from "./members";
 export {
   startLectureSession,

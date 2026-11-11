@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   completeRegistration,
   createInvitation,
+  resetMemberMfa,
   revokeInvitation,
   syncUserClaims,
   updateMemberAccess,
@@ -389,5 +390,43 @@ describe("syncUserClaims", () => {
     const base = { role: "user", status: "active", residencyYear: 1 };
     await run(event("u1", base, { ...base, tokensValidAfter: 123 }));
     expect(await auditActions()).not.toContain("MEMBER_CLAIMS_SYNCED");
+  });
+});
+
+describe("resetMemberMfa (F7.1)", () => {
+  beforeEach(async () => {
+    await createMember("admin", "admin", "active");
+    await createMember("r1", "user", "active");
+  });
+
+  it("üyenin ikinci adım faktörleri silinir, oturumları iptal edilir, denetim kaydı düşer", async () => {
+    // Auth emülatörü yalnızca telefon faktörünü tanır (D5); silme davranışı faktör türünden bağımsızdır.
+    await getAuth().updateUser("r1", {
+      emailVerified: true,
+      multiFactor: {
+        enrolledFactors: [{ uid: "phone-1", factorId: "phone", phoneNumber: "+905551112233", displayName: "Telefon" }],
+      },
+    });
+    const before = Math.floor(Date.now() / 1000);
+    const res = await resetMemberMfa.run(callableRequest({ targetUid: "r1" }, asAdmin()));
+    expect(CALLABLES.resetMemberMfa.response.parse(res)).toEqual({ reset: true, factorsRemoved: 1 });
+    expect((await getAuth().getUser("r1")).multiFactor?.enrolledFactors ?? []).toHaveLength(0);
+    expect((await getFirestore().doc("users/r1").get()).data()?.tokensValidAfter).toBeGreaterThanOrEqual(before);
+    expect(await auditActions()).toContain("MEMBER_MFA_RESET");
+    // Faktörü olmayan üyede de çalışır (idempotent).
+    expect(await resetMemberMfa.run(callableRequest({ targetUid: "r1" }, asAdmin()))).toEqual({
+      reset: true,
+      factorsRemoved: 0,
+    });
+  });
+
+  it("admin kendi faktörünü buradan sıfırlayamaz; hekim çağıramaz; olmayan üye bulunamadı", async () => {
+    expect((await errorOf(resetMemberMfa.run(callableRequest({ targetUid: "admin" }, asAdmin())))).code).toBe(
+      "failed-precondition"
+    );
+    expect(await errorCode(resetMemberMfa.run(callableRequest({ targetUid: "r1" }, asMember("r1"))))).toBe(
+      "permission-denied"
+    );
+    expect(await errorCode(resetMemberMfa.run(callableRequest({ targetUid: "yok" }, asAdmin())))).toBe("not-found");
   });
 });

@@ -363,3 +363,43 @@ export const revokeInvitation = defineCallable("revokeInvitation", "admin", asyn
   });
   return { revoked: true as const };
 });
+
+// =====================================================================================
+// Admin: iki aşamalı doğrulamayı sıfırla (F7.1)
+// =====================================================================================
+
+/**
+ * Telefonunu kaybeden üyenin TOTP faktörleri Admin SDK ile silinir; oturumları iptal edilir (`tokensValidAfter`
+ * + yenileme token'ları). Kendi faktörünü sıfırlamak için admin bu yolu kullanamaz (hesap ele geçirilmiş bir
+ * admin oturumunun kendi MFA'sını kaldırması engellenir; kendi güvenlik sayfası yeniden giriş ister).
+ */
+export const resetMemberMfa = defineCallable("resetMemberMfa", "admin", async (data, actor) => {
+  if (data.targetUid === actor.uid) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Kendi iki aşamalı doğrulamanızı buradan sıfırlayamazsınız. Hesap güvenliği sayfasını kullanın veya başka bir Eğitim Sorumlusuna başvurun."
+    );
+  }
+  let factorsRemoved = 0;
+  try {
+    const user = await getAuth().getUser(data.targetUid);
+    factorsRemoved = user.multiFactor?.enrolledFactors.length ?? 0;
+  } catch {
+    throw new HttpsError("not-found", "Kullanıcı bulunamadı.");
+  }
+  await getAuth().updateUser(data.targetUid, { multiFactor: { enrolledFactors: null } });
+  const batch = getFirestore().batch();
+  batch.set(users().doc(data.targetUid), { tokensValidAfter: nowSeconds() }, { merge: true });
+  auditIn(batch, {
+    actorUid: actor.uid,
+    actorEmail: actor.email,
+    action: "MEMBER_MFA_RESET",
+    resourceType: "admin",
+    resourceId: data.targetUid,
+    severity: "WARN",
+    metadata: { factorsRemoved },
+  });
+  await batch.commit();
+  await getAuth().revokeRefreshTokens(data.targetUid);
+  return { reset: true as const, factorsRemoved };
+});

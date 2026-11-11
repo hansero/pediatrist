@@ -1,6 +1,5 @@
 {
   "$comment": "Geçici izin listesi (REVISION_PLAN D1, F0.5). Yalnızca küçülür; her dosya belirtilen adımda temizlenip buradan çıkarılır. F7.5'te bu dosya silinir.",
-  "src/app/(protected)/admin/page.tsx": "F7.1",
   "src/app/(protected)/dashboard/page.tsx": "F7.3",
   "src/lib/firebase/callables.ts": "F7.5"
 }

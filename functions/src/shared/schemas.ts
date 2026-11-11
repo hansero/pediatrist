@@ -164,6 +164,13 @@ export const CreateInvitationResponse = z.object({
 export const RevokeInvitationRequest = z.object({ invitationId: docId("Davet") });
 export const RevokeInvitationResponse = z.object({ revoked: z.literal(true) });
 
+/**
+ * Admin: üyenin iki aşamalı doğrulama faktörlerini siler (telefonunu kaybeden üye, F3.4 → F7.1). Oturumları iptal
+ * edilir; üye yeniden giriş yapıp Authenticator'ı yeniden kurar (MFA zorunluysa kurulum ekranına yönlenir).
+ */
+export const ResetMemberMfaRequest = z.object({ targetUid: docId("Hedef kullanıcı") });
+export const ResetMemberMfaResponse = z.object({ reset: z.literal(true), factorsRemoved: z.number() });
+
 // --- Yoklama -------------------------------------------------------------------
 
 export const attendanceCode = z
@@ -477,6 +484,7 @@ export const CALLABLES = {
   completeRegistration: { request: CompleteRegistrationRequest, response: CompleteRegistrationResponse },
   createInvitation: { request: CreateInvitationRequest, response: CreateInvitationResponse },
   revokeInvitation: { request: RevokeInvitationRequest, response: RevokeInvitationResponse },
+  resetMemberMfa: { request: ResetMemberMfaRequest, response: ResetMemberMfaResponse },
   startLectureSession: { request: StartLectureSessionRequest, response: StartLectureSessionResponse },
   endLectureSession: { request: EndLectureSessionRequest, response: EndLectureSessionResponse },
   getProjectorCode: { request: GetProjectorCodeRequest, response: GetProjectorCodeResponse },
