@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F7.4. Hesaplayıcılar dürüst "Yakında"; uydurma kurum protokolleri ve "aktif" güvenlik kilidi iddiaları kaldırıldı; protokol notu `updateCalculatorConfig` ile (denetim kaydı). Dört diyalogdaki başlangıç değeri yarışı düzeltildi. Testler: unit 243, rules 57, functions 102, e2e E2E_COUNT.
+- **Son tamamlanan adım:** F7.4. Hesaplayıcılar dürüst "Yakında"; uydurma kurum protokolleri ve "aktif" güvenlik kilidi iddiaları kaldırıldı; protokol notu `updateCalculatorConfig` ile (denetim kaydı). Dört diyalogdaki başlangıç değeri yarışı düzeltildi. Testler: unit 243, rules 57, functions 102, e2e 101 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
 - **Sıradaki iş:** F7.5 fallback temizliği (bkz. §F7.5).
   - `src/lib/firebase/callables.ts`: `invokeWithFallback` (ve kalan `@deprecated` geçiş katmanı) silinir. Çağıran kalmadığını `grep -rn invokeWithFallback src` ile doğrula.
