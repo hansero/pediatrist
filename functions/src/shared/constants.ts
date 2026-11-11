@@ -62,6 +62,14 @@ export type QuestionType = (typeof QUESTION_TYPES)[number];
 /** Süre dolduktan sonra teslim için ağ gecikmesi toleransı. */
 export const QUIZ_SUBMIT_GRACE_MS = 30_000;
 
+/**
+ * Sonuç gösterim politikası (D7): `after_close` (varsayılan) sınav kapanıp son girişimin süresi dolana kadar
+ * yalnızca puan ve doğru/yanlış; `immediate` teslimde tam karne (doğru cevap + Feedback_Text).
+ */
+export const REVEAL_POLICIES = ["after_close", "immediate"] as const;
+export type RevealPolicy = (typeof REVEAL_POLICIES)[number];
+export const DEFAULT_REVEAL_POLICY: RevealPolicy = "after_close";
+
 // --- Materyaller -----------------------------------------------------------
 
 /** Tek kategori listesi: hem yükleme hem filtreleme bunu kullanır (AUDIT kullanılabilirlik bulgusu). */

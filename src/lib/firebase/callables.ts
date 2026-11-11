@@ -89,6 +89,10 @@ export const publishQuiz = bind("publishQuiz");
 export const closeQuiz = bind("closeQuiz");
 export const startQuizAttempt = bind("startQuizAttempt");
 export const submitQuizAttempt = bind("submitQuizAttempt");
+export const updateQuizDraft = bind("updateQuizDraft");
+export const deleteQuizDraft = bind("deleteQuizDraft");
+export const saveAttemptDraft = bind("saveAttemptDraft");
+export const getAttemptReport = bind("getAttemptReport");
 
 /**
  * @deprecated SESSİZ SAHTE BAŞARI (AUDIT C1). Yalnızca henüz yeniden yazılmamış mock sayfalarda duruyor.

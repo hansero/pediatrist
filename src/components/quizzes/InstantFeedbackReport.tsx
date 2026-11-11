@@ -85,7 +85,8 @@ export function InstantFeedbackReport({ attempt, onBackToDashboard }: InstantFee
                 fontSize: "0.84rem",
               }}
             >
-              <strong>Klinik Doğru Yaklaşım / Yanıt:</strong> {item.correctAnswers.join(" | ")}
+              <strong>Klinik Doğru Yaklaşım / Yanıt:</strong>{" "}
+              {item.correctAnswers ? item.correctAnswers.join(" | ") : "Sınav kapandığında görünür."}
             </div>
           </div>
 
@@ -100,7 +101,7 @@ export function InstantFeedbackReport({ attempt, onBackToDashboard }: InstantFee
             }}
           >
             <strong style={{ color: "var(--clinical-primary)" }}>Klinik Öğrenme Noktası:</strong>
-            <p style={{ marginTop: "0.3rem" }}>{item.feedbackText}</p>
+            <p style={{ marginTop: "0.3rem" }}>{item.feedbackText ?? "Sınav kapandığında görünür."}</p>
           </div>
         </article>
       ))}

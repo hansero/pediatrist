@@ -1,12 +1,12 @@
 /**
- * Functions testleri için ortak kurulum. Testler Firestore ve Auth emülatörlerine bağlanır
+ * Functions testleri için ortak kurulum. Testler Firestore, Auth ve Storage emülatörlerine bağlanır
  * (`npm run test:functions` bunları `emulators:exec` ile başlatır ve ortam değişkenlerini ayarlar).
  */
 import { getApps, initializeApp } from "firebase-admin/app";
 
 export const PROJECT_ID = "demo-pediatrist";
 
-for (const key of ["FIRESTORE_EMULATOR_HOST", "FIREBASE_AUTH_EMULATOR_HOST"]) {
+for (const key of ["FIRESTORE_EMULATOR_HOST", "FIREBASE_AUTH_EMULATOR_HOST", "FIREBASE_STORAGE_EMULATOR_HOST"]) {
   if (!process.env[key]) {
     throw new Error(`${key} tanımlı değil. Functions testleri yalnızca 'npm run test:functions' ile çalışır.`);
   }
@@ -27,4 +27,5 @@ process.env.ENFORCE_APP_CHECK = "false";
 process.env.WEBAUTHN_RP_ID = "localhost";
 process.env.WEBAUTHN_ORIGINS = "http://localhost:3100,http://localhost:3000";
 
-if (getApps().length === 0) initializeApp({ projectId: PROJECT_ID });
+// Varsayılan bucket: emülatör çalışma ortamındaki FIREBASE_CONFIG ile aynı (sınav görseli varlık kontrolü, F5.1).
+if (getApps().length === 0) initializeApp({ projectId: PROJECT_ID, storageBucket: `${PROJECT_ID}.appspot.com` });

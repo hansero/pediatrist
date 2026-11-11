@@ -16,6 +16,8 @@ import { KVKK_NOTICE_VERSION } from "./consent";
 import { z } from "./zod";
 import { QuizQuestionInput } from "./quizQuestion";
 import {
+  DEFAULT_REVEAL_POLICY,
+  REVEAL_POLICIES,
   ATTENDANCE_CODE_ALPHABET,
   ATTENDANCE_CODE_LENGTH,
   LIMITS,
@@ -262,37 +264,108 @@ export const MarkAttendanceExcusedResponse = z.object({ ok: z.literal(true) });
 // --- Sınav ----------------------------------------------------------------------
 
 const quizMinutes = intInRange("Sınav süresi (dk)", LIMITS.quizMinutes.min, LIMITS.quizMinutes.max);
+const revealPolicy = z.enum(REVEAL_POLICIES, {
+  error: "Sonuç gösterimi 'after_close' (sınav kapanınca) veya 'immediate' (hemen) olmalıdır.",
+});
+const quizQuestions = z
+  .array(QuizQuestionInput, { error: "Sorular liste olmalıdır." })
+  .min(LIMITS.quizQuestions.min, { error: `Sınav en az ${LIMITS.quizQuestions.min} soru içermelidir.` })
+  .max(LIMITS.quizQuestions.max, { error: `Sınav en fazla ${LIMITS.quizQuestions.max} soru içerebilir.` });
 
 export const SaveQuizDraftRequest = z.object({
   title: requiredText("Sınav başlığı", LIMITS.titleLength),
   durationMinutes: quizMinutes,
   closesAtMs: epochMs("Kapanış zamanı").nullable().optional(),
+  revealPolicy: revealPolicy.optional().default(DEFAULT_REVEAL_POLICY),
   sourceFileName: optionalText("Kaynak dosya adı", LIMITS.fileNameLength),
-  questions: z
-    .array(QuizQuestionInput, { error: "Sorular liste olmalıdır." })
-    .min(LIMITS.quizQuestions.min, { error: `Sınav en az ${LIMITS.quizQuestions.min} soru içermelidir.` })
-    .max(LIMITS.quizQuestions.max, { error: `Sınav en fazla ${LIMITS.quizQuestions.max} soru içerebilir.` }),
+  questions: quizQuestions,
 });
 export const SaveQuizDraftResponse = z.object({ quizId: z.string(), questionCount: z.number() });
 
+/** Yalnızca taslak güncellenir; verilmeyen alanlar değişmez. `questions` verilirse soru seti tamamen değişir. */
+export const UpdateQuizDraftRequest = z.object({
+  quizId: docId("Sınav"),
+  title: requiredText("Sınav başlığı", LIMITS.titleLength).optional(),
+  durationMinutes: quizMinutes.optional(),
+  closesAtMs: epochMs("Kapanış zamanı").nullable().optional(),
+  revealPolicy: revealPolicy.optional(),
+  sourceFileName: z
+    .string({ error: "Kaynak dosya adı metin olmalıdır." })
+    .trim()
+    .max(LIMITS.fileNameLength, { error: `Kaynak dosya adı en fazla ${LIMITS.fileNameLength} karakter olabilir.` })
+    .optional(),
+  questions: quizQuestions.optional(),
+});
+export const UpdateQuizDraftResponse = z.object({ quizId: z.string(), questionCount: z.number() });
+
+export const DeleteQuizDraftRequest = z.object({ quizId: docId("Sınav") });
+export const DeleteQuizDraftResponse = z.object({ deleted: z.literal(true) });
+
+/**
+ * Yayın: yayındaki sınav kapatılıp arşivlenir. O sınavda devam eden girişim varsa ve `force` verilmemişse yayın
+ * YAPILMAZ; sayı döner, istemci onay alıp `force: true` ile tekrar çağırır (devam edenler süreleri dolana
+ * kadar teslim edebilir).
+ */
 export const PublishQuizRequest = z.object({
   quizId: docId("Sınav"),
   durationMinutes: quizMinutes.optional(),
   closesAtMs: epochMs("Kapanış zamanı").nullable().optional(),
+  revealPolicy: revealPolicy.optional(),
+  force: z.boolean({ error: "force evet/hayır olmalıdır." }).optional().default(false),
 });
-export const PublishQuizResponse = z.object({ published: z.literal(true), archivedPreviousCount: z.number() });
+export const PublishQuizResponse = z.discriminatedUnion("published", [
+  z.object({ published: z.literal(true), archivedPreviousCount: z.number() }),
+  z.object({ published: z.literal(false), inProgressCount: z.number(), currentQuizTitle: z.string() }),
+]);
 
 export const CloseQuizRequest = z.object({ quizId: docId("Sınav") });
-export const CloseQuizResponse = z.object({ closed: z.literal(true) });
+export const CloseQuizResponse = z.object({
+  closed: z.literal(true),
+  /** Kapanışta süresi devam eden girişim sayısı (süreleri dolana kadar teslim edebilirler). */
+  inProgressCount: z.number(),
+  /** `after_close` karnesinin açılacağı an. */
+  revealAtMs: z.number(),
+});
+
+/** Hekimin sınavda gördüğü soru: 1–7. alanlar; doğru cevap ve feedback YOK. Görsel Storage yolu olarak gelir. */
+export const AttemptQuestionSchema = z.object({
+  questionId: z.string(),
+  orderIndex: z.number(),
+  caseContent: z.string(),
+  imagePath: z.string(),
+  questionText: z.string(),
+  questionType: z.enum(QUESTION_TYPES),
+  maxLength: z.number(),
+  options: z.array(z.string()),
+});
+
+/** Soru kimliği → yanıt(lar). Kayıt ve teslimde aynı biçim. */
+const attemptResponses = z
+  .record(
+    z.string().max(LIMITS.idLength),
+    z.array(z.string().max(LIMITS.textAnswerLength.max)).max(20, { error: "Bir soruya en fazla 20 yanıt." }),
+    { error: "Yanıtlar geçersiz." }
+  )
+  .refine((r) => Object.keys(r).length <= LIMITS.quizQuestions.max, { error: "Yanıtlar geçersiz." });
 
 export const StartQuizAttemptRequest = z.object({ quizId: docId("Sınav") });
-export const StartQuizAttemptResponse = z.object({ deadlineMs: z.number(), resumed: z.boolean() });
+export const StartQuizAttemptResponse = z.object({
+  attemptId: z.string(),
+  quizTitle: z.string(),
+  deadlineMs: z.number(),
+  resumed: z.boolean(),
+  revealPolicy,
+  questions: z.array(AttemptQuestionSchema),
+  /** Süre içinde kaydedilmiş yanıtlar (devam ederken geri yüklenir). */
+  savedResponses: z.record(z.string(), z.array(z.string())),
+});
+
+export const SaveAttemptDraftRequest = z.object({ quizId: docId("Sınav"), responses: attemptResponses });
+export const SaveAttemptDraftResponse = z.object({ savedAtMs: z.number() });
 
 export const SubmitQuizAttemptRequest = z.object({
   quizId: docId("Sınav"),
-  responses: z.record(z.string().max(LIMITS.idLength), z.array(z.string().max(LIMITS.textAnswerLength.max)).max(20), {
-    error: "Yanıtlar geçersiz.",
-  }),
+  responses: attemptResponses,
   tabSwitchCount: z.number().int().min(0).max(LIMITS.tabSwitchCountMax).optional().default(0),
 });
 
@@ -303,17 +376,38 @@ export const GradedItemSchema = z.object({
   imageUrl: z.string(),
   questionText: z.string(),
   questionType: z.enum(QUESTION_TYPES),
+  options: z.array(z.string()),
   isCorrect: z.boolean(),
   userResponse: z.array(z.string()),
-  correctAnswers: z.array(z.string()),
-  feedbackText: z.string(),
+  /** Yalnızca karne açıksa (D7) dolu. */
+  correctAnswers: z.array(z.string()).nullable(),
+  feedbackText: z.string().nullable(),
 });
-export const SubmitQuizAttemptResponse = z.object({
+
+const attemptReport = {
+  attemptId: z.string(),
   score: z.number(),
   correctCount: z.number(),
   totalQuestions: z.number(),
-  gradedReport: z.array(GradedItemSchema),
   lateSubmission: z.boolean(),
+  /** Doğru cevaplar ve Feedback_Text bu yanıtta var mı (D7)? */
+  revealed: z.boolean(),
+  /** Karne kapalıysa açılacağı an (biliniyorsa); `immediate` veya açıksa `null`. */
+  revealAtMs: z.number().nullable(),
+  items: z.array(GradedItemSchema),
+};
+
+export const SubmitQuizAttemptResponse = z.object(attemptReport);
+
+export const GetAttemptReportRequest = z.object({ attemptId: docId("Sınav girişimi") });
+export const GetAttemptReportResponse = z.object({
+  ...attemptReport,
+  quizId: z.string(),
+  quizTitle: z.string(),
+  uid: z.string(),
+  doctorName: z.string(),
+  submittedAtMs: z.number(),
+  autoSubmitted: z.boolean(),
 });
 
 // --- Kayıt defteri --------------------------------------------------------------
@@ -340,6 +434,10 @@ export const CALLABLES = {
   closeQuiz: { request: CloseQuizRequest, response: CloseQuizResponse },
   startQuizAttempt: { request: StartQuizAttemptRequest, response: StartQuizAttemptResponse },
   submitQuizAttempt: { request: SubmitQuizAttemptRequest, response: SubmitQuizAttemptResponse },
+  updateQuizDraft: { request: UpdateQuizDraftRequest, response: UpdateQuizDraftResponse },
+  deleteQuizDraft: { request: DeleteQuizDraftRequest, response: DeleteQuizDraftResponse },
+  saveAttemptDraft: { request: SaveAttemptDraftRequest, response: SaveAttemptDraftResponse },
+  getAttemptReport: { request: GetAttemptReportRequest, response: GetAttemptReportResponse },
 } as const;
 
 export type CallableName = keyof typeof CALLABLES;

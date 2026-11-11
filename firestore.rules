@@ -198,11 +198,16 @@ service cloud.firestore {
     }
 
     // Hekim yalnızca kendi girişimlerini okur (liste sorgusu `where uid == auth.uid` içermeli).
-    // Not: girişimdeki karne (gradedReport) sınav kapanmadan doğru cevapları içerebilir; bu F5.1'de
-    // `revealPolicy` ile sunucu tarafında çözülür.
+    // Girişimde yalnızca puan ve soru başına doğru/yanlış + kendi yanıtı vardır; doğru cevap ve feedback
+    // girişime yazılmaz, `getAttemptReport` revealPolicy'ye (D7) göre döndürür (F5.1).
     match /quiz_attempts/{attemptId} {
       allow read: if isAdmin() || (isActive() && resource.data.uid == request.auth.uid);
       allow write: if false;
+    }
+
+    // Süre içinde kaydedilen yanıtlar: yalnızca callable'lar (startQuizAttempt / saveAttemptDraft / teslim).
+    match /quiz_attempt_drafts/{attemptId} {
+      allow read, write: if false;
     }
 
     // ===================================================================================

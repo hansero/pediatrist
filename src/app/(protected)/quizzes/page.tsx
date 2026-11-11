@@ -280,7 +280,7 @@ export default function OnlineQuizzesPage() {
               correctCount: graded.correctCount,
               totalQuestions: graded.totalQuestions,
               tabSwitchCount,
-              gradedReport: graded.gradedReport,
+              gradedReport: graded.items,
             };
             setAllAttempts((prev) => [newAttempt, ...prev]);
             setInspectedAttempt(newAttempt);

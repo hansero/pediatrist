@@ -65,7 +65,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F4.5 | Ders/katılımcı raporları + CSV | M | ✅ | C2, Kullanılabilirlik |
 | F4.6 | Yoklama e2e testleri + mock bekçisi temizliği | M | ✅ | §8 |
 | **F5** | **Sınav modülü (gerçek)** | | | |
-| F5.1 | Backend: soruların attempt ile teslimi, `revealPolicy`, taslak kayıt, transaction | L | ⬜ | C3, C7, S6, S7 |
+| F5.1 | Backend: soruların attempt ile teslimi, `revealPolicy`, taslak kayıt, transaction | L | 🟨 | C3, C7, S6, S7 |
 | F5.2 | Admin sınav stüdyosu (taslak, yayın, kapatma, görsel yükleme, arşiv) | L | ⬜ | C3 |
 | F5.3 | Sınav ekranı (sunucu süresi, kalıcı yanıtlar, görseller, uyarılar) | M | ⬜ | C3, C8 (sınav) |
 | F5.4 | Hekim paneli + karne + admin analitiği | M | ⬜ | C3, Kullanılabilirlik |
@@ -101,19 +101,17 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F4.6. **F4 yoklama modülü tamamlandı.** Yanlış/eski kod, kayıtsız/farklı cihaz e2e senaryoları; kod penceresi functions testi; yoklamaya özgü passkey hata mesajı. Testler: unit 200, rules 55, functions 78, e2e 68 (+2 ekran boyutuna özel atlanan).
-- **Devam eden adım:** —
-- **Sıradaki iş:** F5.1 (L) sınav backend'i (`functions/src/quizService.ts`, bkz. §F5.1). Önerilen bölme (WIP commit'leriyle):
-  1. Şemalar (`functions/src/shared/schemas.ts`):
-     - `saveQuizDraft`/`updateQuizDraft`/`deleteQuizDraft`, `publishQuiz {force}`, `startQuizAttempt` yanıtı `{deadlineMs, questions, savedResponses}`, `saveAttemptDraft`, `getAttemptReport`.
-     - `revealPolicy` (D7, varsayılan `after_close`).
-  2. Taslak CRUD + yayın:
-     - Ortak CSV doğrulayıcı, `quiz_media` Storage varlık kontrolü, `closesAt` gelecekte olmalı.
-     - Yayında devam eden attempt sayısı döner; istemci uyarı gösterip `force` ile tekrar çağırır.
-  3. Attempt: soru teslimi attempt'ten, resume ve `quiz_attempt_drafts`. Kurallar: `questions_public` hekime kapalı kalır (F2.1).
-  4. `submitQuizAttempt` transaction + `in_progress` ön koşulu. Attempt'e yalnızca puan ve doğru/yanlış yazılır. `getAttemptReport` revealPolicy'ye uyar.
-  5. `closeExpiredQuizzes` zamanlayıcısı (`scheduled.ts`). Testler: çift teslim, deadline + 30 sn, `after_close` sızıntısı, resume.
-  6. Seed: gerçek callable'larla sınav, puanlanmış girişimler ve taslak (F0.4'ten devredildi).
+- **Son tamamlanan adım:** F4.6 (F4 tamamlandı).
+- **Devam eden adım:** F5.1 🟨. Backend, sözleşmeler, zamanlayıcı, kurallar ve testler bitti (WIP commit). Testler: unit 200, rules 56, functions 92.
+- **Sıradaki iş:** F5.1'in kalanı.
+  - **Seed:** `scripts/seed-emulator.ts`'e sınav bölümü, gerçek callable'larla (F0.4'ten devredildi).
+    - Admin, emülatörde istemci SDK'sıyla giriş yapar (Auth emülatörü; `firebase/auth` + `firebase/functions`, `connect*Emulator`).
+    - `quiz-ornek.csv` → `parseNineFieldQuizCsv` → `saveQuizDraft` → `publishQuiz`.
+    - Asistan 1–3: `startQuizAttempt` + `submitQuizAttempt`, farklı doğruluklarla. Ardından `closeQuiz` (revealAt, son teslimden sonra).
+    - Ayrıca bir taslak sınav (ör. aynı CSV'nin ilk sorusuyla).
+    - Seed'in functions emülatörü olmadan da çalıştığı yollar varsa, sınav bölümü functions yoksa açık hata versin; sessizce atlamasın.
+  - Sonra tam doğrulama: e2e dahil; mevcut e2e sınav sayfasını kullanmıyor ama seed değişiyor.
+  - F5.1'i ✅ yap, `rev(F5.1): …` commit'le. Ardından F5.2 (admin sınav stüdyosu).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -968,6 +966,38 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Kapatılan sınavın devam eden attempt'leri: deadline'a kadar teslim edebilir (sorular attempt'ten geldiği için erişim sürer).
 - **Seed (F0.4'ten devredildi):** `scripts/seed-emulator.ts`'e sınav bölümü eklenir. Admin istemci SDK'sıyla giriş yapılır → `quiz-ornek.csv` ayrıştırılır → `saveQuizDraft` → `publishQuiz` → asistan 1–3 `startQuizAttempt` + `submitQuizAttempt` (farklı doğruluklarla) → `closeQuiz`; ayrıca bir taslak sınav. Böylece analitik ekranları gerçek sunucu puanlamasıyla dolar.
 - **Testler:** soruları attempt başlatmadan alamama (kural testi); deadline + 30 sn tolerans; çift teslim; `after_close` politikasında cevap anahtarının sızmaması; resume'da kaydedilmiş yanıtlar; zamanlayıcı mantığı.
+- **✅ Uygulanan (backend; seed sıradaki WIP):**
+  - **Sözleşmeler** (`shared/schemas.ts`, `types.ts`, `constants.ts`):
+    - `REVEAL_POLICIES` / `DEFAULT_REVEAL_POLICY` (D7).
+    - Yeni callable'lar: `updateQuizDraft`, `deleteQuizDraft`, `saveAttemptDraft`, `getAttemptReport`.
+    - `publishQuiz` yanıtı ayrımlı birleşim: `{published: true, archivedPreviousCount}` | `{published: false, inProgressCount, currentQuizTitle}`.
+    - `startQuizAttempt` → `{attemptId, quizTitle, deadlineMs, resumed, revealPolicy, questions (1–7. alanlar, görsel Storage yolu), savedResponses}`.
+    - Karne satırı (`GradedItem`) `options` içerir; `correctAnswers`/`feedbackText` karne kapalıyken `null`.
+    - Girişim dokümanı: `results` (soru başına `isCorrect` + `userResponse`), `revealPolicy`, `questionCount`, `autoSubmitted`. `gradedReport` artık yazılmıyor.
+  - **Puanlama** ayrı ve yalnızca sunucuda: `functions/src/quizGrading.ts` (cevap anahtarıyla çalıştığı için `shared/` dışında).
+    - Yanıt temizleme: metin `maxLength`'e kırpılır; seçenekte boş ve tekrar atılır.
+    - Tek seçimde birden fazla yanıt yanlış sayılır; çoklu seçimde küme eşitliği.
+  - **`quizService.ts` yeniden yazıldı.** Bütün durum değişiklikleri transaction'da, okumalar yazmalardan önce:
+    - Taslak CRUD: görselin Storage'da varlığı CSV satır numarasıyla denetlenir. Güncellemede soru seti `q_001..` üzerine yazılır, fazlası silinir. Yayınlanmış/kapanmış sınav güncellenemez/silinemez.
+    - Yayın: devam eden girişim varsa ve `force` yoksa yayın yapılmaz, sayı döner. Taslağın kapanış zamanı geçtiyse reddedilir. Önceki sınav `closeReason: "replaced"`.
+    - Kapanış (`closeQuiz`, yeni yayın, zamanlayıcı): arşiv + `revealAt`.
+    - Girişim:
+      - Kapatılmış sınavda süresi süren girişim devam edip teslim edebilir.
+      - `saveAttemptDraft` süre + tolerans sonrası reddedilir.
+      - Teslim `in_progress` ön koşullu transaction'dır (çift teslim yok); taslak yanıt silinir.
+    - `getAttemptReport`: sahibi veya admin. Başkasının girişimi "bulunamadı" (varlık sızmaz). Admin her zaman tam karneyi görür.
+  - **Plana ek iki karar** (D7'nin uygulaması; D-kaydı değişmedi):
+    1. **`revealAt` (sızıntı önlemi):** `after_close`'da karne, sınav kapandığında değil, kapanış anı ile kapanışta devam eden girişimlerin en geç bitişi + 30 sn'den büyük olan anda açılır. Erken kapatılan sınavda bitiren hekim, süresi süren meslektaşına cevapları iletemez.
+    2. **Süre aşımında adil puanlama:** süre + 30 sn geçtikten sonra gelen teslimde, sıfır puan yerine süre içinde kaydedilmiş yanıtlar puanlanır (`lateSubmission: true`). Teslim edilmeyen girişimi zamanlayıcı kaydedilmiş yanıtlarla teslim eder (`autoSubmitted: true`, `QUIZ_ATTEMPT_AUTO_SUBMITTED`); tarayıcısı kapanan hekim puansız kalmaz.
+  - **Zamanlayıcı** `closeExpiredQuizzesJob` (5 dk): `closeExpiredQuizzes` + `finalizeExpiredAttempts`. İndeksler: `quizzes (status, closesAt)`, `quiz_attempts (status, deadline)`.
+  - **Kurallar:** `quiz_attempt_drafts` istemciye tamamen kapalı. `quiz_attempts` yorumu güncellendi (girişimde cevap anahtarı yok).
+  - **Saat:** `quizClock.now()`. `Date.now`'u genel olarak taklit etmek Firestore SDK'sının zamanlayıcılarını kilitliyordu; testler yalnızca sınav saatini ileri alır.
+  - `test:functions` artık Storage emülatörünü de başlatıyor (görsel varlık kontrolü).
+  - **İstemci:** yeni callable'lar bağlandı. Eski (mock karışık, F5.2/F5.3'te değişecek) sınav sayfası yalnızca derlensin diye yeni yanıta uyarlandı; karne kapalıyken "Sınav kapandığında görünür" yazar.
+  - **Testler:**
+    - functions +14 net (`quiz.test.ts` 14, `quizGrading.test.ts` 4; eski 4 test yeniden yazıldı). Kapsam: soruların yalnızca girişimle ve anahtarsız gelmesi; devam ve kaydedilmiş yanıtlar; puan ve girişimde anahtar olmaması; immediate; eşzamanlı çift teslim; tolerans içi/dışı teslim; zamanlayıcının otomatik teslimi; revealAt sızıntı senaryosu; karne erişimi; force'lu yayın; kapanış zamanı ve zamanlayıcı; geçmiş kapanışla yayın; taslak güncelleme/silme; eksik görsel.
+    - rules +1: `quiz_attempt_drafts` kapalı.
+    - Mutasyonla sınandı: revealAt'ın devam edenleri yok sayması, ön koşulun kaldırılması, geç teslimde gönderilen yanıtın puanlanması ve karnenin hep açık olması testleri kırıyor.
 
 #### F5.2 Admin sınav stüdyosu (L)
 - **Dosyalar:** `src/components/quizzes/admin/*` (eski `AdminQuizStudio.tsx` parçalanır), `src/app/(protected)/quizzes/page.tsx`

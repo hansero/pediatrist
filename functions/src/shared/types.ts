@@ -17,6 +17,7 @@ import type {
   MaterialFileType,
   MemberStatus,
   QuestionType,
+  RevealPolicy,
   Role,
 } from "./constants";
 
@@ -40,6 +41,8 @@ export const COLLECTIONS = {
   quizAnswerKeyItems: "items",
   quizQuestionArchive: "quiz_question_archive",
   quizAttempts: "quiz_attempts",
+  /** `quiz_attempt_drafts/{quizId}_{uid}`: süre içinde kaydedilen yanıtlar (F5.1); istemciye kapalı. */
+  quizAttemptDrafts: "quiz_attempt_drafts",
   auditLogs: "audit_logs",
 } as const;
 
@@ -199,14 +202,25 @@ export interface QuizDoc<T> {
   status: QuizStatus;
   durationMinutes: number;
   closesAt: T | null;
+  /** D7; eski dokümanlarda yoksa `after_close` sayılır. */
+  revealPolicy: RevealPolicy;
   questionCount: number;
   sourceFileName: string;
   createdAt: T;
   createdBy: string;
+  updatedAt?: T;
   attemptCount: number;
   publishedAt?: T;
   publishedBy?: string;
   closedAt?: T;
+  /** Kapatan admin uid'i veya `"system"` (kapanış zamanı). */
+  closedBy?: string;
+  closeReason?: "manual" | "replaced" | "expired";
+  /**
+   * `after_close` karnesinin açılacağı an: kapanış anı ile kapanışta devam eden girişimlerin en geç bitişi
+   * (+ teslim toleransı) arasından büyük olanı. Böylece süresi süren meslektaşa cevap sızmaz (F5.1).
+   */
+  revealAt?: T | null;
 }
 
 /** 1–7. alanlar: `quizzes/{quizId}/questions_public/{questionId}` */
@@ -236,7 +250,18 @@ export interface QuizArchivedQuestionDoc<T> extends QuizQuestionPublicDoc, QuizA
   archivedBy: string;
 }
 
-/** Sınav sonrası soru bazlı karne satırı. */
+/** Girişimde saklanan soru sonucu: doğru cevap ve feedback İÇERMEZ (hekim kendi girişimini okuyabilir). */
+export interface AttemptResult {
+  questionId: string;
+  orderIndex: number;
+  isCorrect: boolean;
+  userResponse: string[];
+}
+
+/**
+ * Karne satırı (`submitQuizAttempt` / `getAttemptReport` yanıtı). `correctAnswers` ve `feedbackText` yalnızca
+ * karne açıksa doludur (D7); değilse `null`.
+ */
 export interface GradedItem {
   questionId: string;
   orderIndex: number;
@@ -244,10 +269,11 @@ export interface GradedItem {
   imageUrl: string;
   questionText: string;
   questionType: QuestionType;
+  options: string[];
   isCorrect: boolean;
   userResponse: string[];
-  correctAnswers: string[];
-  feedbackText: string;
+  correctAnswers: string[] | null;
+  feedbackText: string | null;
 }
 
 /** `quiz_attempts/{quizId}_{uid}` */
@@ -258,17 +284,30 @@ export interface QuizAttemptDoc<T> {
   doctorName: string;
   residencyYear: number | null;
   status: QuizAttemptStatus;
+  revealPolicy: RevealPolicy;
+  questionCount: number;
   startedAt: T;
   deadline: T;
   durationMinutes: number;
   submittedAt?: T;
   durationSeconds?: number;
+  /** Süre + tolerans aşıldıktan sonra teslim edildi: süre içinde kaydedilmiş yanıtlar puanlandı. */
   lateSubmission?: boolean;
+  /** Hekim teslim etmedi; zamanlayıcı süre içinde kaydedilmiş yanıtlarla teslim etti. */
+  autoSubmitted?: boolean;
   score?: number;
   correctCount?: number;
   totalQuestions?: number;
-  gradedReport?: GradedItem[];
+  results?: AttemptResult[];
   tabSwitchCount?: number;
+}
+
+/** `quiz_attempt_drafts/{quizId}_{uid}`: istemciye kapalı; yalnızca callable'lar okur/yazar. */
+export interface QuizAttemptDraftDoc<T> {
+  uid: string;
+  quizId: string;
+  responses: Record<string, string[]>;
+  updatedAt: T;
 }
 
 // --- Materyaller ------------------------------------------------------------

@@ -18,4 +18,14 @@ export {
 } from "./attendanceService";
 export { beginDeviceRegistration, finishDeviceRegistration, beginAttendanceAssertion } from "./webauthn";
 export { closeExpiredLecturesJob } from "./scheduled";
-export { saveQuizDraft, publishQuiz, closeQuiz, startQuizAttempt, submitQuizAttempt } from "./quizService";
+export {
+  saveQuizDraft,
+  updateQuizDraft,
+  deleteQuizDraft,
+  publishQuiz,
+  closeQuiz,
+  startQuizAttempt,
+  saveAttemptDraft,
+  submitQuizAttempt,
+  getAttemptReport,
+} from "./quizService";

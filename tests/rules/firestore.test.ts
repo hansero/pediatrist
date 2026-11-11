@@ -224,6 +224,13 @@ describe("sınav gizliliği", () => {
     await assertSucceeds(as(admin).collection("quizzes").doc("q1").collection("questions_public").doc("q_001").get());
   });
 
+  it("F5.1: süre içinde kaydedilen yanıtlar (quiz_attempt_drafts) istemciye tamamen kapalı (sahibi ve admin dahil)", async () => {
+    const id = `q1_${resident.uid}`;
+    await assertFails(as(resident).collection("quiz_attempt_drafts").doc(id).get());
+    await assertFails(as(resident).collection("quiz_attempt_drafts").doc(id).set({ uid: resident.uid, responses: {} }));
+    await assertFails(as(admin).collection("quiz_attempt_drafts").doc(id).get());
+  });
+
   it("asistan yayındaki sınavı görür, taslağı göremez; yalnızca durum filtreli liste", async () => {
     await assertSucceeds(as(resident).collection("quizzes").doc("q1").get());
     await assertFails(as(resident).collection("quizzes").doc("draft1").get());
