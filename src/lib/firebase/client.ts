@@ -14,6 +14,7 @@ import { connectFunctionsEmulator, getFunctions, Functions } from "firebase/func
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import firebaseJson from "../../../firebase.json";
 import { REGION } from "@shared/constants";
+import { firebaseWebConfig, isFirebaseConfigured } from "./config";
 
 /**
  * Firebase Web SDK yapılandırması YALNIZCA ortam değişkenlerinden okunur.
@@ -22,7 +23,7 @@ import { REGION } from "@shared/constants";
  * - Kaynak kodda hiçbir proje kimliği / API anahtarı sabit (hardcoded) olarak tutulmaz.
  *   Yerel geliştirme değerleri `.env.development` (yalnızca emülatör, gizli değer yok),
  *   gerçek proje değerleri git'e girmeyen `.env.local` dosyasındadır (bkz. `.env.example`).
- * - Bu modül yapılandırma nesnesini DIŞA AKTARMAZ.
+ * - Değerler `./config.ts`'te okunur (SDK'sız; kök yerleşim de eksikliği denetler, F7.5) ve hiçbir ekrana basılmaz.
  * - Web API anahtarı tarayıcı paketine zorunlu olarak girer; asıl koruma
  *   HTTP referrer kısıtlaması + App Check + Firestore/Storage kuralları + Cloud Functions
  *   içindeki yetki kontrolleridir.
@@ -32,14 +33,7 @@ import { REGION } from "@shared/constants";
  *   yanlışlıkla gerçek bir projenin yapılandırmasıyla birleştirilemez.
  * - Portlar tek kaynaktan, `firebase.json` → `emulators` bölümünden okunur.
  */
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? "",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? "",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? "",
-};
+const firebaseConfig = firebaseWebConfig;
 
 const USE_EMULATORS = process.env.NEXT_PUBLIC_USE_EMULATORS === "true";
 const RECAPTCHA_ENTERPRISE_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY ?? "";
@@ -54,11 +48,6 @@ export interface PediatristFirebaseClients {
 }
 
 let clients: PediatristFirebaseClients | null = null;
-
-/** UI için tek izinli bilgi: yapılandırma mevcut mu? (kimlik bilgisi döndürmez) */
-export function isFirebaseConfigured(): boolean {
-  return Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
-}
 
 /** Emülatör modunda mıyız? (UI'da "Test ortamı" göstergesi için) */
 export function isUsingEmulators(): boolean {

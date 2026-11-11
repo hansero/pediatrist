@@ -8,9 +8,9 @@
  *  - uygulama kodundan `scripts/` (fixtures) import'u,
  *  - güvenlik kodu üretiminde kullanılmaması gereken `Math.random(`.
  *
- * Mevcut ihlaller `scripts/no-mock-allowlist.json` içinde DOSYA bazında, kapatacak faz etiketiyle
- * listelenir. Liste yalnızca küçülür: listedeki bir dosya temizlenince bekçi hata verir ve dosyanın
- * listeden çıkarılmasını ister. F7.5'te liste boş olur ve dosya silinir.
+ * İSTİSNASIZ çalışır (F7.5): geçiş dönemindeki dosya bazlı izin listesi (`scripts/no-mock-allowlist.json`)
+ * bütün sayfalar gerçek veriye geçince silindi. Herhangi bir eşleşme hatadır; izin listesi yeniden
+ * eklenirse bekçi bunu da hata sayar (yeni istisna açmak yerine kodu düzeltin).
  *
  * Kullanım: node scripts/check-no-mock.mjs   (npm run check:no-mock)
  */
@@ -20,7 +20,8 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname, "..");
 const SCAN_DIRS = ["src", "functions/src"];
 const EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".css"]);
-const ALLOWLIST_PATH = path.join(root, "scripts", "no-mock-allowlist.json");
+/** F7.5'te silindi; geri gelmemeli. */
+const RETIRED_ALLOWLIST = path.join(root, "scripts", "no-mock-allowlist.json");
 
 /** Sabit desenler: [ad, RegExp]. */
 const STATIC_PATTERNS = [
@@ -63,9 +64,6 @@ function walk(dir, out = []) {
   return out;
 }
 
-const allowlist = existsSync(ALLOWLIST_PATH) ? JSON.parse(readFileSync(ALLOWLIST_PATH, "utf8")) : {};
-const allowed = new Map(Object.entries(allowlist).filter(([k]) => !k.startsWith("$")));
-
 const violations = new Map(); // rel → [{line, name, text}]
 for (const dir of SCAN_DIRS) {
   for (const file of walk(path.join(root, dir))) {
@@ -83,24 +81,17 @@ for (const dir of SCAN_DIRS) {
 }
 
 const errors = [];
+if (existsSync(RETIRED_ALLOWLIST)) {
+  errors.push(
+    "scripts/no-mock-allowlist.json  izin listesi F7.5'te kaldırıldı; istisna eklemek yerine sahte veriyi koddan çıkarın."
+  );
+}
 for (const [rel, hits] of violations) {
-  if (allowed.has(rel)) continue;
   for (const h of hits) errors.push(`${rel}:${h.line}  ${h.name}\n      ${h.text}`);
 }
-for (const [rel, phase] of allowed) {
-  if (!existsSync(path.join(root, rel))) {
-    errors.push(`${rel}  izin listesinde ama dosya yok (${phase}) → scripts/no-mock-allowlist.json'dan çıkarın.`);
-  } else if (!violations.has(rel)) {
-    errors.push(`${rel}  artık temiz (${phase}) → scripts/no-mock-allowlist.json'dan çıkarın.`);
-  }
-}
 
-const tolerated = [...violations.keys()].filter((k) => allowed.has(k));
 if (errors.length) {
   console.error(`✖ Sahte veri bekçisi: ${errors.length} sorun\n\n${errors.join("\n")}\n`);
   process.exit(1);
 }
-console.log(
-  `✔ Sahte veri bekçisi: izin listesi dışında ihlal yok. ` +
-    `İzin listesinde ${tolerated.length} dosya kaldı (${[...new Set([...allowed.values()])].sort().join(", ") || "—"}).`
-);
+console.log("✔ Sahte veri bekçisi: src/ ve functions/src/ içinde ihlal yok (istisna listesi yok).");

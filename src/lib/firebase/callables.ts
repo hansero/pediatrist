@@ -4,7 +4,7 @@ import { httpsCallable } from "firebase/functions";
 import { formatIssues } from "@shared/issues";
 import { CALLABLES, type CallableName, type CallableRequestInput, type CallableResponse } from "@shared/schemas";
 import { AppError, toAppError } from "@/lib/errors";
-import { initPediatristFirebase, isFirebaseConfigured } from "@/lib/firebase/client";
+import { initPediatristFirebase } from "@/lib/firebase/client";
 
 export { toUserMessage } from "@/lib/errors";
 
@@ -99,23 +99,3 @@ export const createMaterial = bind("createMaterial");
 export const finalizeMaterialUpload = bind("finalizeMaterialUpload");
 export const updateMaterial = bind("updateMaterial");
 export const deleteMaterial = bind("deleteMaterial");
-
-/**
- * @deprecated SESSİZ SAHTE BAŞARI (AUDIT C1). Yalnızca henüz yeniden yazılmamış mock sayfalarda duruyor.
- * Çağrı yeri kalmayınca F7.5'te silinir; `check:no-mock` bekçisi yeni kullanımı engeller.
- * Hatayı artık en azından konsola yazar. Yeni kodda `callFunction` + `useAsyncAction` kullanın.
- */
-export async function invokeWithFallback<Res>(
-  thunk: () => Promise<Res>,
-  fallbackFn: () => unknown
-): Promise<{ data: Res; syncedWithCloud: boolean }> {
-  if (!isFirebaseConfigured()) {
-    return { data: (await fallbackFn()) as Res, syncedWithCloud: false };
-  }
-  try {
-    return { data: await thunk(), syncedWithCloud: true };
-  } catch (err) {
-    console.error("[invokeWithFallback] Sunucu çağrısı başarısız; sahte veri gösteriliyor (C1):", toAppError(err));
-    return { data: (await fallbackFn()) as Res, syncedWithCloud: false };
-  }
-}

@@ -80,7 +80,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F7.2 | Denetim kaydı görüntüleyici (gerçek `audit_logs`) | S | ✅ | C10 |
 | F7.3 | Durum odaklı dashboard + gerçek KPI'lar | M | ✅ | C10, Görsel hiyerarşi |
 | F7.4 | Hesaplayıcılar: dürüst "yakında" durumu + `calculators_config` | S | ⬜ | Kullanılabilirlik |
-| F7.5 | `invokeWithFallback` ve tüm fallback'lerin silinmesi; bekçi listesi boş | S | ⬜ | C1 (final) |
+| F7.5 | `invokeWithFallback` ve tüm fallback'lerin silinmesi; bekçi listesi boş | S | ✅ | C1 (final) |
 | **F8** | **Erişilebilirlik, metin, performans cilası** | | | |
 | F8.1 | UX metni sadeleştirme + a11y düzeltmeleri + axe testleri | M | ⬜ | Görsel hiyerarşi, Erişilebilirlik |
 | F8.2 | Performans (timer izolasyonu), ölü kod, `admin.ts` kararı | S | ⬜ | §7 |
@@ -101,14 +101,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F7.4. Hesaplayıcılar dürüst "Yakında"; uydurma kurum protokolleri ve "aktif" güvenlik kilidi iddiaları kaldırıldı; protokol notu `updateCalculatorConfig` ile (denetim kaydı). Dört diyalogdaki başlangıç değeri yarışı düzeltildi. Testler: unit 243, rules 57, functions 102, e2e 101 (+3 bilinçli atlanan).
+- **Son tamamlanan adım:** F7.5. **F7 tamamlandı; bütün modüller gerçek veride, sahte veri bekçisi istisnasız.** `invokeWithFallback` ve izin listesi silindi; Firebase yapılandırması eksikse kök yerleşim açık bir hata sayfası gösterir. Testler: unit 244, rules 57, functions 102, e2e E2E_COUNT.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F7.5 fallback temizliği (bkz. §F7.5).
-  - `src/lib/firebase/callables.ts`: `invokeWithFallback` (ve kalan `@deprecated` geçiş katmanı) silinir. Çağıran kalmadığını `grep -rn invokeWithFallback src` ile doğrula.
-  - `isFirebaseConfigured` ile gizlenen "demo" yolları ve `FALLBACK_*` kalıntıları aranıp silinir.
-  - Firebase yapılandırılmamışsa açık bir yapılandırma hata sayfası gösterilir (`initPediatristFirebase()` null → `ErrorPanel`).
-  - `scripts/no-mock-allowlist.json` silinir; `check-no-mock.mjs` izin listesiz (istisnasız) çalışır. Plan §F0.5 ve bekçinin "liste yalnızca küçülür" mantığı buna göre güncellenir.
-  - Bitince F7 tamam; sıradaki faz F8 (erişilebilirlik, metin, performans).
+- **Sıradaki iş:** F8.1 metin ve erişilebilirlik (bkz. §F8.1).
+  - Önce `@axe-core/playwright` ekle (`npm i -D`, sürüm sabitlenmiş) ve `e2e/a11y.spec.ts` yaz. Kapsam: giriş, kayıt, ana sayfa (admin+hekim), yoklama, sınavlar, materyaller, hesaplayıcılar, yönetim paneli (3 sekme), hesap güvenliği.
+  - Hedef 0 serious/critical. Önce ölç, ihlalleri listele, sonra düzelt.
+  - Metin taraması: buton 1–3 kelime, jargon yok ("Custom Claims", "RBAC", "HMAC" vb. `grep -rn` ile), hata mesajları "ne oldu + ne yapmalı".
+  - Durum renkleri yalnızca durumda: eski `sec-chip` başlık üstü etiketleri (mock sayfalardan kalan varsa) nötr stile.
+  - Sonra F8.2 (zamanlayıcı izolasyonu, ölü kod: `src/lib/firebase/admin.ts`, `firebase-admin` / `server-only` kök bağımlılıkları).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1378,6 +1378,21 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - **Doğrulama:** `npm run check:no-mock` ve tüm test paketleri yeşil.
 
 ---
+
+- **✅ Uygulanan F7.5 (sapmalar ve eklemeler):**
+  - **`invokeWithFallback` silindi** (son çağıranı F7.1'de kalkmıştı). Birim testindeki "deprecated katman" testi de silindi.
+    - `src/` ve `functions/src/` içinde `invokeWithFallback`, `FALLBACK_*`, `INITIAL_*`, `syncedWithCloud` yok (bekçi denetliyor).
+  - **Sahte veri bekçisi istisnasız:** `scripts/no-mock-allowlist.json` silindi ve `check-no-mock.mjs`'ten izin listesi mantığı çıkarıldı.
+    - Her eşleşme hatadır. Dosya geri eklenirse bu da hata sayılır ("istisna eklemek yerine sahte veriyi koddan çıkarın").
+    - Elle doğrulandı: geçici ihlal dosyası → çıkış 1; geri getirilen izin listesi → çıkış 1; temiz kod → çıkış 0.
+  - **Yapılandırma tek modülde:** `src/lib/firebase/config.ts` (SDK'sız). Zorunlu değişkenler: API anahtarı, authDomain, projectId, storageBucket, appId. Eskiden yalnızca üçü denetleniyordu; eksik Storage/Auth alanıyla uygulama yarım açılabiliyordu.
+    - `missingFirebaseConfig()` yalnızca eksik değişken ADLARINI döndürür, değer döndürmez. `client.ts` yapılandırmayı buradan alır.
+  - **Yapılandırma hata sayfası** (`components/system/ConfigurationError.tsx`, sunucu bileşeni): kök yerleşim yapılandırma eksikse hiçbir sayfayı açmaz.
+    - "Sunucu bağlantısı yapılandırılmamış" başlığı, yönetici için eksik değişken adları, `.env.example` yönlendirmesi. Demo yolu ve bağlantı yok.
+    - Değişkensiz `npm run build` (CI'daki derleme adımı) başarılı. Üretilen `/login` ve `/` HTML'i hata sayfasıdır ve yalnızca değişken adlarını içerir.
+    - Birim testi: eksik ad listesi, boşluk eksik sayılır, sayfada değer yok, bağlantı/düğme yok.
+  - Ekranlardaki dağınık "Sunucu bağlantısı yapılandırılmamış" hataları savunma amaçlı yerinde kaldı (hook'lar ve callable katmanı). Artık kök yerleşim yüzünden pratikte ulaşılamazlar.
+  - **e2e ile sınanmadı:** yapılandırmasız derleme ayrı bir `next build` gerektirir ve e2e sunucusu tek derleme kullanır. Kapsama birim testi ve yukarıdaki derleme denetimidir.
 
 ### F8 — Erişilebilirlik, metin, performans
 

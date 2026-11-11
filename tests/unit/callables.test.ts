@@ -7,10 +7,9 @@ vi.mock("firebase/functions", () => ({ httpsCallable: (f: unknown, n: string) =>
 const configured = { value: true };
 vi.mock("@/lib/firebase/client", () => ({
   initPediatristFirebase: () => (configured.value ? { functions: {} } : null),
-  isFirebaseConfigured: () => configured.value,
 }));
 
-const { callFunction, startLectureSession, verifyRealTimeAttendance, invokeWithFallback, completeRegistration } =
+const { callFunction, startLectureSession, verifyRealTimeAttendance, completeRegistration } =
   await import("@/lib/firebase/callables");
 const { AppError } = await import("@/lib/errors");
 const { CALLABLES } = await import("@shared/schemas");
@@ -101,19 +100,6 @@ describe("callFunction", () => {
     configured.value = false;
     const err = await callFunction("closeQuiz", { quizId: "q1" }).catch((e) => e);
     expect(err).toMatchObject({ code: "not-configured" });
-  });
-});
-
-describe("invokeWithFallback (deprecated geçiş katmanı)", () => {
-  it("hatayı yutmadan önce konsola yazar", async () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    serverImpl.mockRejectedValue(Object.assign(new Error("x"), { code: "functions/internal" }));
-    const res = await invokeWithFallback(
-      () => callFunction("closeQuiz", { quizId: "q1" }),
-      () => ({ closed: true })
-    );
-    expect(res.syncedWithCloud).toBe(false);
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining("C1"), expect.anything());
   });
 });
 

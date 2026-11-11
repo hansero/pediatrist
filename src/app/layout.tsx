@@ -4,7 +4,9 @@ import { JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "@/styles/tokens.css";
 import "@/styles/index.css";
 import "@/styles/ui.css";
+import { ConfigurationError } from "@/components/system/ConfigurationError";
 import { ToastProvider } from "@/components/ui/Toast";
+import { missingFirebaseConfig } from "@/lib/firebase/config";
 
 /**
  * Yazı tipleri derleme sırasında indirilir ve uygulamanın kendi sunucusundan verilir (F3.1):
@@ -35,10 +37,12 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Yapılandırma eksikse hiçbir sayfa açılmaz; "demo" yolu yok (F7.5).
+  const missing = missingFirebaseConfig();
   return (
     <html lang="tr" className={`${sans.variable} ${mono.variable}`}>
       <body>
-        <ToastProvider>{children}</ToastProvider>
+        {missing.length ? <ConfigurationError missing={missing} /> : <ToastProvider>{children}</ToastProvider>}
       </body>
     </html>
   );
