@@ -27,7 +27,7 @@ test("admin protokol notu ekler → hekim canlı görür; not kaldırılır; ça
   await expect(doctor.getByText(/kilidi|aktif/i)).toHaveCount(0);
   await expect(doctor.getByText("Planlanan güvenlik denetimi (henüz etkin değil)")).toHaveCount(5);
   // Hekimde düzenleme yok.
-  await expect(doctor.getByRole("button", { name: /protokol notunu düzenle/ })).toHaveCount(0);
+  await expect(doctor.getByRole("button", { name: /^(Not ekle|Notu düzenle):/ })).toHaveCount(0);
   await expectNoHorizontalOverflow(doctor);
 
   const adminCtx = await guardedContext(await browser.newContext());
@@ -37,7 +37,7 @@ test("admin protokol notu ekler → hekim canlı görür; not kaldırılır; ça
   const before = await countAuditLogs("CALCULATOR_NOTE_UPDATED", CALC_ID);
 
   // Kaydet: yalnızca sunucu yanıtından sonra bildirim; çok uzun not sunucuda reddedilir.
-  await admin.getByRole("button", { name: `${CALC}: protokol notunu düzenle` }).click();
+  await admin.getByRole("button", { name: `Not ekle: ${CALC}` }).click();
   const dialog = admin.getByRole("dialog", { name: "Klinik protokol notu" });
   await dialog.getByLabel("Protokol notu").fill("a".repeat(2001));
   await dialog.getByRole("button", { name: "Kaydet" }).click();
@@ -54,7 +54,7 @@ test("admin protokol notu ekler → hekim canlı görür; not kaldırılır; ça
   await expect(doctorNote).toContainText("Prof. Dr.");
 
   // Boş kaydetmek notu kaldırır.
-  await admin.getByRole("button", { name: `${CALC}: protokol notunu düzenle` }).click();
+  await admin.getByRole("button", { name: `Notu düzenle: ${CALC}` }).click();
   await dialog.getByLabel("Protokol notu").fill("");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
   await expect(admin.getByRole("status").filter({ hasText: "Protokol notu kaldırıldı." })).toBeVisible();

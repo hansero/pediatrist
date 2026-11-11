@@ -3,7 +3,7 @@
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where, type Timestamp } from "firebase/firestore";
 import { COLLECTIONS } from "@shared/types";
 import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
-import { AppError } from "@/lib/errors";
+import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { toMaterialView, type MaterialView } from "./admin";
 
@@ -97,7 +97,7 @@ export async function writeProgress(
   value: { secondsSpent: number; lastPage: number; completed: boolean }
 ): Promise<void> {
   const db = initPediatristFirebase()?.db;
-  if (!db) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+  if (!db) throw notConfiguredError();
   await setDoc(doc(db, COLLECTIONS.materials, materialId, COLLECTIONS.materialProgress, uid), {
     uid,
     secondsSpent: value.secondsSpent,

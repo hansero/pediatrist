@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Alert } from "./Alert";
 import { cx } from "./cx";
 
@@ -26,8 +28,30 @@ export interface DataTableProps<T> {
 }
 
 /**
+ * Kap yatay kaydırılabiliyor mu? (dar ekranda geniş tablo). Kaydırılabilirse kap klavyeyle odaklanabilir
+ * olmalıdır (WCAG 2.1.1; axe `scrollable-region-focusable`, F8.1); kaydırılamıyorsa gereksiz Tab durağı yok.
+ */
+function useHorizontalOverflow() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setOverflowing(el.scrollWidth > el.clientWidth + 1);
+    measure();
+    if (typeof ResizeObserver === "undefined") return; // eski tarayıcı / test ortamı: ilk ölçüm yeterli
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, []);
+  return { ref, overflowing };
+}
+
+/**
  * Veri tablosu: `th scope`, caption, yükleniyor (`aria-busy`), hata ve boş durum.
- * Yükleniyor/hata durumunda eski veya uydurma satır gösterilmez.
+ * Yükleniyor/hata durumunda eski veya uydurma satır gösterilmez. Dar ekranda yatay kayan tablo, başlığıyla
+ * adlandırılmış ve klavyeyle odaklanılıp ok tuşlarıyla kaydırılabilen bir bölgedir.
  */
 export function DataTable<T>({
   caption,
@@ -40,6 +64,8 @@ export function DataTable<T>({
   empty,
 }: DataTableProps<T>) {
   const alignClass = (c: Column<T>) => (c.align === "end" ? "ui-align-end" : undefined);
+  const captionId = useId();
+  const scroll = useHorizontalOverflow();
   let body: ReactNode;
   if (loading) {
     body = (
@@ -78,9 +104,16 @@ export function DataTable<T>({
   return (
     <div className="ui-table">
       {error && <Alert tone="critical">{error}</Alert>}
-      <div className="table-wrap">
+      {/* Kaydırılabilir bölge deseni: yalnızca taşma varken odaklanabilir ve adlandırılmış. */}
+      <div
+        ref={scroll.ref}
+        className="table-wrap"
+        {...(scroll.overflowing ? { tabIndex: 0, role: "region", "aria-labelledby": captionId } : {})}
+      >
         <table className="clinical-table" aria-busy={loading || undefined}>
-          <caption className={cx("ui-caption", captionHidden && "sr-only")}>{caption}</caption>
+          <caption id={captionId} className={cx("ui-caption", captionHidden && "sr-only")}>
+            {caption}
+          </caption>
           <thead>
             <tr>
               {columns.map((c) => (

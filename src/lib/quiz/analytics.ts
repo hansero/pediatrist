@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 import { COLLECTIONS } from "@shared/types";
 import type { CsvCell } from "@/lib/csv";
-import { AppError } from "@/lib/errors";
+import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { slugify } from "@/lib/slug";
 
@@ -83,7 +83,7 @@ export interface FetchedAttempts {
 
 function db() {
   const firestore = initPediatristFirebase()?.db;
-  if (!firestore) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+  if (!firestore) throw notConfiguredError();
   return firestore;
 }
 

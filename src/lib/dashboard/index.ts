@@ -13,7 +13,7 @@ import {
   where,
 } from "firebase/firestore";
 import { COLLECTIONS, type AttendanceStatus } from "@shared/types";
-import { AppError } from "@/lib/errors";
+import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { isLectureOpen, type Lecture } from "@/lib/attendance/live";
 import type { MaterialView } from "@/lib/materials/admin";
@@ -27,7 +27,7 @@ import { resumableAttempt, type MyAttempt } from "@/lib/quiz/doctor";
 
 function db() {
   const firestore = initPediatristFirebase()?.db;
-  if (!firestore) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+  if (!firestore) throw notConfiguredError();
   return firestore;
 }
 

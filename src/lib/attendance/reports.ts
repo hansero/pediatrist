@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs, limit, orderBy, query, Timestamp, where } from "firebase/firestore";
 import { ATTENDANCE_WARN_RATE } from "@shared/constants";
 import { COLLECTIONS, type AttendanceStatus } from "@shared/types";
-import { AppError, toUserMessage } from "@/lib/errors";
+import { toUserMessage, notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import type { CsvCell } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
@@ -92,7 +92,7 @@ export interface Fetched<T> {
 
 function db() {
   const firestore = initPediatristFirebase()?.db;
-  if (!firestore) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+  if (!firestore) throw notConfiguredError();
   return firestore;
 }
 

@@ -100,6 +100,35 @@ describe("DataTable", () => {
     expect(screen.getByRole("alert").textContent).toContain("Sonuçlar yüklenemedi.");
     expect(screen.queryByText("A")).toBeNull();
   });
+
+  it("yatay taşan tablo kabı başlığıyla adlandırılmış, odaklanabilir bölgedir; taşmıyorsa Tab durağı değildir (F8.1)", () => {
+    const widths = vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(800);
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(390);
+    render(
+      <DataTable
+        caption="Geniş tablo"
+        columns={columns}
+        rows={[{ uid: "u1", name: "A", score: 80 }]}
+        rowKey={(r) => r.uid}
+      />
+    );
+    const region = screen.getByRole("region", { name: "Geniş tablo" });
+    expect(region.getAttribute("tabindex")).toBe("0");
+    cleanup();
+
+    widths.mockReturnValue(390);
+    render(
+      <DataTable
+        caption="Dar tablo"
+        columns={columns}
+        rows={[{ uid: "u1", name: "A", score: 80 }]}
+        rowKey={(r) => r.uid}
+      />
+    );
+    expect(screen.queryByRole("region")).toBeNull();
+    expect(document.querySelector(".table-wrap")?.hasAttribute("tabindex")).toBe(false);
+    vi.restoreAllMocks();
+  });
 });
 
 function ToastButtons() {

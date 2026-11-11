@@ -17,7 +17,7 @@ import {
 import type { AuditResourceType, AuditSeverity, MemberStatus, Role } from "@shared/constants";
 import { COLLECTIONS } from "@shared/types";
 import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
-import { AppError } from "@/lib/errors";
+import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 
 /**
@@ -31,7 +31,7 @@ const ms = (v: unknown): number | null =>
 
 function db() {
   const firestore = initPediatristFirebase()?.db;
-  if (!firestore) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+  if (!firestore) throw notConfiguredError();
   return firestore;
 }
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getDownloadURL, listAll, ref, uploadBytesResumable } from "firebase/storage";
 import { QUIZ_MEDIA_UPLOAD } from "@shared/constants";
 import { QUIZ_IMAGE_PATH_RE } from "@shared/quizQuestion";
-import { AppError, toUserMessage } from "@/lib/errors";
+import { AppError, toUserMessage, notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { slugify } from "@/lib/slug";
 
@@ -45,7 +45,7 @@ export function quizMediaProblem(file: { type: string; size: number }): string |
 
 function storageOrThrow() {
   const storage = initPediatristFirebase()?.storage;
-  if (!storage) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+  if (!storage) throw notConfiguredError();
   return storage;
 }
 

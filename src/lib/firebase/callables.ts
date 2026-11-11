@@ -3,7 +3,7 @@
 import { httpsCallable } from "firebase/functions";
 import { formatIssues } from "@shared/issues";
 import { CALLABLES, type CallableName, type CallableRequestInput, type CallableResponse } from "@shared/schemas";
-import { AppError, toAppError } from "@/lib/errors";
+import { AppError, toAppError, notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 
 export { toUserMessage } from "@/lib/errors";
@@ -49,7 +49,7 @@ export async function callFunction<N extends CallableName>(
   }
 
   const clients = initPediatristFirebase();
-  if (!clients) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+  if (!clients) throw notConfiguredError();
 
   let raw: unknown;
   try {

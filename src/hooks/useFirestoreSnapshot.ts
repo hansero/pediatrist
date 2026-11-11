@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { toUserMessage } from "@/lib/errors";
+import { toUserMessage, NOT_CONFIGURED_MESSAGE } from "@/lib/errors";
 
 export type LiveState<T> =
   | { status: "loading"; data: null; error: "" }
@@ -24,7 +24,7 @@ export function useFirestoreSnapshot<T>(
       (data) => setState({ status: "ready", data, error: "" }),
       (err) => setState({ status: "error", data: null, error: toUserMessage(err) })
     );
-    if (!unsubscribe) setState({ status: "error", data: null, error: "Sunucu bağlantısı yapılandırılmamış." });
+    if (!unsubscribe) setState({ status: "error", data: null, error: NOT_CONFIGURED_MESSAGE });
     return () => unsubscribe?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);

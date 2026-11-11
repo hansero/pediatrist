@@ -35,18 +35,22 @@ export class AppError extends Error {
 /** Sunucu mesajı yoksa kullanılacak Türkçe metinler. */
 const DEFAULT_ERROR_MESSAGES: Record<AppErrorCode, string> = {
   "invalid-argument": "Girilen bilgiler geçersiz. Lütfen kontrol edip tekrar deneyin.",
-  "failed-precondition": "Bu işlem şu anda yapılamıyor.",
-  "permission-denied": "Bu işlem için yetkiniz yok.",
+  "failed-precondition": "Bu işlem şu anda yapılamıyor. Sayfayı yenileyip güncel durumu kontrol edin.",
+  "permission-denied": "Bu işlem için yetkiniz yok. Gerekliyse eğitim sorumlusuna başvurun.",
   unauthenticated: "Oturumunuzun süresi doldu. Lütfen yeniden giriş yapın.",
-  "not-found": "İstenen kayıt bulunamadı.",
-  "already-exists": "Bu kayıt zaten mevcut.",
+  "not-found": "İstenen kayıt bulunamadı; silinmiş olabilir. Sayfayı yenileyin.",
+  "already-exists": "Bu kayıt zaten mevcut. Listeyi yenileyip kontrol edin.",
   "deadline-exceeded": "Süre doldu. Lütfen tekrar deneyin.",
   "resource-exhausted": "Çok fazla deneme yapıldı. Bir süre sonra tekrar deneyin.",
   unavailable: "Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.",
-  "not-configured": "Sunucu bağlantısı yapılandırılmamış.",
+  "not-configured": "Sunucu bağlantısı yapılandırılmamış. Platform yöneticisine bildirin.",
   "bad-response": "Sunucudan beklenmeyen bir yanıt alındı. Lütfen sayfayı yenileyin.",
   internal: "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
 };
+
+/** Firebase istemcisi yokken (yapılandırma eksik) tek tip hata; metin tek kaynaktan (F8.1). */
+export const notConfiguredError = () => new AppError("not-configured", DEFAULT_ERROR_MESSAGES["not-configured"]);
+export const NOT_CONFIGURED_MESSAGE = DEFAULT_ERROR_MESSAGES["not-configured"];
 
 /** Sunucu mesajı kullanıcıya gösterilebilecek kodlar (sunucu bu kodlarda Türkçe ve teknik olmayan mesaj yazar). */
 const SERVER_MESSAGE_CODES = new Set<AppErrorCode>([
@@ -163,8 +167,11 @@ const WEBAUTHN_ERRORS: Record<string, [AppErrorCode, string]> = {
     "Cihaz doğrulaması iptal edildi veya süresi doldu. Tekrar deneyin; yüz/parmak izi onayını tamamlayın.",
   ],
   AbortError: ["failed-precondition", "Cihaz doğrulaması iptal edildi. Tekrar deneyin."],
-  ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED: ["already-exists", "Bu cihaz bu hesap için zaten kayıtlı."],
-  InvalidStateError: ["already-exists", "Bu cihaz bu hesap için zaten kayıtlı."],
+  ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED: [
+    "already-exists",
+    "Bu cihaz bu hesap için zaten kayıtlı; yoklamaya bu cihazla katılabilirsiniz.",
+  ],
+  InvalidStateError: ["already-exists", "Bu cihaz bu hesap için zaten kayıtlı; yoklamaya bu cihazla katılabilirsiniz."],
   ERROR_AUTHENTICATOR_MISSING_USER_VERIFICATION_SUPPORT: [
     "failed-precondition",
     "Bu cihazda ekran kilidi (yüz tanıma, parmak izi veya PIN) etkin değil. Etkinleştirip tekrar deneyin.",
@@ -173,9 +180,18 @@ const WEBAUTHN_ERRORS: Record<string, [AppErrorCode, string]> = {
     "failed-precondition",
     "Bu tarayıcı cihaz doğrulamasını (passkey) desteklemiyor. Telefonunuzun güncel tarayıcısını kullanın.",
   ],
-  ERROR_INVALID_DOMAIN: ["failed-precondition", "Cihaz doğrulaması yalnızca güvenli (https) bağlantıda çalışır."],
-  ERROR_INVALID_RP_ID: ["failed-precondition", "Cihaz doğrulaması bu adreste yapılandırılmamış."],
-  SecurityError: ["failed-precondition", "Cihaz doğrulaması yalnızca güvenli (https) bağlantıda çalışır."],
+  ERROR_INVALID_DOMAIN: [
+    "failed-precondition",
+    "Cihaz doğrulaması yalnızca güvenli (https) bağlantıda çalışır. Platformu https:// adresinden açın.",
+  ],
+  ERROR_INVALID_RP_ID: [
+    "failed-precondition",
+    "Cihaz doğrulaması bu adreste yapılandırılmamış. Platformu resmî adresinden açın.",
+  ],
+  SecurityError: [
+    "failed-precondition",
+    "Cihaz doğrulaması yalnızca güvenli (https) bağlantıda çalışır. Platformu https:// adresinden açın.",
+  ],
 };
 
 /** WebAuthn DOM hata adları (yalnızca DOMException ya da kütüphane hatası olarak gelirse eşlenir). */
@@ -205,10 +221,13 @@ function fromWebAuthnError(err: unknown): AppError | null {
 const STORAGE_ERRORS: Record<string, [AppErrorCode, string]> = {
   "storage/unauthorized": ["permission-denied", "Bu dosya için yetkiniz yok ya da dosya türü/boyutu kabul edilmiyor."],
   "storage/unauthenticated": ["unauthenticated", DEFAULT_ERROR_MESSAGES.unauthenticated],
-  "storage/object-not-found": ["not-found", "Dosya bulunamadı."],
+  "storage/object-not-found": ["not-found", "Dosya bulunamadı; silinmiş olabilir. Sayfayı yenileyin."],
   "storage/quota-exceeded": ["resource-exhausted", "Depolama kotası doldu. Platform yöneticisine bildirin."],
   "storage/retry-limit-exceeded": ["unavailable", DEFAULT_ERROR_MESSAGES.unavailable],
-  "storage/canceled": ["failed-precondition", "Yükleme iptal edildi."],
+  "storage/canceled": [
+    "failed-precondition",
+    "Yükleme iptal edildi. Dosyayı yeniden seçerek tekrar yükleyebilirsiniz.",
+  ],
 };
 
 /** Firestore istemci hata kodları önek taşımaz ("permission-denied" gibi); ortak kodlar varsayılan metne eşlenir. */

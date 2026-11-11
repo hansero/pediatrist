@@ -82,7 +82,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F7.4 | Hesaplayıcılar: dürüst "yakında" durumu + `calculators_config` | S | ⬜ | Kullanılabilirlik |
 | F7.5 | `invokeWithFallback` ve tüm fallback'lerin silinmesi; bekçi listesi boş | S | ✅ | C1 (final) |
 | **F8** | **Erişilebilirlik, metin, performans cilası** | | | |
-| F8.1 | UX metni sadeleştirme + a11y düzeltmeleri + axe testleri | M | ⬜ | Görsel hiyerarşi, Erişilebilirlik |
+| F8.1 | UX metni sadeleştirme + a11y düzeltmeleri + axe testleri | M | ✅ | Görsel hiyerarşi, Erişilebilirlik |
 | F8.2 | Performans (timer izolasyonu), ölü kod, `admin.ts` kararı | S | ⬜ | §7 |
 | **F9** | **Uyum (KVKK) ve operasyon** | | | |
 | F9.1 | Aydınlatma metni, rıza sürümü, üye silme ve veri dışa aktarımı | M | ⬜ | §9 |
@@ -101,14 +101,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F7.5. **F7 tamamlandı; bütün modüller gerçek veride, sahte veri bekçisi istisnasız.** `invokeWithFallback` ve izin listesi silindi; Firebase yapılandırması eksikse kök yerleşim açık bir hata sayfası gösterir. Testler: unit 244, rules 57, functions 102, e2e 101 (+3 bilinçli atlanan).
+- **Son tamamlanan adım:** F8.1. axe ile ana sayfalarda ciddi/kritik erişilebilirlik ihlali 0 (iki ekran boyutu); etiket-ad uyuşmazlıkları ve kaydırılabilir tablo odağı düzeltildi; hata mesajları "ne oldu + ne yapmalı"; yapılandırma mesajı tek kaynakta. Testler: unit 245, rules 57, functions 102, e2e E2E_COUNT.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F8.1 metin ve erişilebilirlik (bkz. §F8.1).
-  - Önce `@axe-core/playwright` ekle (`npm i -D`, sürüm sabitlenmiş) ve `e2e/a11y.spec.ts` yaz. Kapsam: giriş, kayıt, ana sayfa (admin+hekim), yoklama, sınavlar, materyaller, hesaplayıcılar, yönetim paneli (3 sekme), hesap güvenliği.
-  - Hedef 0 serious/critical. Önce ölç, ihlalleri listele, sonra düzelt.
-  - Metin taraması: buton 1–3 kelime, jargon yok ("Custom Claims", "RBAC", "HMAC" vb. `grep -rn` ile), hata mesajları "ne oldu + ne yapmalı".
-  - Durum renkleri yalnızca durumda: eski `sec-chip` başlık üstü etiketleri (mock sayfalardan kalan varsa) nötr stile.
-  - Sonra F8.2 (zamanlayıcı izolasyonu, ölü kod: `src/lib/firebase/admin.ts`, `firebase-admin` / `server-only` kök bağımlılıkları).
+- **Sıradaki iş:** F8.2 performans ve ölü kod (bkz. §F8.2).
+  - Saniyelik zamanlayıcılar yalnızca `Countdown`'da kalmalı: `grep -rn "setInterval" src`.
+    - Ana sayfanın 30 sn saati (`useMinuteClock`) ve materyal ilerleme kaydı (15 sn) bilinçli; sayfa geneli yeniden çizim yapıyorsa izole et.
+  - Büyük listelerde sayfalama: üye listesi 1000, davet 200, materyal 200 sınırı var. Sınıra yaklaşınca uyarı ya da "daha fazla" düğmesi.
+  - `src/lib/firebase/admin.ts`, `firebase-admin` ve `server-only` kök bağımlılıkları: kullanılmıyorsa silinir (`grep -rn "firebase/admin\|server-only" src`). Seed betiği `firebase-admin`'i kullanıyor mu kontrol et (`scripts/`); kullanıyorsa devDependency'ye taşı.
+  - Karar notu (plan): sunucu tarafı rota koruması bu revizyonda yok.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1402,6 +1402,25 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Durum renkleri yalnızca durum için kullanılır; başlık üstü etiketler nötr stildedir.
   - Etiketsiz kontroller etiketlenir. Sekmeler, fieldset'ler ve tablo başlıkları erişilebilir hale getirilir.
   - `e2e/a11y.spec.ts`: her ana sayfada `@axe-core/playwright` çalışır, **0 serious/critical** ihlal hedeflenir.
+
+- **✅ Uygulanan F8.1 (sapmalar ve eklemeler):**
+  - **axe testi:** `@axe-core/playwright` 4.14.0 sabit sürümle eklendi.
+    - Eş bağımlılık ayrı bir `playwright-core` 1.65 çekiyordu (tip uyuşmazlığı, ikinci kopya). `playwright-core` 1.63.0 kökte sabitlendi, tek kopya kaldı. `@playwright/test` yükseltilirken ikisi birlikte yükseltilmeli; ayrışırsa typecheck kırılır.
+    - `e2e/a11y.spec.ts` + `fixtures/a11y.ts`: WCAG 2.1 A/AA, ciddi/kritik ihlal 0, her iki projede.
+    - Kapsam: herkese açık sayfalar (giriş, kayıt, şifre sıfırlama, KVKK), hekim sayfaları (7), admin sayfaları ve yönetim paneli sekmeleri, bekleyen hesap ekranı.
+    - `expect.soft` kullanılır: bir sayfadaki ihlal diğerlerinin denetimini durdurmaz.
+  - **İlk ölçüm:** 8 testin 6'sı temizdi. Bulunanlar:
+    - `label-content-name-mismatch` (WCAG 2.5.3): "İşlemler", "İptal et" (Türkçe "İ" küçük harfe "i̇" olarak döner, `aria-label`'daki "işlemler" ile eşleşmez) ve "Not ekle/Notu düzenle" (ad bambaşkaydı).
+    - Taramayla aynı desende iki düğme daha bulundu ("CSV indir", "Yolu kopyala").
+    - Beşi de görünen metin + görünmez bağlam (`İşlemler<span class="sr-only">: Dr. X</span>`) biçimine çevrildi; e2e seçicileri güncellendi.
+    - `scrollable-region-focusable` (telefonda /attendance): DataTable kabı yalnızca gerçekten yatay taşıyorsa `tabIndex=0` + `role=region` + başlığıyla `aria-labelledby` alır (`ResizeObserver`; yoksa ilk ölçüm). Taşmayan tabloya gereksiz Tab durağı eklenmez. Birim testli.
+  - **Metin:**
+    - Jargon taraması temiz. Kalan iki ifade bilinçli: emülatörde görünen "Authenticator kurulumu emülatörde desteklenmiyor" geliştirici bilgisi ve yöneticiye yönelik yapılandırma sayfası.
+    - Düğmeler 1–3 kelime; tek istisna "Doğrula ve giriş yap" → "Doğrula".
+    - Durum renkleri yalnızca durum için; kategori ve soru türü çipleri nötr (taramayla kontrol edildi).
+  - **Hata mesajları "ne oldu + ne yapmalı":** varsayılanlar tamamlandı (yetki, bulunamadı, zaten var, işlem yapılamıyor, yapılandırma, Storage dosya bulunamadı/iptal, passkey https/adres/zaten kayıtlı).
+    - "Sunucu bağlantısı yapılandırılmamış" 13 dosyada elle yazılıydı; `notConfiguredError()` / `NOT_CONFIGURED_MESSAGE` ile tek kaynağa alındı.
+  - **CI (F7.5 ekinde, ayrı commit):** runner'ın Ubuntu paket aynasına erişememesi e2e'yi iki kez engelledi. Chromium önce başlatılarak denenir, apt yalnızca gerekirse çalışır; Run #45 yeşil.
 
 #### F8.2 Performans ve ölü kod (S)
 - **Yapılacaklar:**

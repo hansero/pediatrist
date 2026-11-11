@@ -127,7 +127,7 @@ test("kendi satırında rol, durum ve MFA işlemi yok", async ({ page }) => {
   const row = await memberRow(page, ACCOUNTS.admin);
   await expect(row).toContainText("(siz)");
   // Seed admin'in kayıtlı cihazı yok ve kıdemi değiştirilemez (admin) → işlem menüsü hiç yok.
-  await expect(row.getByRole("button", { name: /: işlemler$/ })).toHaveCount(0);
+  await expect(row.getByRole("button", { name: /^İşlemler/ })).toHaveCount(0);
 });
 
 test("davet: geçersiz e-posta sunucu hatası gösterir; oluştur → kod → iptal", async ({ page }, testInfo) => {
@@ -156,12 +156,12 @@ test("davet: geçersiz e-posta sunucu hatası gösterir; oluştur → kod → ip
   await expect(row).toContainText("Hekim · 2. yıl");
   await expect(row).toContainText("Geçerli");
 
-  await row.getByRole("button", { name: `${email}: daveti iptal et` }).click();
+  await row.getByRole("button", { name: `İptal et: ${email} daveti` }).click();
   const confirm = page.getByRole("alertdialog", { name: "Daveti iptal et" });
   await expect(confirm).toContainText(code);
   await confirm.getByRole("button", { name: "Daveti iptal et" }).click();
   await expect(confirm).toHaveCount(0, { timeout: 15_000 });
   await expect(row).toContainText("İptal edildi");
-  await expect(row.getByRole("button", { name: /daveti iptal et/ })).toHaveCount(0);
+  await expect(row.getByRole("button", { name: /^İptal et/ })).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
 });

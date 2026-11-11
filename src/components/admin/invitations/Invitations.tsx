@@ -173,13 +173,8 @@ export function Invitations() {
               align: "end",
               cell: (i) =>
                 i.state === "valid" ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setRevoking(i)}
-                    aria-label={`${i.email}: daveti iptal et`}
-                  >
-                    İptal et
+                  <Button size="sm" variant="ghost" onClick={() => setRevoking(i)}>
+                    İptal et<span className="sr-only">: {i.email} daveti</span>
                   </Button>
                 ) : null,
             },

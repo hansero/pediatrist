@@ -9,7 +9,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
-import { AppError } from "@/lib/errors";
+import { notConfiguredError } from "@/lib/errors";
 import { completeRegistration } from "@/lib/firebase/callables";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { kvkkController } from "@/lib/kvkk";
@@ -56,7 +56,7 @@ export default function RegisterPage() {
 
   const submit = useAsyncAction(async () => {
     const clients = initPediatristFirebase();
-    if (!clients) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+    if (!clients) throw notConfiguredError();
     const normalizedEmail = email.trim().toLowerCase();
 
     const current = clients.auth.currentUser;

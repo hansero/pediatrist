@@ -9,7 +9,7 @@ import { Field } from "@/components/ui/Field";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { completeTotpSignIn, mfaResolverFrom, totpHint } from "@/lib/auth/mfa";
 import { SIGN_OUT_MESSAGES, SIGN_OUT_TONES, type SignOutReason } from "@/lib/auth/sessionDecision";
-import { AppError } from "@/lib/errors";
+import { AppError, notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { hardNavigate } from "@/lib/navigation";
 
@@ -18,7 +18,7 @@ const EXPIRED_MFA_SESSION = new Set(["auth/invalid-multi-factor-session", "auth/
 
 function clientsOrThrow() {
   const clients = initPediatristFirebase();
-  if (!clients) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+  if (!clients) throw notConfiguredError();
   return clients;
 }
 
@@ -194,7 +194,7 @@ export default function LoginPage() {
                   Geri
                 </Button>
                 <Button type="submit" loading={verify.pending} loadingText="Doğrulanıyor…">
-                  Doğrula ve giriş yap
+                  Doğrula
                 </Button>
               </div>
             </form>

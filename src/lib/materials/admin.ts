@@ -7,7 +7,7 @@ import { COLLECTIONS, type MaterialStatus } from "@shared/types";
 import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import type { MemberSummary } from "@/lib/attendance/live";
 import type { CsvCell } from "@/lib/csv";
-import { AppError } from "@/lib/errors";
+import { AppError, notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { slugify } from "@/lib/slug";
 
@@ -131,7 +131,7 @@ export interface UploadHandle {
 /** Dosyayı Storage'a yükler; ilerleme 0–1. `cancel` yüklemeyi durdurur (Türkçe "iptal edildi" hatasıyla biter). */
 export function uploadMaterialFile(file: File, storagePath: string, onProgress: (f: number) => void): UploadHandle {
   const storage = initPediatristFirebase()?.storage;
-  if (!storage) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+  if (!storage) throw notConfiguredError();
   const task = uploadBytesResumable(ref(storage, storagePath), file, { contentType: file.type });
   const promise = new Promise<void>((resolve, reject) => {
     task.on(

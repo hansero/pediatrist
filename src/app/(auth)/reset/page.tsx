@@ -7,7 +7,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
-import { AppError } from "@/lib/errors";
+import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 
 /**
@@ -21,7 +21,7 @@ export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
   const request = useAsyncAction(async () => {
     const auth = initPediatristFirebase()?.auth;
-    if (!auth) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+    if (!auth) throw notConfiguredError();
     try {
       await sendPasswordResetEmail(auth, email.trim());
     } catch (err) {

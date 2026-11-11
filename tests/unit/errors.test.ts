@@ -75,14 +75,16 @@ describe("Storage ve Firestore istemci hataları (F5.2)", () => {
   it("Storage kodları Türkçe; bilinmeyen Storage kodu teknik ayrıntı sızdırmaz", () => {
     expect(toAppError(firebaseError("storage/unauthorized"))).toMatchObject({ code: "permission-denied" });
     expect(toUserMessage(firebaseError("storage/unauthorized"))).toContain("dosya türü/boyutu");
-    expect(toUserMessage(firebaseError("storage/object-not-found"))).toBe("Dosya bulunamadı.");
+    expect(toUserMessage(firebaseError("storage/object-not-found"))).toMatch(
+      /^Dosya bulunamadı; .*Sayfayı yenileyin\.$/
+    );
     expect(toAppError(firebaseError("storage/bilinmeyen")).code).toBe("internal");
   });
 
   it("öneksiz Firestore kodu varsayılan Türkçe metne eşlenir; Firebase olmayan hata eşlenmez", () => {
     expect(toAppError(firebaseError("permission-denied"))).toMatchObject({
       code: "permission-denied",
-      message: "Bu işlem için yetkiniz yok.",
+      message: "Bu işlem için yetkiniz yok. Gerekliyse eğitim sorumlusuna başvurun.",
     });
     expect(toAppError(Object.assign(new Error("x"), { code: "permission-denied" })).code).toBe("internal");
   });

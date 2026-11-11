@@ -5,7 +5,7 @@ import { multiFactor, onIdTokenChanged, signOut, type User } from "firebase/auth
 import { doc, getDoc, onSnapshot, type Timestamp } from "firebase/firestore";
 import { parseSecurityConfig, SECURITY_CONFIG, type SecurityConfig } from "@shared/security";
 import type { MemberDoc } from "@shared/types";
-import { toUserMessage } from "@/lib/errors";
+import { toUserMessage, NOT_CONFIGURED_MESSAGE } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { evaluateSession, type SignOutReason } from "@/lib/auth/sessionDecision";
 import type { ClinicMemberSession } from "@/lib/auth/types";
@@ -80,7 +80,7 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     const clients = initPediatristFirebase();
     if (!clients) {
-      setState({ phase: "error", session: null, error: "Sunucu bağlantısı yapılandırılmamış." });
+      setState({ phase: "error", session: null, error: NOT_CONFIGURED_MESSAGE });
       return;
     }
     const { auth, db } = clients;

@@ -82,7 +82,7 @@ describe("Giriş sayfası", () => {
     h.resolveSignIn.mockRejectedValueOnce(authErr("auth/invalid-verification-code"));
     fireEvent.change(code, { target: { value: "000000" } });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Doğrula ve giriş yap" }));
+      fireEvent.click(screen.getByRole("button", { name: "Doğrula" }));
     });
     expect(screen.getByRole("alert").textContent).toContain("Doğrulama kodu hatalı");
     expect(h.replace).not.toHaveBeenCalled();
@@ -90,7 +90,7 @@ describe("Giriş sayfası", () => {
     h.resolveSignIn.mockResolvedValueOnce({});
     fireEvent.change(code, { target: { value: "123 456" } });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Doğrula ve giriş yap" }));
+      fireEvent.click(screen.getByRole("button", { name: "Doğrula" }));
     });
     expect(h.resolveSignIn).toHaveBeenLastCalledWith({ uid: "factor-1", code: "123456" });
     expect(h.replace).toHaveBeenCalledWith("/dashboard");
@@ -102,7 +102,7 @@ describe("Giriş sayfası", () => {
     await submitCredentials();
     fireEvent.change(screen.getByLabelText(/Doğrulama kodu/), { target: { value: "12" } });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Doğrula ve giriş yap" }));
+      fireEvent.click(screen.getByRole("button", { name: "Doğrula" }));
     });
     expect(h.resolveSignIn).not.toHaveBeenCalled();
     expect(screen.getByRole("alert").textContent).toContain("6 haneli");
@@ -115,7 +115,7 @@ describe("Giriş sayfası", () => {
     await submitCredentials();
     fireEvent.change(screen.getByLabelText(/Doğrulama kodu/), { target: { value: "123456" } });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Doğrula ve giriş yap" }));
+      fireEvent.click(screen.getByRole("button", { name: "Doğrula" }));
     });
     await waitFor(() => expect(screen.getByRole("heading", { name: "Pediatrist'e giriş" })).toBeTruthy());
     expect(screen.getByRole("alert").textContent).toContain("Doğrulama süresi doldu");

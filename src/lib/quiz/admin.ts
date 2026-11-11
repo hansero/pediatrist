@@ -15,7 +15,7 @@ import {
 import { DEFAULT_REVEAL_POLICY, QUESTION_TYPES, type QuestionType, type RevealPolicy } from "@shared/constants";
 import { COLLECTIONS, type QuizStatus } from "@shared/types";
 import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
-import { AppError } from "@/lib/errors";
+import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 
 /**
@@ -138,7 +138,7 @@ export interface ArchivePage {
 /** Arşiv: yeniden eskiye, sayfalı (tek alanlı indeks). */
 export async function fetchArchivePage(after: QueryDocumentSnapshot | null = null): Promise<ArchivePage> {
   const db = initPediatristFirebase()?.db;
-  if (!db) throw new AppError("not-configured", "Sunucu bağlantısı yapılandırılmamış.");
+  if (!db) throw notConfiguredError();
   const base = collection(db, COLLECTIONS.quizQuestionArchive);
   const snap = await getDocs(
     after

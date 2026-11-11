@@ -166,13 +166,8 @@ export function QuizMediaManager() {
               header: <span className="sr-only">İşlem</span>,
               align: "end",
               cell: (path) => (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => void copy(path)}
-                  aria-label={`${path} yolunu kopyala`}
-                >
-                  Yolu kopyala
+                <Button size="sm" variant="secondary" onClick={() => void copy(path)}>
+                  Yolu kopyala<span className="sr-only">: {path}</span>
                 </Button>
               ),
             },

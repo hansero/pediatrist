@@ -194,8 +194,8 @@ function DoctorDetail({ row, range, onClose }: { row: DoctorReportRow; range: Re
         description={`${row.present} katıldı · ${row.excused} mazeretli · ${row.absent} katılmadı`}
         actions={
           <div className="ui-actions">
-            <Button variant="secondary" onClick={exportCsv} aria-label={`${row.name} dökümünü CSV olarak indir`}>
-              CSV indir
+            <Button variant="secondary" onClick={exportCsv}>
+              CSV indir<span className="sr-only">: {row.name} ders dökümü</span>
             </Button>
             <Button variant="secondary" onClick={onClose}>
               Kapat
