@@ -99,3 +99,13 @@ export async function requireAdmin(request: CallableRequest<unknown>): Promise<M
   }
   return ctx;
 }
+
+/**
+ * Üyenin kendisi ya da Eğitim Sorumlusu (F9.1: kişisel veri dökümü). `requireActive` sonrası çağrılır;
+ * başka üyenin verisini isteyen hekim reddedilir.
+ */
+export function requireSelfOrAdmin(ctx: MemberContext, targetUid: string): void {
+  if (ctx.uid !== targetUid && ctx.profile.role !== "admin") {
+    throw new HttpsError("permission-denied", "Yalnızca kendi verilerinizi indirebilirsiniz.");
+  }
+}

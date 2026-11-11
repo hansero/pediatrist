@@ -216,6 +216,17 @@ export const completeRegistration = defineCallable("completeRegistration", "sign
     throw new HttpsError("failed-precondition", "Hesabınızda e-posta adresi bulunmuyor. E-posta ile kayıt olun.");
   }
 
+  // Silinmiş bir hesabın henüz süresi dolmamış oturum belirteciyle profil yeniden oluşturulamaz (F9.1):
+  // aksi halde silinen üyenin adı ve e-postası başvuru listesine geri dönerdi.
+  await getAuth()
+    .getUser(me.uid)
+    .catch(() => {
+      throw new HttpsError(
+        "unauthenticated",
+        "Hesabınız bulunamadı. Yeniden kayıt olun ya da eğitim sorumlusuna başvurun."
+      );
+    });
+
   const db = getFirestore();
   const userRef = users().doc(me.uid);
   const out = await db.runTransaction(async (tx) => {

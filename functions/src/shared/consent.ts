@@ -5,9 +5,15 @@
  * İçerik, uygulamanın GERÇEKTEN işlediği verilerden türetilmiştir (kod incelemesiyle). Veri sorumlusunun
  * kimliği ve başvuru adresi kuruma özeldir; ortam yapılandırmasından gelir (`NEXT_PUBLIC_KVKK_*`).
  * Yayından önce kurumun KVKK sorumlusu/hukuk birimi metni onaylamalıdır (REVISION_PLAN F10.2, F9.1).
- * Metin değişirse `version` artırılır; mevcut üyelerin yeniden onayı F9.1'de ele alınır.
+ * Metin değişirse `version` artırılır; oturum açan her üyeden yeni sürüm için onay istenir (`acceptConsent`, F9.1).
  */
 export const KVKK_NOTICE_VERSION = "1.0";
+/**
+ * Metin kurumun KVKK sorumlusu / hukuk birimi tarafından ONAYLANDI mı? (F9.1). `false` iken `/kvkk` sayfası ve
+ * onay ekranı metnin taslak olduğunu açıkça söyler. Onay METNE verilir: metin değişirse sürüm artırılır ve bu
+ * değer yeniden `false` yapılır. Yalnızca yazılı onay alındıktan sonra `true` yapın (DEPLOY kontrol listesi).
+ */
+export const KVKK_NOTICE_APPROVED: boolean = false;
 export const KVKK_NOTICE_EFFECTIVE_DATE = "2026-11-10";
 
 export interface NoticeSection {

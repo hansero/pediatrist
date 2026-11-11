@@ -179,6 +179,90 @@ export const UpdateCalculatorConfigRequest = z.object({
 });
 export const UpdateCalculatorConfigResponse = z.object({ saved: z.literal(true), cleared: z.boolean() });
 
+// --- KVKK (F9.1) -------------------------------------------------------------------------------
+
+/** Üye: güncel aydınlatma metnini okuduğunu onaylar (sürüm değişince yeniden istenir). */
+export const AcceptConsentRequest = z.object({
+  consentVersion: z.literal(KVKK_NOTICE_VERSION, {
+    error: "Aydınlatma metni güncellendi. Sayfayı yenileyip güncel metni onaylayın.",
+  }),
+});
+export const AcceptConsentResponse = z.object({ accepted: z.literal(true), version: z.string() });
+
+/**
+ * Admin: üyeyi siler (KVKK md. 7). Giriş hesabı ve profil silinir; eğitim kayıtları (sınav, yoklama) istatistik
+ * için kalır ama addan arındırılır. Geri alınamaz.
+ */
+export const DeleteMemberRequest = z.object({ targetUid: docId("Hedef kullanıcı") });
+export const DeleteMemberResponse = z.object({
+  deleted: z.literal(true),
+  anonymized: z.object({
+    quizAttempts: z.number(),
+    attendanceRecords: z.number(),
+    authoredItems: z.number(),
+  }),
+  removed: z.object({ materialProgress: z.number(), invitations: z.number() }),
+});
+
+/** Üyenin kişisel verilerinin dökümü (KVKK md. 11): üye kendisi için, admin her üye için ister. */
+export const ExportMemberDataRequest = z.object({ targetUid: docId("Hedef kullanıcı") });
+const isoOrNull = z.string().nullable();
+export const ExportMemberDataResponse = z.object({
+  exportedAt: z.string(),
+  noticeVersion: z.string(),
+  profile: z.object({
+    uid: z.string(),
+    title: z.string(),
+    fullName: z.string(),
+    email: z.string(),
+    residencyYear: z.number().nullable(),
+    role: roleSchema,
+    status: z.enum(MEMBER_STATUSES),
+    createdAt: isoOrNull,
+    consent: z.object({ version: z.string(), acceptedAt: isoOrNull }).nullable(),
+    attendanceDeviceRegisteredAt: isoOrNull,
+  }),
+  quizAttempts: z.array(
+    z.object({
+      quizTitle: z.string(),
+      status: z.string(),
+      startedAt: isoOrNull,
+      submittedAt: isoOrNull,
+      score: z.number().nullable(),
+      correctCount: z.number().nullable(),
+      totalQuestions: z.number().nullable(),
+      lateSubmission: z.boolean(),
+      autoSubmitted: z.boolean(),
+      tabSwitchCount: z.number().nullable(),
+      /** Üyenin kendi yanıtları ve doğru/yanlış sonucu. Doğru cevaplar ve açıklamalar dökümde YOKTUR (kural 5). */
+      answers: z.array(z.object({ question: z.number(), response: z.array(z.string()), isCorrect: z.boolean() })),
+    })
+  ),
+  attendance: z.array(
+    z.object({
+      lectureTitle: z.string(),
+      lecturer: z.string(),
+      lectureStartedAt: isoOrNull,
+      status: z.string(),
+      method: z.string(),
+      verifiedAt: isoOrNull,
+      excuseNote: z.string().nullable(),
+    })
+  ),
+  materialProgress: z.array(
+    z.object({
+      materialTitle: z.string(),
+      secondsSpent: z.number(),
+      lastPage: z.number(),
+      completed: z.boolean(),
+      updatedAt: isoOrNull,
+    })
+  ),
+  /** Üyenin kendi yaptığı, denetim kaydına geçen işlemler. */
+  activity: z.array(z.object({ action: z.string(), at: isoOrNull })),
+  truncated: z.boolean(),
+});
+
 export const ResetMemberMfaRequest = z.object({ targetUid: docId("Hedef kullanıcı") });
 export const ResetMemberMfaResponse = z.object({ reset: z.literal(true), factorsRemoved: z.number() });
 
@@ -518,6 +602,9 @@ export const CALLABLES = {
   updateMaterial: { request: UpdateMaterialRequest, response: UpdateMaterialResponse },
   deleteMaterial: { request: DeleteMaterialRequest, response: DeleteMaterialResponse },
   updateCalculatorConfig: { request: UpdateCalculatorConfigRequest, response: UpdateCalculatorConfigResponse },
+  acceptConsent: { request: AcceptConsentRequest, response: AcceptConsentResponse },
+  deleteMember: { request: DeleteMemberRequest, response: DeleteMemberResponse },
+  exportMemberData: { request: ExportMemberDataRequest, response: ExportMemberDataResponse },
 } as const;
 
 export type CallableName = keyof typeof CALLABLES;

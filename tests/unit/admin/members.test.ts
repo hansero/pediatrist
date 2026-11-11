@@ -30,11 +30,15 @@ describe("üye işlemleri (F7.1)", () => {
       "suspend",
       "resetMfa",
       "changeYear",
+      "exportData",
+      "delete",
     ]);
     expect(availableActions(member("s", { status: "suspended" }), "me")).toEqual([
       "reactivate",
       "resetMfa",
       "changeYear",
+      "exportData",
+      "delete",
     ]);
     expect(availableActions(member("a", { hasDevice: true }), "me")).toEqual([
       "suspend",
@@ -42,9 +46,21 @@ describe("üye işlemleri (F7.1)", () => {
       "resetDevice",
       "resetMfa",
       "changeYear",
+      "exportData",
+      "delete",
     ]);
-    expect(availableActions(member("me", { role: "admin", hasDevice: true }), "me")).toEqual(["resetDevice"]);
-    expect(availableActions(member("b", { role: "admin" }), "me")).toEqual(["suspend", "removeAdmin", "resetMfa"]);
+    // Kendi satırı: yalnızca cihaz sıfırlama ve kendi veri dökümü; silme yok (F9.1).
+    expect(availableActions(member("me", { role: "admin", hasDevice: true }), "me")).toEqual([
+      "resetDevice",
+      "exportData",
+    ]);
+    expect(availableActions(member("b", { role: "admin" }), "me")).toEqual([
+      "suspend",
+      "removeAdmin",
+      "resetMfa",
+      "exportData",
+      "delete",
+    ]);
   });
 
   it("sıralama: önce bekleyenler, sonra ada göre; arama ad ve e-postada, Türkçe harf duyarsız", () => {

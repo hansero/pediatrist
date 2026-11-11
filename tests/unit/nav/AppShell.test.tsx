@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClinicMemberSession } from "@/lib/auth/types";
+import { KVKK_NOTICE_VERSION } from "@shared/consent";
 
 const nav = vi.hoisted(() => ({ pathname: "/materials" }));
 vi.mock("next/navigation", () => ({ usePathname: () => nav.pathname }));
@@ -40,6 +41,7 @@ function session(role: "admin" | "user"): ClinicMemberSession {
     mfaRequired: true,
     emailVerificationRequired: false,
     hasBoundDevice: false,
+    consentVersion: KVKK_NOTICE_VERSION,
   };
 }
 

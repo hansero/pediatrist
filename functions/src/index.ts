@@ -32,3 +32,4 @@ export {
 } from "./quizService";
 export { createMaterial, finalizeMaterialUpload, updateMaterial, deleteMaterial } from "./materialsService";
 export { updateCalculatorConfig } from "./calculatorsService";
+export { acceptConsent, deleteMember, exportMemberData } from "./privacyService";

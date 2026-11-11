@@ -24,7 +24,8 @@ import {
   type MemberAction,
   type MemberRow,
 } from "@/lib/admin/members";
-import { resetMemberMfa, updateMemberAccess } from "@/lib/firebase/callables";
+import { deleteMember, resetMemberMfa, updateMemberAccess } from "@/lib/firebase/callables";
+import { downloadMemberExport } from "@/lib/privacy";
 
 interface ActionSpec {
   label: string;
@@ -36,7 +37,19 @@ interface ActionSpec {
   done: (name: string) => string;
 }
 
-const ACTIONS: Record<Exclude<MemberAction, "makeAdmin" | "changeYear">, ActionSpec> = {
+/** Adı yazarak onaylanan (yetki veren ya da geri alınamayan) işlemler. */
+type TypedAction = "makeAdmin" | "delete";
+
+const ACTIONS: Record<Exclude<MemberAction, TypedAction | "changeYear">, ActionSpec> = {
+  exportData: {
+    label: "Veri dökümünü indir",
+    describe: (n) =>
+      `${n} hakkında platformda tutulan kişisel veriler (profil, sınav, yoklama ve materyal kayıtları) bir dosya olarak indirilir. İşlem denetim kaydına geçer; dosyayı yalnızca ilgili kişiye iletin.`,
+    confirmLabel: "Dökümü indir",
+    tone: "primary",
+    run: (m) => downloadMemberExport(m.uid),
+    done: (n) => `${n}: veri dökümü indirildi.`,
+  },
   approve: {
     label: "Üyeliği onayla",
     describe: (n) => `${n} platforma giriş yapabilir ve kendi kıdemine yönelik içeriği görür.`,
@@ -107,7 +120,7 @@ export function MemberList({ selfUid }: { selfUid: string }) {
   const [search, setSearch] = useState("");
   const [menuFor, setMenuFor] = useState<MemberRow | null>(null);
   const [confirm, setConfirm] = useState<{ member: MemberRow; action: keyof typeof ACTIONS } | null>(null);
-  const [promote, setPromote] = useState<MemberRow | null>(null);
+  const [typed, setTyped] = useState<{ member: MemberRow; action: TypedAction } | null>(null);
   const [yearFor, setYearFor] = useState<MemberRow | null>(null);
 
   const all = members.data ?? [];
@@ -116,7 +129,7 @@ export function MemberList({ selfUid }: { selfUid: string }) {
 
   function choose(member: MemberRow, action: MemberAction) {
     setMenuFor(null);
-    if (action === "makeAdmin") setPromote(member);
+    if (action === "makeAdmin" || action === "delete") setTyped({ member, action });
     else if (action === "changeYear") setYearFor(member);
     else setConfirm({ member, action });
   }
@@ -224,12 +237,16 @@ export function MemberList({ selfUid }: { selfUid: string }) {
                 variant={a === "approve" || a === "reactivate" ? "primary" : "secondary"}
                 onClick={() => choose(menuFor, a)}
               >
-                {a === "makeAdmin" ? "Eğitim sorumlusu yap" : a === "changeYear" ? "Kıdemi değiştir" : ACTIONS[a].label}
+                {a === "makeAdmin" || a === "delete"
+                  ? TYPED_ACTIONS[a].title
+                  : a === "changeYear"
+                    ? "Kıdemi değiştir"
+                    : ACTIONS[a].label}
               </Button>
             ))}
           {menuFor?.uid === selfUid && (
             <p className="page-header-subtitle">
-              Kendi rolünüzü, durumunuzu veya iki aşamalı doğrulamanızı buradan değiştiremezsiniz.
+              Kendi rolünüzü, durumunuzu veya iki aşamalı doğrulamanızı buradan değiştiremez, hesabınızı silemezsiniz.
             </p>
           )}
         </div>
@@ -254,7 +271,11 @@ export function MemberList({ selfUid }: { selfUid: string }) {
           toast.show(spec.done(memberName(confirm.member)), { tone: "success" });
         }}
       />
-      <PromoteDialog member={promote} onClose={() => setPromote(null)} />
+      <TypedNameDialog
+        key={typed ? `${typed.action}:${typed.member.uid}` : "kapali"}
+        target={typed}
+        onClose={() => setTyped(null)}
+      />
       {/* Anahtar: başlangıç kıdemi ilk çizimde hazır (efektle doldurmak o arada yapılan seçimi ezebiliyordu). */}
       <YearDialog key={yearFor?.uid ?? "kapali"} member={yearFor} onClose={() => setYearFor(null)} />
     </Card>
@@ -263,45 +284,80 @@ export function MemberList({ selfUid }: { selfUid: string }) {
 
 const norm = (v: string) => v.trim().replace(/\s+/g, " ").toLocaleLowerCase("tr");
 
-/** Eğitim sorumlusu yapma: yetki veren geri dönüşü zor işlem → adı yazarak onay. */
-function PromoteDialog({ member, onClose }: { member: MemberRow | null; onClose: () => void }) {
+interface TypedSpec {
+  title: string;
+  warning: (name: string) => string;
+  confirmLabel: string;
+  run: (m: MemberRow) => Promise<unknown>;
+  done: (name: string) => string;
+}
+
+const TYPED_ACTIONS: Record<TypedAction, TypedSpec> = {
+  makeAdmin: {
+    title: "Eğitim sorumlusu yap",
+    warning: (n) => `${n} bütün üyeleri yönetebilir, sınav ve materyal yayınlayabilir, denetim kayıtlarını görebilir.`,
+    confirmLabel: "Eğitim sorumlusu yap",
+    run: (m) => updateMemberAccess({ targetUid: m.uid, role: "admin" }),
+    done: (n) => `${n} eğitim sorumlusu oldu.`,
+  },
+  delete: {
+    title: "Üyeyi sil",
+    warning: (n) =>
+      `${n} adlı üyenin giriş hesabı ve profili kalıcı olarak silinir; bu işlem geri alınamaz. Sınav ve yoklama kayıtları istatistik için kalır, ancak adı, mazeret notları ve okuma kayıtları silinir. Gerekiyorsa önce veri dökümünü indirin.`,
+    confirmLabel: "Üyeyi sil",
+    run: (m) => deleteMember({ targetUid: m.uid }),
+    done: (n) => `${n} silindi; kayıtları addan arındırıldı.`,
+  },
+};
+
+/**
+ * Adı yazarak onay: yetki veren (eğitim sorumlusu yapma) ve geri alınamayan (üye silme, F9.1) işlemler.
+ * Onay düğmesi ad tam yazılana kadar kapalıdır; sonuç yalnızca sunucu yanıtından sonra bildirilir.
+ */
+function TypedNameDialog({
+  target,
+  onClose,
+}: {
+  target: { member: MemberRow; action: TypedAction } | null;
+  onClose: () => void;
+}) {
   const toast = useToast();
   const [typed, setTyped] = useState("");
-  const run = useAsyncAction(updateMemberAccess);
+  const spec = target ? TYPED_ACTIONS[target.action] : null;
+  const run = useAsyncAction(async (m: MemberRow) => {
+    await spec?.run(m);
+    return true as const;
+  });
   const inputRef = useRef<HTMLInputElement>(null);
-  const name = member ? memberName(member) : "";
-  const matches = member !== null && norm(typed) === norm(name);
+  const name = target ? memberName(target.member) : "";
+  const matches = target !== null && norm(typed) === norm(name);
 
   function close() {
     if (run.pending) return;
-    setTyped("");
-    run.reset();
     onClose();
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!member || !matches) return;
-    if (await run.run({ targetUid: member.uid, role: "admin" })) {
-      toast.show(`${name} eğitim sorumlusu oldu.`, { tone: "success" });
-      close();
+    if (!target || !spec || !matches) return;
+    if (await run.run(target.member)) {
+      toast.show(spec.done(name), { tone: "success" });
+      onClose();
     }
   }
 
   return (
     <Dialog
-      open={member !== null}
+      open={target !== null}
       onClose={close}
-      title="Eğitim sorumlusu yap"
+      title={spec?.title ?? ""}
       role="alertdialog"
       initialFocusRef={inputRef}
       dismissible={!run.pending}
     >
       <form className="auth-stack" onSubmit={onSubmit} noValidate>
         {run.error && <Alert tone="critical">{run.error}</Alert>}
-        <Alert tone="warning">
-          {name} bütün üyeleri yönetebilir, sınav ve materyal yayınlayabilir, denetim kayıtlarını görebilir.
-        </Alert>
+        <Alert tone="warning">{spec?.warning(name)}</Alert>
         <Field label={`Onaylamak için "${name}" yazın`}>
           {(p) => (
             <input
@@ -319,7 +375,7 @@ function PromoteDialog({ member, onClose }: { member: MemberRow | null; onClose:
             Vazgeç
           </Button>
           <Button type="submit" variant="danger" disabled={!matches} loading={run.pending} loadingText="İşleniyor…">
-            Eğitim sorumlusu yap
+            {spec?.confirmLabel}
           </Button>
         </div>
       </form>

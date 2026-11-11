@@ -70,6 +70,11 @@ export const REVEAL_POLICIES = ["after_close", "immediate"] as const;
 export type RevealPolicy = (typeof REVEAL_POLICIES)[number];
 export const DEFAULT_REVEAL_POLICY: RevealPolicy = "after_close";
 
+// --- Üye silme (F9.1) ---------------------------------------------------------
+
+/** Silinen üyenin kayıtlarda (sınav girişimi, yoklama, içerik imzası) adının yerine yazılan metin. */
+export const DELETED_MEMBER_NAME = "Silinmiş üye";
+
 // --- Hesaplayıcılar (D8) ---------------------------------------------------
 
 /**

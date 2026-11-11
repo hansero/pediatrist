@@ -85,7 +85,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F8.1 | UX metni sadeleştirme + a11y düzeltmeleri + axe testleri | M | ✅ | Görsel hiyerarşi, Erişilebilirlik |
 | F8.2 | Performans (timer izolasyonu), ölü kod, `admin.ts` kararı | S | ✅ | §7 |
 | **F9** | **Uyum (KVKK) ve operasyon** | | | |
-| F9.1 | Aydınlatma metni, rıza sürümü, üye silme ve veri dışa aktarımı | M | ⬜ | §9 |
+| F9.1 | Aydınlatma metni, rıza sürümü, üye silme ve veri dışa aktarımı | M | 🟨 | §9 |
 | F9.2 | Denetim kaydı TTL, hız sınırı, alarm, yedekleme runbook'u | S | ⬜ | S10, §8 |
 | F9.3 | README, `DEPLOY.md`, `Plan.MD` gerçeğe uygun güncelleme | S | ⬜ | §8 |
 | **F10** | **Gerçek teste hazırlık** | | | |
@@ -102,12 +102,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 
 - **Tarih:** 2026-11-11
 - **Son tamamlanan adım:** F8.2. **F8 tamamlandı.** Sessiz liste kırpılması yerine açık uyarı (`useCapped`), video ilerlemesinde gereksiz yeniden çizim giderildi, ölü kod (Admin SDK başlatıcısı, eski kanca, `server-only`, 72 satır CSS) silindi. Testler: unit 250, rules 57, functions 102, e2e 109 (+3 bilinçli atlanan).
-- **Devam eden adım:** —
-- **Sıradaki iş:** F9.1 KVKK (bkz. §F9.1). Önce mevcut durumu oku: `/kvkk` sayfası, `@shared/consent` (`KVKK_NOTICE_VERSION`), `completeRegistration` rıza yazımı F3.5'te yapıldı.
-  - Eksikleri belirle: rıza sürümü değişince yeniden onay (oturum açıkken engelleyen ekran + `acceptConsent` callable'ı).
-  - `deleteMember` callable'ı: Auth kullanıcısı silinir, profil anonimleştirilir, girişim / yoklama logu / materyal ilerlemesindeki ad alanları temizlenir, denetim kaydı. Kendi hesabını ve son etkin admini silme engeli (updateMemberAccess ile aynı kurallar). Yönetim panelinde adı yazarak onay.
-  - `exportMemberData` callable'ı: üyenin verisinin JSON dökümü (profil, girişimler, yoklama logları, ilerleme).
-  - Aydınlatma metni kurum hukuk birimince onaylanmalı: "taslak" işareti korunur. **Bu bir kullanıcı kararı; metnin içeriğini uydurma.**
+- **Devam eden adım:** F9.1 (WIP). **Biten:** sunucu tarafı ve testleri (functions 109): `functions/src/privacyService.ts` (`acceptConsent`, `deleteMember`, `exportMemberData`), `requireSelfOrAdmin` (guards), `completeRegistration` silinmiş hesap denetimi, sözleşmeler (`@shared/schemas`, `DELETED_MEMBER_NAME`, `KVKK_NOTICE_APPROVED`). İstemcide: `session.consentVersion`, "hesap-silindi" çıkış nedeni, callable bağları, denetim etiketleri, `MemberList`'te "Veri dökümünü indir" ve adı yazarak "Üyeyi sil" (`TypedNameDialog`), `src/lib/privacy.ts`.
+- **Sıradaki iş:** F9.1'in kalanı, sırayla:
+  1. `SessionGuard`: `session.consentVersion !== KVKK_NOTICE_VERSION` ise engelleyen onay ekranı (`/kvkk` bağlantısı, onay kutusu, `acceptConsent`, "Çıkış yap") + birim testi. Metin taslaksa (`KVKK_NOTICE_APPROVED === false`) ekranda ve `/kvkk` sayfasında "taslak" uyarısı.
+  2. `/account/security`: "Verilerimi indir" (`downloadMemberExport(session.uid)`).
+  3. Seed kullanıcılarına `consent` yaz (`scripts/seed-emulator.ts`); `e2e/fixtures/emulator.ts` `writeDocument` iç içe harita desteklesin; `e2e/fixtures/admin.ts` `createMember` varsayılan olarak onaylı yazsın (aksi halde dashboard.spec onay ekranına takılır).
+  4. e2e: onay ekranı (onaysız üye → onayla → panel), üye silme (adı yazarak; kayıtlarda "Silinmiş üye"; silinen üyenin açık oturumu `?neden=hesap-silindi` ile kapanır), veri dökümü (indirilen JSON). `admin-panel.spec` "kendi satırı" testi güncellenmeli: kendi satırında artık yalnızca "Veri dökümünü indir" var.
+  5. Tam doğrulama, plan notları (✅ Uygulanan F9.1), commit.
+  - Karar: silmede `users/{uid}` dokümanı anonimleştirilmez, SİLİNİR (plan metninden sapma; kayıtlar `uid` + "Silinmiş üye" ile kalır). Denetim kayıtları saklama süresince tutulur (F9.2 TTL).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 

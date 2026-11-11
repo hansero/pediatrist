@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionGuard } from "@/components/security/SessionGuard";
 import { useIdleExempt } from "@/lib/auth/IdleContext";
 import type { ClinicMemberSession } from "@/lib/auth/types";
+import { KVKK_NOTICE_VERSION } from "@shared/consent";
 
 const MIN = 60_000;
 
@@ -21,6 +22,7 @@ const session = (status: "active" | "pending"): ClinicMemberSession => ({
   mfaRequired: true,
   emailVerificationRequired: false,
   hasBoundDevice: false,
+  consentVersion: KVKK_NOTICE_VERSION,
 });
 
 beforeEach(() => vi.useFakeTimers());

@@ -1,13 +1,14 @@
 import type { MemberStatus, Role } from "@shared/constants";
 
 /** Oturumu sonlandırma nedeni → giriş ekranında gösterilir (`/login?neden=...`). */
-export type SignOutReason = "askida" | "oturum-sonlandi" | "hareketsizlik" | "mfa-kuruldu";
+export type SignOutReason = "askida" | "oturum-sonlandi" | "hareketsizlik" | "mfa-kuruldu" | "hesap-silindi";
 
 export const SIGN_OUT_MESSAGES: Record<SignOutReason, string> = {
   askida: "Üyeliğiniz askıya alındı. Ayrıntı için eğitim sorumlusuyla iletişime geçin.",
   "oturum-sonlandi": "Oturumunuz güvenlik nedeniyle sonlandırıldı. Lütfen yeniden giriş yapın.",
   hareketsizlik: "Uzun süre işlem yapılmadığı için oturumunuz kapatıldı. Lütfen yeniden giriş yapın.",
   "mfa-kuruldu": "İki aşamalı doğrulama etkinleştirildi. Lütfen Authenticator kodunuzla yeniden giriş yapın.",
+  "hesap-silindi": "Hesabınız silindi. Sorunuz varsa eğitim sorumlusuyla iletişime geçin.",
 };
 
 /** Giriş ekranındaki bildirimin tonu: olumlu sonuçlar `success`, diğerleri `warning`. */
@@ -16,6 +17,7 @@ export const SIGN_OUT_TONES: Record<SignOutReason, "success" | "warning"> = {
   "oturum-sonlandi": "warning",
   hareketsizlik: "warning",
   "mfa-kuruldu": "success",
+  "hesap-silindi": "warning",
 };
 
 export interface ProfileSnapshot {
@@ -38,14 +40,19 @@ export type SessionDecision =
 
 /**
  * Oturumun ne yapacağına karar verir (saf fonksiyon; F2.4). Yetkinin kaynağı dokümandır (D3):
- * - profil yok → kayıt tamamlanmamış (`/register`),
+ * - profil yok → kayıt tamamlanmamış (`/register`); bu oturumda profil VARDI ve kaybolduysa hesap silinmiştir
+ *   (F9.1) → oturumu kapat (silinen üye kayıt formuna yönlendirilmez),
  * - askıda → oturumu kapat,
  * - oturum, profildeki iptal zamanından (`tokensValidAfter`) önce açılmışsa → oturumu kapat
  *   (kurallar ve callable'lar bu oturumu zaten reddediyor; arayüz de kapanır),
  * - aksi halde hazır; claim önbelleği dokümandan farklıysa yenilenmesi istenir (yalnızca önbellek).
  */
-export function evaluateSession(profile: ProfileSnapshot | null, token: TokenSnapshot): SessionDecision {
-  if (!profile) return { kind: "needsProfile" };
+export function evaluateSession(
+  profile: ProfileSnapshot | null,
+  token: TokenSnapshot,
+  hadProfile = false
+): SessionDecision {
+  if (!profile) return hadProfile ? { kind: "signOut", reason: "hesap-silindi" } : { kind: "needsProfile" };
 
   const role: Role = profile.role === "admin" ? "admin" : "user";
   const status: MemberStatus =

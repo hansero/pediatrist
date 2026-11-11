@@ -2,6 +2,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClinicMemberSession } from "@/lib/auth/types";
+import { KVKK_NOTICE_VERSION } from "@shared/consent";
 
 // Yalnızca testte: Firebase SDK, QR üretici ve oturum bağlamı.
 const h = vi.hoisted(() => ({
@@ -49,6 +50,7 @@ function session(overrides: Partial<ClinicMemberSession> = {}): ClinicMemberSess
     mfaRequired: true,
     emailVerificationRequired: false,
     hasBoundDevice: false,
+    consentVersion: KVKK_NOTICE_VERSION,
     ...overrides,
   };
 }

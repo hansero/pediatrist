@@ -64,6 +64,7 @@ function toSession(
     mfaRequired: security.requireMfa,
     emailVerificationRequired: security.requireEmailVerified,
     hasBoundDevice: Boolean(profile.webauthn?.credentialId),
+    consentVersion: typeof profile.consent?.version === "string" ? profile.consent.version : null,
   };
 }
 
@@ -107,16 +108,28 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
         .then((s) => parseSecurityConfig(s.data()))
         .catch(() => parseSecurityConfig(null));
 
+      // Bu oturumda profil görüldü mü? Sonradan kaybolursa hesap silinmiştir (F9.1).
+      let hadProfile = false;
       unsubscribeProfile = onSnapshot(
         doc(db, "users", user.uid),
         async (snap) => {
           const profile = snap.exists() ? (snap.data() as MemberDoc<Timestamp>) : null;
-          const token = await user.getIdTokenResult();
-          const decision = evaluateSession(profile, {
-            authTimeSeconds: Math.floor(Date.parse(token.authTime) / 1000),
-            claimRole: token.claims.role,
-            claimStatus: token.claims.status,
-          });
+          // Hesap silindiyse belirteç alınamayabilir; karar için oturum açma anı gerekmez.
+          const token = await user.getIdTokenResult().catch(() => null);
+          if (!token) {
+            if (!profile && hadProfile) await endSession("hesap-silindi");
+            return;
+          }
+          const decision = evaluateSession(
+            profile,
+            {
+              authTimeSeconds: Math.floor(Date.parse(token.authTime) / 1000),
+              claimRole: token.claims.role,
+              claimStatus: token.claims.status,
+            },
+            hadProfile
+          );
+          if (profile) hadProfile = true;
 
           if (decision.kind === "needsProfile") {
             setState({ phase: "needsProfile", session: null, error: "" });

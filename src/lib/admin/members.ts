@@ -109,11 +109,20 @@ export function filterMembers(
 }
 
 export type MemberAction =
-  "approve" | "reactivate" | "suspend" | "makeAdmin" | "removeAdmin" | "resetDevice" | "resetMfa" | "changeYear";
+  | "approve"
+  | "reactivate"
+  | "suspend"
+  | "makeAdmin"
+  | "removeAdmin"
+  | "resetDevice"
+  | "resetMfa"
+  | "changeYear"
+  | "exportData"
+  | "delete";
 
 /**
  * Bir üyede yapılabilecek işlemler. "Onayla" (bekleyen) ve "Yeniden etkinleştir" (askıdaki) ayrı eylemlerdir.
- * Kendi satırında rol/durum işlemleri ve kendi MFA sıfırlaması yoktur (sunucu da reddeder).
+ * Kendi satırında rol/durum işlemleri, kendi MFA sıfırlaması ve hesap silme yoktur (sunucu da reddeder).
  */
 export function availableActions(m: MemberRow, selfUid: string): MemberAction[] {
   const self = m.uid === selfUid;
@@ -127,6 +136,9 @@ export function availableActions(m: MemberRow, selfUid: string): MemberAction[] 
   if (m.hasDevice) actions.push("resetDevice");
   if (!self) actions.push("resetMfa");
   if (m.role === "user") actions.push("changeYear");
+  // KVKK (F9.1): döküm herkes için (kendisi dahil); silme kendi hesabında yok (sunucu da reddeder).
+  actions.push("exportData");
+  if (!self) actions.push("delete");
   return actions;
 }
 
@@ -241,6 +253,9 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   MEMBER_ACCESS_UPDATED: "Üye yetkisi/durumu değişti",
   MEMBER_DEVICE_RESET: "Yoklama cihazı sıfırlandı",
   MEMBER_MFA_RESET: "İki aşamalı doğrulama sıfırlandı",
+  MEMBER_DELETED: "Üye silindi",
+  MEMBER_DATA_EXPORTED: "Kişisel veri dökümü alındı",
+  MEMBER_CONSENT_ACCEPTED: "Aydınlatma metni onaylandı",
   MEMBER_CLAIMS_SYNCED: "Yetki önbelleği güncellendi",
   MEMBER_CLAIMS_INITIALIZED: "Yetki önbelleği oluşturuldu",
   INVITATION_CREATED: "Davet oluşturuldu",
