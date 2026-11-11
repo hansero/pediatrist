@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { EmailVerification } from "@/components/auth/EmailVerification";
+import { PersonalDataCard } from "@/components/auth/PersonalDataCard";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -61,25 +62,28 @@ export default function AccountSecurityPage() {
           Platformu kullanmaya devam etmek için aşağıdaki kurulumu tamamlayın.
         </Alert>
       )}
-      <Card
-        title="İki aşamalı doğrulama"
-        actions={
-          <StatusChip tone={session.mfaEnrolled ? "success" : "warning"}>
-            {session.mfaEnrolled ? "Etkin" : "Kapalı"}
-          </StatusChip>
-        }
-      >
-        {session.mfaEnrolled ? (
-          <EnrolledFactors factors={factors} canRemove={!required} />
-        ) : !session.emailVerified ? (
-          <EmailVerification
-            email={session.email}
-            reason="Güvenlik gereği iki aşamalı doğrulama yalnızca doğrulanmış e-posta adresine kurulabilir."
-          />
-        ) : (
-          <TotpSetup onDone={() => signOutUser("mfa-kuruldu")} />
-        )}
-      </Card>
+      <div className="attendance-admin">
+        <Card
+          title="İki aşamalı doğrulama"
+          actions={
+            <StatusChip tone={session.mfaEnrolled ? "success" : "warning"}>
+              {session.mfaEnrolled ? "Etkin" : "Kapalı"}
+            </StatusChip>
+          }
+        >
+          {session.mfaEnrolled ? (
+            <EnrolledFactors factors={factors} canRemove={!required} />
+          ) : !session.emailVerified ? (
+            <EmailVerification
+              email={session.email}
+              reason="Güvenlik gereği iki aşamalı doğrulama yalnızca doğrulanmış e-posta adresine kurulabilir."
+            />
+          ) : (
+            <TotpSetup onDone={() => signOutUser("mfa-kuruldu")} />
+          )}
+        </Card>
+        <PersonalDataCard session={session} />
+      </div>
     </>
   );
 }

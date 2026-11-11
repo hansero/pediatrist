@@ -21,6 +21,10 @@ vi.mock("@/lib/firebase/client", () => ({
   initPediatristFirebase: () => ({ auth: { currentUser: h.user } }),
   isUsingEmulators: () => h.emulators,
 }));
+const downloadMemberExport = vi.fn();
+vi.mock("@/lib/privacy", () => ({ downloadMemberExport: (uid: string) => downloadMemberExport(uid) }));
+const toastShow = vi.fn();
+vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ show: toastShow }) }));
 vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,QR") } }));
 vi.mock("firebase/auth", () => ({
   sendEmailVerification: h.sendEmailVerification,
@@ -134,5 +138,23 @@ describe("Hesap güvenliği", () => {
     render(<AccountSecurityPage />);
     expect(screen.getByText("Etkin")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Kaldır" })).toBeNull();
+  });
+
+  it("kişisel verilerim (F9.1): döküm kendi uid'i için istenir; başarı yalnızca yanıttan sonra, hata gösterilir", async () => {
+    h.session = session({ mfaEnrolled: true });
+    downloadMemberExport.mockRejectedValueOnce(new Error("ağ"));
+    render(<AccountSecurityPage />);
+    expect(screen.getByText(new RegExp(`sürümü: ${KVKK_NOTICE_VERSION.replace(".", "\\.")}`))).toBeTruthy();
+    const button = screen.getByRole("button", { name: "Verilerimi indir" });
+
+    await act(async () => fireEvent.click(button));
+    expect(downloadMemberExport).toHaveBeenCalledWith("u1");
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(toastShow).not.toHaveBeenCalled();
+
+    downloadMemberExport.mockResolvedValueOnce({});
+    await act(async () => fireEvent.click(button));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(toastShow).toHaveBeenCalledWith("Veri dökümünüz indirildi.", { tone: "success" });
   });
 });

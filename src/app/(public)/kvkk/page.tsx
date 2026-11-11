@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { KVKK_NOTICE_EFFECTIVE_DATE, KVKK_NOTICE_SECTIONS, KVKK_NOTICE_VERSION } from "@shared/consent";
+import {
+  KVKK_NOTICE_APPROVED,
+  KVKK_NOTICE_EFFECTIVE_DATE,
+  KVKK_NOTICE_SECTIONS,
+  KVKK_NOTICE_VERSION,
+} from "@shared/consent";
+import { KvkkDraftNotice } from "@/components/auth/KvkkDraftNotice";
 import { Alert } from "@/components/ui/Alert";
 import { kvkkController } from "@/lib/kvkk";
 
@@ -22,6 +28,7 @@ export default function KvkkNoticePage() {
         <p className="page-header-subtitle">
           Sürüm {KVKK_NOTICE_VERSION} · Yürürlük: {effectiveDate}
         </p>
+        {!KVKK_NOTICE_APPROVED && <KvkkDraftNotice />}
 
         <section className="notice-section" aria-labelledby="kvkk-controller">
           <h2 id="kvkk-controller">Veri sorumlusu</h2>

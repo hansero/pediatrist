@@ -52,10 +52,17 @@ describe("evaluateSession", () => {
     });
   });
 
+  it("profil hiç yoksa kayıt tamamlanır; bu oturumda görülmüş profil kaybolduysa hesap silinmiştir (F9.1)", () => {
+    const token = { authTimeSeconds: 100 };
+    expect(evaluateSession(null, token)).toEqual({ kind: "needsProfile" });
+    expect(evaluateSession(null, token, true)).toEqual({ kind: "signOut", reason: "hesap-silindi" });
+  });
+
   it("her oturum kapatma nedeninin Türkçe mesajı vardır", () => {
     expect(Object.keys(SIGN_OUT_MESSAGES).sort()).toEqual([
       "askida",
       "hareketsizlik",
+      "hesap-silindi",
       "mfa-kuruldu",
       "oturum-sonlandi",
     ]);

@@ -6,6 +6,9 @@ import { useIdleExempt } from "@/lib/auth/IdleContext";
 import type { ClinicMemberSession } from "@/lib/auth/types";
 import { KVKK_NOTICE_VERSION } from "@shared/consent";
 
+const acceptConsent = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/firebase/callables", () => ({ acceptConsent: (d: unknown) => acceptConsent(d) }));
+
 const MIN = 60_000;
 
 const session = (status: "active" | "pending"): ClinicMemberSession => ({
@@ -115,5 +118,50 @@ describe("SessionGuard: e-posta doğrulama zorunluluğu (D21)", () => {
       </SessionGuard>
     );
     expect(screen.getByText("içerik")).toBeTruthy();
+  });
+});
+
+describe("SessionGuard: aydınlatma metni onayı (F9.1)", () => {
+  const guard = (consentVersion: string | null, onSignOut = vi.fn().mockResolvedValue(undefined)) => (
+    <SessionGuard session={{ ...session("active"), consentVersion }} onSignOut={onSignOut}>
+      <p>içerik</p>
+    </SessionGuard>
+  );
+
+  it("güncel sürümü onaylamış üye içeriği görür; eski sürümde veya onaysızken onay ekranı", () => {
+    const { rerender } = render(guard(KVKK_NOTICE_VERSION));
+    expect(screen.getByText("içerik")).toBeTruthy();
+
+    rerender(guard("0.9"));
+    expect(screen.queryByText("içerik")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Aydınlatma metni güncellendi" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "KVKK aydınlatma metnini" }).getAttribute("href")).toBe("/kvkk");
+
+    rerender(guard(null));
+    expect(screen.getByRole("heading", { name: "Aydınlatma metnini onaylayın" })).toBeTruthy();
+  });
+
+  it("kutu işaretlenmeden onay gönderilmez; işaretlenince güncel sürüm sunucuya gider; hata gösterilir", async () => {
+    acceptConsent.mockRejectedValueOnce(new Error("ağ")).mockResolvedValueOnce({ accepted: true, version: "x" });
+    render(guard("0.9"));
+    fireEvent.click(screen.getByRole("button", { name: "Onayla" }));
+    expect(acceptConsent).not.toHaveBeenCalled();
+    expect(screen.getByText("Devam etmek için aydınlatma metnini okuduğunuzu onaylayın.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Onayla" })));
+    expect(acceptConsent).toHaveBeenCalledWith({ consentVersion: KVKK_NOTICE_VERSION });
+    expect(screen.getByRole("alert")).toBeTruthy();
+    // Başarıda ekran kendi kapanmaz: profil dinleyicisi yeni sürümü görünce kapanır (iyimser başarı yok).
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Onayla" })));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Aydınlatma metni güncellendi" })).toBeTruthy();
+  });
+
+  it("onaylamak istemeyen üye çıkış yapabilir", async () => {
+    const onSignOut = vi.fn().mockResolvedValue(undefined);
+    render(guard(null, onSignOut));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Çıkış yap" })));
+    expect(onSignOut).toHaveBeenCalled();
   });
 });
