@@ -207,6 +207,11 @@ export interface AuditRow {
   resourceId: string;
   severity: AuditSeverity;
   metadata: Record<string, unknown>;
+  /**
+   * İsteğin geldiği ağın kısa kimliği (tuzlu özetin ilk 8 karakteri, F9.2). IP adresi DEĞİLDİR ve ondan geri
+   * çıkarılamaz; yalnızca "bu kayıtlar aynı ağdan mı geldi?" karşılaştırması içindir.
+   */
+  networkId: string | null;
 }
 
 export function toAuditRow(id: string, d: DocumentData): AuditRow {
@@ -219,6 +224,7 @@ export function toAuditRow(id: string, d: DocumentData): AuditRow {
     resourceId: String(d.resourceId ?? ""),
     severity: d.severity === "WARN" || d.severity === "CRITICAL" ? d.severity : "INFO",
     metadata: d.metadata && typeof d.metadata === "object" ? (d.metadata as Record<string, unknown>) : {},
+    networkId: typeof d.ipHash === "string" && d.ipHash ? d.ipHash.slice(0, 8) : null,
   };
 }
 
@@ -260,6 +266,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   MEMBER_CLAIMS_INITIALIZED: "Yetki önbelleği oluşturuldu",
   INVITATION_CREATED: "Davet oluşturuldu",
   INVITATION_REVOKED: "Davet iptal edildi",
+  RATE_LIMIT_EXCEEDED: "Çok fazla deneme: istekler geçici olarak durduruldu",
   CALCULATOR_NOTE_UPDATED: "Hesaplayıcı protokol notu güncellendi",
   CALCULATOR_NOTE_CLEARED: "Hesaplayıcı protokol notu kaldırıldı",
   ATTENDANCE_SESSION_STARTED: "Ders yoklaması başladı",

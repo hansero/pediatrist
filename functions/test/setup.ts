@@ -23,6 +23,9 @@ process.env.METADATA_SERVER_DETECTION = "none";
 // MFA ve e-posta doğrulama zorunlulukları `config/security` dokümanıdır (N8, D21); `helpers.ts → setSecurityConfig`.
 process.env.ENFORCE_APP_CHECK = "false";
 
+// Denetim kaydı IP özeti (F9.2): yalnızca test tuzu (gerçek tuz Secret Manager'da).
+process.env.AUDIT_IP_SALT = "yalnizca-test-icin-tuz-0123456789";
+
 // WebAuthn RP (F4.2): emülatör .env'iyle aynı değerler; yazılım doğrulayıcı bu kökeni kullanır.
 process.env.WEBAUTHN_RP_ID = "localhost";
 process.env.WEBAUTHN_ORIGINS = "http://localhost:3100,http://localhost:3000";

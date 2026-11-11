@@ -321,6 +321,15 @@ describe("değiştirilemez kayıtlar, davetler, yapılandırma", () => {
     await assertFails(as(admin, SECOND_FACTOR).collection("attendance_secrets").doc("s1").get());
   });
 
+  it("hız sınırı sayaçları (rate_limits) sahibine ve admin'e dahil istemciye kapalıdır (F9.2)", async () => {
+    const id = `attendanceVerify_${resident.uid}`;
+    await assertFails(as(resident, SECOND_FACTOR).collection("rate_limits").doc(id).get());
+    // Sayacını sıfırlayarak sınırı aşmak mümkün olmamalı.
+    await assertFails(as(resident, SECOND_FACTOR).collection("rate_limits").doc(id).set({ count: 0 }));
+    await assertFails(as(resident, SECOND_FACTOR).collection("rate_limits").doc(id).delete());
+    await assertFails(as(admin, SECOND_FACTOR).collection("rate_limits").doc(id).get());
+  });
+
   it("WebAuthn challenge'ları kendi sahibine dahil istemciye kapalıdır (F4.2)", async () => {
     await assertFails(
       as(resident, SECOND_FACTOR).collection("webauthn_challenges").doc(`${resident.uid}_attendance`).get()

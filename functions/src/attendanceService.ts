@@ -3,6 +3,8 @@ import { FieldValue, Timestamp, getFirestore, type DocumentSnapshot, type Transa
 import * as crypto from "crypto";
 import { auditIn, writeAuditLog } from "./auditLogger";
 import { defineCallable } from "./callable";
+import { enforceRateLimit } from "./rateLimit";
+import { currentContext } from "./requestContext";
 import { ATTENDANCE_CODE_ALPHABET, ATTENDANCE_CODE_LENGTH, ATTENDANCE_SLOT_MS } from "./shared/constants";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { COLLECTIONS, type AttendanceLiveLockDoc, type AttendanceStatus, type MemberDoc } from "./shared/types";
@@ -207,6 +209,12 @@ export const getProjectorCode = defineCallable("getProjectorCode", "admin", asyn
     throw new HttpsError("failed-precondition", "Ders süresi doldu; yoklama kapandı.");
   }
 
+  // Projektör ekranının ağı (tuzlu özet) gizli dokümanda tutulur; yalnızca değişince yazılır (S2).
+  const ipHash = currentContext()?.ipHash;
+  if (ipHash && secretSnap.data()!.projectorIpHash !== ipHash) {
+    await secretSnap.ref.update({ projectorIpHash: ipHash });
+  }
+
   const slot = Math.floor(nowMs / ATTENDANCE_SLOT_MS);
   return {
     code: computeSlotCode(String(secretSnap.data()!.hmacSecret), data.sessionId, slot),
@@ -231,6 +239,7 @@ type VerifyOutcome =
  * - Reddedilen girişimlerin denetim kaydı transaction dışında yazılır (transaction'daki kayıt geri alınırdı).
  */
 export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance", "member", async (data, actor) => {
+  await enforceRateLimit(actor, "attendanceVerify");
   const db = getFirestore();
   const { uid, email: actorEmail } = actor;
   const sessionRef = sessions().doc(data.sessionId);
@@ -303,13 +312,20 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
       presentCount: FieldValue.increment(1),
       ...(previous === "excused" ? { excusedCount: FieldValue.increment(-1) } : {}),
     });
+    // AUDIT S2: kod başka yerden iletilmiş olabilir mi? Projektör ekranıyla aynı ağdan gelmeyen katılım
+    // işaretlenir (engellenmez: mobil veri kullanan dürüst hekim de farklı ağdadır; değerlendirme admin'de).
+    const projectorIpHash = secretSnap.data()!.projectorIpHash as string | undefined;
+    const ownIpHash = currentContext()?.ipHash;
     auditIn(tx, {
       actorUid: uid,
       actorEmail,
       action: "ATTENDANCE_VERIFIED",
       resourceType: "attendance",
       resourceId: data.sessionId,
-      ...(previous === "excused" ? { metadata: { previousStatus: "excused" } } : {}),
+      metadata: {
+        ...(previous === "excused" ? { previousStatus: "excused" } : {}),
+        ...(projectorIpHash && ownIpHash ? { sameNetworkAsProjector: projectorIpHash === ownIpHash } : {}),
+      },
     });
     return { kind: "recorded", alreadyRecorded: false };
   });

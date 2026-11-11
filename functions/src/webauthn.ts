@@ -11,6 +11,7 @@ import {
 } from "@simplewebauthn/server";
 import { auditIn, writeAuditLog } from "./auditLogger";
 import { defineCallable } from "./callable";
+import { enforceRateLimit } from "./rateLimit";
 import { WEBAUTHN_ORIGINS, WEBAUTHN_RP_ID } from "./config";
 import { WEBAUTHN_CHALLENGE_TTL_MS } from "./shared/constants";
 import { COLLECTIONS, type MemberDoc, type WebAuthnChallengeDoc, type WebAuthnCredentialDoc } from "./shared/types";
@@ -214,6 +215,7 @@ export const finishDeviceRegistration = defineCallable("finishDeviceRegistration
 
 /** Hekim: canlı derste yoklama vermeden önce cihaz imzası için challenge alır. */
 export const beginAttendanceAssertion = defineCallable("beginAttendanceAssertion", "member", async (data, actor) => {
+  await enforceRateLimit(actor, "attendanceChallenge");
   const rp = relyingParty();
   const credential = actor.profile.webauthn;
   if (!credential) {

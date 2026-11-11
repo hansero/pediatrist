@@ -1,4 +1,4 @@
-import { defineBoolean, defineString } from "firebase-functions/params";
+import { defineBoolean, defineInt, defineSecret, defineString } from "firebase-functions/params";
 
 /**
  * Çalışma zamanı güvenlik parametreleri (D13).
@@ -30,3 +30,21 @@ export const WEBAUTHN_RP_ID = defineString("WEBAUTHN_RP_ID", {
 export const WEBAUTHN_ORIGINS = defineString("WEBAUTHN_ORIGINS", {
   description: "WebAuthn kabul edilen kökenler, virgülle ayrılmış (ör. https://pediatrist.web.app).",
 });
+
+/**
+ * Denetim kayıtlarının saklama süresi (gün; F9.2). Her kayıt yazılırken `expireAt = şimdi + süre` alır ve
+ * Firestore TTL politikası (firestore.indexes.json → `audit_logs.expireAt`) süresi dolanı siler.
+ * Varsayılan 2 yıl; KURUMUN saklama politikasına göre değiştirilmelidir (DEPLOY.md). Değişiklik yalnızca
+ * sonradan yazılan kayıtları etkiler.
+ */
+export const AUDIT_RETENTION_DAYS = defineInt("AUDIT_RETENTION_DAYS", {
+  default: 730,
+  description: "Denetim kayıtları kaç gün saklansın? (kurum politikası; varsayılan 730 = 2 yıl)",
+});
+
+/**
+ * Denetim kayıtlarındaki IP özetinin tuzu (F9.2). Secret Manager'da tutulur
+ * (`firebase functions:secrets:set AUDIT_IP_SALT`, en az 16 karakter rastgele değer). Tuz yoksa IP özeti
+ * yazılmaz (tuzsuz özet geri çevrilebilir). Emülatörde `functions/.secret.local` sabit bir test tuzu verir.
+ */
+export const AUDIT_IP_SALT = defineSecret("AUDIT_IP_SALT");

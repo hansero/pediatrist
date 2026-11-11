@@ -6,6 +6,7 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { auditIn, writeAuditLog } from "./auditLogger";
 import { defineCallable } from "./callable";
+import { enforceRateLimit } from "./rateLimit";
 import { ATTENDANCE_CODE_ALPHABET, isResidentTitle, REGION, type MemberStatus, type Role } from "./shared/constants";
 import { COLLECTIONS, type InvitationDoc, type MemberClaims, type MemberDoc } from "./shared/types";
 
@@ -215,6 +216,9 @@ export const completeRegistration = defineCallable("completeRegistration", "sign
   if (!email) {
     throw new HttpsError("failed-precondition", "Hesabınızda e-posta adresi bulunmuyor. E-posta ile kayıt olun.");
   }
+
+  // Davet kodu tahminini keser (F9.2).
+  await enforceRateLimit(me, "registration");
 
   // Silinmiş bir hesabın henüz süresi dolmamış oturum belirteciyle profil yeniden oluşturulamaz (F9.1):
   // aksi halde silinen üyenin adı ve e-postası başvuru listesine geri dönerdi.

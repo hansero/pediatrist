@@ -4,6 +4,7 @@ import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { auditIn } from "./auditLogger";
 import { defineCallable } from "./callable";
 import { requireSelfOrAdmin } from "./guards";
+import { enforceRateLimit } from "./rateLimit";
 import { KVKK_NOTICE_VERSION } from "./shared/consent";
 import { DELETED_MEMBER_NAME } from "./shared/constants";
 import {
@@ -153,6 +154,7 @@ export const deleteMember = defineCallable("deleteMember", "admin", async (data,
 
 export const exportMemberData = defineCallable("exportMemberData", "member", async (data, actor) => {
   requireSelfOrAdmin(actor, data.targetUid);
+  await enforceRateLimit(actor, "dataExport");
   const uid = data.targetUid;
   const db = getFirestore();
 

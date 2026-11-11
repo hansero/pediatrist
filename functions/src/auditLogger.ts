@@ -1,4 +1,6 @@
-import { FieldValue, getFirestore, type Transaction, type WriteBatch } from "firebase-admin/firestore";
+import { FieldValue, Timestamp, getFirestore, type Transaction, type WriteBatch } from "firebase-admin/firestore";
+import { AUDIT_RETENTION_DAYS } from "./config";
+import { currentContext } from "./requestContext";
 import type { AuditResourceType, AuditSeverity } from "./shared/constants";
 import { COLLECTIONS } from "./shared/types";
 
@@ -12,11 +14,27 @@ export interface AuditLogInput {
   metadata?: Record<string, unknown>;
 }
 
+const DAY_MS = 86_400_000;
+const DEFAULT_RETENTION_DAYS = 730;
+const MIN_RETENTION_DAYS = 30;
+
+/** Saklama süresi (gün). Geçersiz ya da çok kısa değer varsayılana döner: yanlış ayar kayıtları erken silmesin. */
+export function auditRetentionDays(raw: string | undefined = process.env[AUDIT_RETENTION_DAYS.name]): number {
+  const days = Number(raw);
+  return Number.isInteger(days) && days >= MIN_RETENTION_DAYS ? days : DEFAULT_RETENTION_DAYS;
+}
+
 function auditData(input: AuditLogInput) {
+  const context = currentContext();
   return {
     ...input,
     severity: input.severity ?? "INFO",
     timestamp: FieldValue.serverTimestamp(),
+    // Saklama süresi sonu: Firestore TTL politikası bu alana göre siler (F9.2).
+    expireAt: Timestamp.fromMillis(Date.now() + auditRetentionDays() * DAY_MS),
+    // İsteğin geldiği ağın tuzlu özeti ve tarayıcı bilgisi (callable isteklerinde; ham IP yazılmaz).
+    ...(context?.ipHash ? { ipHash: context.ipHash } : {}),
+    ...(context?.userAgent ? { userAgent: context.userAgent } : {}),
   };
 }
 

@@ -44,6 +44,8 @@ export const COLLECTIONS = {
   /** `quiz_attempt_drafts/{quizId}_{uid}`: süre içinde kaydedilen yanıtlar (F5.1); istemciye kapalı. */
   quizAttemptDrafts: "quiz_attempt_drafts",
   auditLogs: "audit_logs",
+  /** `rate_limits/{tür}_{uid}`: hız sınırı sayaçları (F9.2); istemciye kapalı, TTL ile temizlenir. */
+  rateLimits: "rate_limits",
 } as const;
 
 // --- Üyelik -----------------------------------------------------------------
@@ -364,7 +366,10 @@ export interface AuditLogDoc<T> {
   resourceId: string;
   severity: AuditSeverity;
   timestamp: T;
+  /** İsteğin geldiği ağın tuzlu özeti (HMAC-SHA256, 32 onaltılık karakter); ham IP saklanmaz (F9.2). */
   ipHash?: string;
   userAgent?: string;
+  /** Saklama süresi sonu; Firestore TTL politikası siler (F9.2). Eski kayıtlarda yoktur. */
+  expireAt?: T;
   metadata?: Record<string, unknown>;
 }

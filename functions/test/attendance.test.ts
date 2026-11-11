@@ -421,3 +421,42 @@ describe("D22: ders kapanırken 'katılmadı' kayıtları", () => {
     expect(await record(sessionId, "yeni")).toBeUndefined();
   });
 });
+
+describe("iletilen kod işareti (AUDIT S2, F9.2)", () => {
+  /** Belirli bir ağdan gelen istek (X-Forwarded-For'un son değeri istemcinin adresidir). */
+  const fromNetwork = <T>(request: T, ip: string): T =>
+    ({ ...request, rawRequest: { headers: { "x-forwarded-for": ip }, ip: "10.0.0.1" } }) as T;
+  const verifiedLog = async (uid: string) =>
+    (
+      await db()
+        .collection("audit_logs")
+        .where("action", "==", "ATTENDANCE_VERIFIED")
+        .where("actorUid", "==", uid)
+        .get()
+    ).docs[0].data();
+
+  it("projektörle aynı ağdan katılım işaretlenmez; farklı ağdan katılım kaydedilir ama denetim kaydında işaretlenir", async () => {
+    const { sessionId } = await startLive();
+    const projector = await getProjectorCode.run(fromNetwork(callableRequest({ sessionId }, asAdmin()), "203.0.113.7"));
+
+    for (const [uid, ip] of [
+      ["r1", "203.0.113.7"],
+      ["r2", "198.51.100.4"],
+    ] as const) {
+      const res = await verifyRealTimeAttendance.run(
+        fromNetwork(
+          callableRequest(
+            { sessionId, code: projector.code, assertion: await attendanceAssertion(uid, sessionId, devices[uid]) },
+            asMember(uid)
+          ),
+          ip
+        )
+      );
+      expect(res).toEqual({ verified: true, alreadyRecorded: false });
+    }
+    expect((await verifiedLog("r1")).metadata).toMatchObject({ sameNetworkAsProjector: true });
+    expect((await verifiedLog("r2")).metadata).toMatchObject({ sameNetworkAsProjector: false });
+    // Katılım engellenmez (mobil veri kullanan dürüst hekim de farklı ağdadır).
+    expect((await sessionDoc(sessionId))?.presentCount).toBe(2);
+  });
+});

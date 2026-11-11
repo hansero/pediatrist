@@ -156,10 +156,14 @@ export function AuditLog() {
               key: "meta",
               header: "Ayrıntı",
               cell: (r) =>
-                Object.keys(r.metadata).length ? (
+                Object.keys(r.metadata).length || r.networkId ? (
                   <details>
                     <summary>Göster</summary>
-                    <span className="break-all">{formatMetadata(r.metadata)}</span>
+                    <span className="break-all">
+                      {[formatMetadata(r.metadata), r.networkId && `ağ kimliği: ${r.networkId}`]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
                   </details>
                 ) : (
                   "—"
