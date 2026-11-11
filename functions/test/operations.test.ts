@@ -1,8 +1,9 @@
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { logger } from "firebase-functions";
 import { getProjectorCode, startLectureSession } from "../src/attendanceService";
 import { auditRetentionDays } from "../src/auditLogger";
-import { exportMemberData } from "../src/privacyService";
+import { deleteMember, exportMemberData } from "../src/privacyService";
 import { enforceRateLimit, RATE_LIMITS, rateClock } from "../src/rateLimit";
 import { clientIp, hashIp } from "../src/requestContext";
 import { beginAttendanceAssertion } from "../src/webauthn";
@@ -72,6 +73,27 @@ describe("denetim kaydı: saklama süresi ve istek bağlamı (F9.2)", () => {
     expect(auditRetentionDays("7")).toBe(730);
     expect(auditRetentionDays("abc")).toBe(730);
     expect(auditRetentionDays("90.5")).toBe(730);
+  });
+});
+
+describe("kritik olaylar Cloud Logging'e de düşer (alarm için, F9.2)", () => {
+  it("üye silme: işaretli hata satırı yazılır, kişisel veri içermez; kritik olmayan işlemde yazılmaz", async () => {
+    const error = vi.spyOn(logger, "error").mockImplementation(() => undefined);
+    await exportMemberData.run(callableRequest({ targetUid: "r1" }, asMember("r1")));
+    expect(error).not.toHaveBeenCalled();
+
+    await deleteMember.run(callableRequest({ targetUid: "r1" }, asAdmin()));
+    expect(error).toHaveBeenCalledTimes(1);
+    const [message, fields] = error.mock.calls[0];
+    expect(message).toBe("Kritik denetim olayı");
+    expect(fields).toEqual({
+      audit: "CRITICAL",
+      action: "MEMBER_DELETED",
+      resourceType: "admin",
+      resourceId: "r1",
+      actorUid: "admin",
+    });
+    expect(JSON.stringify(error.mock.calls)).not.toMatch(/example\.test|Test r1/);
   });
 });
 

@@ -86,7 +86,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F8.2 | Performans (timer izolasyonu), ölü kod, `admin.ts` kararı | S | ✅ | §7 |
 | **F9** | **Uyum (KVKK) ve operasyon** | | | |
 | F9.1 | Aydınlatma metni, rıza sürümü, üye silme ve veri dışa aktarımı | M | ✅ | §9 |
-| F9.2 | Denetim kaydı TTL, hız sınırı, alarm, yedekleme runbook'u | S | ⬜ | S10, §8 |
+| F9.2 | Denetim kaydı TTL, hız sınırı, alarm, yedekleme runbook'u | S | ✅ | S10, §8 |
 | F9.3 | README, `DEPLOY.md`, `Plan.MD` gerçeğe uygun güncelleme | S | ⬜ | §8 |
 | **F10** | **Gerçek teste hazırlık** | | | |
 | F10.1 | Tam e2e paketi CI'da yeşil | M | ⬜ | Hepsi |
@@ -101,14 +101,13 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F9.1. KVKK altyapısı: sürüm değişince yeniden onay (`acceptConsent` + onay ekranı), üye silme (`deleteMember`: hesap ve profil silinir, kayıtlar addan arındırılır), kişisel veri dökümü (`exportMemberData`: üye kendisi, admin herkes için), "taslak metin" uyarısı. Testler: unit 255, rules 57, functions 109, e2e 113 (+3 bilinçli atlanan).
+- **Son tamamlanan adım:** F9.2. Denetim kayıtlarına saklama süresi (`expireAt` + TTL, varsayılan 2 yıl), tuzlu ağ özeti ve tarayıcı bilgisi; üye başına hız sınırı; yoklamada "aynı ağ" işareti; kritik olayların Cloud Logging'e düşmesi; `DEPLOY.md` (operasyon bölümleri). Testler: unit 255, rules 58, functions 118, e2e E2E_COUNT.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F9.2 operasyon (bkz. §F9.2).
-  - `audit_logs.expireAt` alanı (`auditLogger.ts`'te tek yerde) + TTL politikası. **Saklama süresi kullanıcı kararı** (plan örneği 2 yıl): sormadan sabitleme; `functions/src/config.ts`'te parametre + `DEPLOY.md`'de karar notu.
-  - Hız sınırı: uid başına dakikalık sayaç (yoklama kodu denemeleri `verifyRealTimeAttendance`, giriş sonrası hassas callable'lar). Mevcut `ATTENDANCE_*_REJECTED` denetim kayıtlarıyla ilişkisine bak.
-  - `ipHash`: `sha256(salt + rawRequest.ip)`, salt `defineSecret('AUDIT_IP_SALT')`; emülatörde sabit test tuzu (`functions/.env.demo-pediatrist`).
-  - `DEPLOY.md`: log tabanlı alarm (`severity=CRITICAL`; artık `MEMBER_DELETED` de üretir), bütçe alarmı, zamanlanmış yedek / PITR adımları.
-  - Sonra F9.3 dokümantasyon (README, DEPLOY, Plan.MD).
+- **Sıradaki iş:** F9.3 dokümantasyon (bkz. §F9.3).
+  - `README.md` (şu an 2 satır): kurulum (`npm ci`, emülatör, seed, `npm run dev`), test komutları, mimari özet (Next istemci, callable'lar, kurallar, `@shared`), sahte veri bekçisi, CLAUDE.md'deki değişmez kurallara bağlantı.
+  - `DEPLOY.md` bölüm 1: dağıtım sırası (rules → indexes → functions → hosting), ortam değişkenleri (`.env.example`), `config/security` dokümanı (MFA / e-posta doğrulama), ilk admin (konsolda `users/{uid}`: `role: 'admin', status: 'active'`; `syncUserClaims` claim'leri yazar; ilk girişte aydınlatma metni onayı istenir), Storage CORS (pdf.js), App Check, TOTP'nin Identity Platform'da açılması.
+  - `Plan.MD`: "Tamamlandı" işaretleri gerçeğe göre düzeltilir, bu plana bağlantı verilir.
+  - Sonra F10 (doğrulama ve teslim): F10.1 CI'da tam e2e (zaten koşuyor; kanıtla), F10.2 staging kontrol listesi, F10.3 UAT senaryoları, F10.4 denetim izlenebilirliği.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1489,6 +1488,23 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Hız sınırı: uid başına dakikalık sayaç dokümanı (yoklama ve kod denemeleri için). Hassas callable'larda `consumeAppCheckToken: true`.
   - **`ipHash` (F1.3'ten devredildi):** `sha256(salt + rawRequest.ip)`; salt `defineSecret('AUDIT_IP_SALT')`. Emülatör için `functions/.secret.local` gerekir (git'e girmez); seed/README'ye kurulum adımı yazılır veya emülatörde sabit test tuzu kullanılır. S2'deki aynı IP işaretlemesi de bunu kullanır.
   - Log tabanlı alarm (`severity=CRITICAL`), bütçe alarmı ve zamanlanmış Firestore yedeği/PITR, `DEPLOY.md`'de adım adım anlatılır.
+
+- **✅ Uygulanan F9.2 (sapmalar ve eklemeler):**
+  - **Saklama süresi:** her denetim kaydı `expireAt = şimdi + AUDIT_RETENTION_DAYS` alır (`auditLogger.ts`, tek yer). Firestore TTL politikası `firestore.indexes.json` `fieldOverrides`'ta (`audit_logs.expireAt`, `rate_limits.expireAt`).
+    - Kullanıcı süre belirtmedi: **varsayılan 730 gün (2 yıl)**, `AUDIT_RETENTION_DAYS` parametresiyle ayarlanır. 30 günden kısa ya da geçersiz değer varsayılana döner (yanlış ayar kayıtları erken silmesin).
+  - **IP özeti:** `requestContext.ts` (AsyncLocalStorage). `defineCallable` her isteği bağlamda çalıştırır; denetim kaydına `ipHash` (HMAC-SHA256, 32 onaltılık) ve `userAgent` (≤ 200 karakter) eklenir. Ham IP hiçbir yere yazılmaz.
+    - Tuz `defineSecret("AUDIT_IP_SALT")`, bütün callable'lara bağlı. Tuz yoksa ya da 16 karakterden kısaysa özet YAZILMAZ (tuzsuz özet geri çevrilebilir).
+    - İstemci adresi `X-Forwarded-For`'un SON değeridir (baştaki değerleri istemci uydurabilir).
+    - Emülatör: tuz `functions/.secret.local`'dan gelir (gizli değil, dağıtılmaz). Emülatör istemci adresini iletmediği için yerelde `ipHash` boş kalır; başlık elle gönderilerek doğrulandı (yazılıyor).
+    - Yönetim paneli › Denetim kayıtları › Ayrıntı: "ağ kimliği" (özetin ilk 8 karakteri; karşılaştırma için).
+  - **S2 (iletilen kod):** projektör ekranının ağ özeti gizli dokümanda tutulur (yalnızca değişince yazılır). `ATTENDANCE_VERIFIED` kaydına `sameNetworkAsProjector` eklenir. Katılım engellenmez (mobil verideki dürüst hekim de farklı ağdadır); yalnızca işaretlenir.
+  - **Hız sınırı** (`rateLimit.ts`, `rate_limits/{tür}_{uid}`, sabit pencere, transaction): yoklama imza isteği ve kod gönderme 10/dk, kayıt tamamlama 5/dk (davet kodu tahmini), veri dökümü 5/dk.
+    - Aşımda `resource-exhausted` ("… N saniye sonra tekrar deneyin") ve pencere başına TEK `RATE_LIMIT_EXCEEDED` kaydı. Sayaçlar istemciye kapalı (kural testi; kendi sayacını sıfırlayamaz).
+    - **Yapılmadı:** `consumeAppCheckToken` (replay koruması). İstemcide tek kullanımlık belirteç gerektirir, emülatörde sınanamaz ve her çağrıya gecikme ekler; hız sınırı aynı riski karşılıyor. `DEPLOY.md`'de not edildi.
+  - **Alarm:** `CRITICAL` denetim olayları ayrıca Cloud Logging'e işaretli hata satırı olarak yazılır (`jsonPayload.audit="CRITICAL"`, kişisel veri yok); log tabanlı alarm buna kurulur.
+  - **`DEPLOY.md` oluşturuldu:** gizli değerler ve parametreler, saklama/TTL, alarmlar (kritik olay, hata oranı, bütçe), yedekleme (PITR, zamanlanmış yedek, Storage, Auth dışa aktarımı, geri yükleme tatbikatı), hız sınırları, "aynı ağ" işareti. Her bölümde staging doğrulama adımı var. Bölüm 1 (dağıtım sırası, ilk admin) F9.3'te yazılacak.
+    - **Gerçek projede denenmedi:** TTL politikası, secret bağlama, alarm süzgeci ve `gcloud` komutları staging'de doğrulanmalı (F10.2).
+  - **Testler:** functions 109 → 118 (`operations.test.ts` + yoklamada ağ işareti), rules 57 → 58.
 
 #### F9.3 Dokümantasyon (S)
 - **Yapılacaklar:**

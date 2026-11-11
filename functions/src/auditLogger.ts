@@ -1,3 +1,4 @@
+import { logger } from "firebase-functions";
 import { FieldValue, Timestamp, getFirestore, type Transaction, type WriteBatch } from "firebase-admin/firestore";
 import { AUDIT_RETENTION_DAYS } from "./config";
 import { currentContext } from "./requestContext";
@@ -24,8 +25,23 @@ export function auditRetentionDays(raw: string | undefined = process.env[AUDIT_R
   return Number.isInteger(days) && days >= MIN_RETENTION_DAYS ? days : DEFAULT_RETENTION_DAYS;
 }
 
+/** Cloud Logging'deki kritik denetim olaylarının işareti: log tabanlı alarm bu alana göre kurulur (DEPLOY.md). */
+export const CRITICAL_AUDIT_LOG_MARKER = "CRITICAL";
+
 function auditData(input: AuditLogInput) {
   const context = currentContext();
+  if (input.severity === "CRITICAL") {
+    // Kritik olaylar ayrıca Cloud Logging'e düşer (alarm için). Kişisel veri (e-posta, ad) yazılmaz.
+    // Not: kayıt bir transaction içinde hazırlanıyorsa ve transaction yinelenirse bu satır birden çok kez
+    // yazılabilir; alarm için fazla uyarı, kaçırılan uyarıdan iyidir.
+    logger.error("Kritik denetim olayı", {
+      audit: CRITICAL_AUDIT_LOG_MARKER,
+      action: input.action,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      actorUid: input.actorUid,
+    });
+  }
   return {
     ...input,
     severity: input.severity ?? "INFO",
