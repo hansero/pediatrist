@@ -195,7 +195,7 @@ function DoctorDetail({ row, range, onClose }: { row: DoctorReportRow; range: Re
         actions={
           <div className="ui-actions">
             <Button variant="secondary" onClick={exportCsv}>
-              CSV indir<span className="sr-only">: {row.name} ders dökümü</span>
+              CSV indir<span className="sr-only"> ({row.name} ders dökümü)</span>
             </Button>
             <Button variant="secondary" onClick={onClose}>
               Kapat

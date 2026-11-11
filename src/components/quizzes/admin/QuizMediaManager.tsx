@@ -167,7 +167,7 @@ export function QuizMediaManager() {
               align: "end",
               cell: (path) => (
                 <Button size="sm" variant="secondary" onClick={() => void copy(path)}>
-                  Yolu kopyala<span className="sr-only">: {path}</span>
+                  Yolu kopyala<span className="sr-only"> ({path})</span>
                 </Button>
               ),
             },

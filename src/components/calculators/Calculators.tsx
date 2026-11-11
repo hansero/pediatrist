@@ -110,7 +110,7 @@ function CalculatorCard({
             <div className="ui-actions">
               <Button size="sm" variant="secondary" onClick={onEdit}>
                 {note ? "Notu düzenle" : "Not ekle"}
-                <span className="sr-only">: {calc.title}</span>
+                <span className="sr-only"> ({calc.title})</span>
               </Button>
             </div>
           )}

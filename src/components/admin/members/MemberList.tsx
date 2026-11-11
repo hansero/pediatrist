@@ -153,7 +153,7 @@ export function MemberList({ selfUid }: { selfUid: string }) {
         availableActions(m, selfUid).length ? (
           // Görünen metin erişilebilir adın başında (WCAG 2.5.3); kişi görünmez metinle eklenir (F8.1).
           <Button size="sm" variant="secondary" onClick={() => setMenuFor(m)}>
-            İşlemler<span className="sr-only">: {memberName(m)}</span>
+            İşlemler<span className="sr-only"> ({memberName(m)})</span>
           </Button>
         ) : null,
     },

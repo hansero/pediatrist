@@ -49,7 +49,7 @@ export async function memberRow(admin: Page, email: string) {
 /** Satırın "İşlemler" menüsünü açar. */
 export async function openMemberMenu(admin: Page, email: string) {
   const row = await memberRow(admin, email);
-  await row.getByRole("button", { name: /^İşlemler: / }).click();
+  await row.getByRole("button", { name: /^İşlemler \(/ }).click();
   const menu = admin.getByRole("dialog", { name: "Üye işlemleri" });
   await expect(menu).toBeVisible();
   return menu;

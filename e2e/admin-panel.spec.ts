@@ -156,7 +156,7 @@ test("davet: geçersiz e-posta sunucu hatası gösterir; oluştur → kod → ip
   await expect(row).toContainText("Hekim · 2. yıl");
   await expect(row).toContainText("Geçerli");
 
-  await row.getByRole("button", { name: `İptal et: ${email} daveti` }).click();
+  await row.getByRole("button", { name: `İptal et (${email} daveti)` }).click();
   const confirm = page.getByRole("alertdialog", { name: "Daveti iptal et" });
   await expect(confirm).toContainText(code);
   await confirm.getByRole("button", { name: "Daveti iptal et" }).click();

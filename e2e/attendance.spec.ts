@@ -212,7 +212,7 @@ test("hekim karnesi: eşik altındaki hekim işaretli, ders dökümü ve CSV (F4
   await expect(detail.getByRole("row").filter({ hasText: SEED_LECTURE.title })).toContainText("Katılmadı");
   const csv = await downloadText(
     page,
-    detail.getByRole("button", { name: "CSV indir: Asistan Dr. Zeynep Ergin ders dökümü" })
+    detail.getByRole("button", { name: "CSV indir (Asistan Dr. Zeynep Ergin ders dökümü)" })
   );
   expect(csv.download.suggestedFilename()).toMatch(/^hekim-karnesi-asistan-dr-zeynep-ergin-/);
   const detailLines = csvLines(csv.text);

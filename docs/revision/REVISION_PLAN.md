@@ -1412,7 +1412,8 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - **İlk ölçüm:** 8 testin 6'sı temizdi. Bulunanlar:
     - `label-content-name-mismatch` (WCAG 2.5.3): "İşlemler", "İptal et" (Türkçe "İ" küçük harfe "i̇" olarak döner, `aria-label`'daki "işlemler" ile eşleşmez) ve "Not ekle/Notu düzenle" (ad bambaşkaydı).
     - Taramayla aynı desende iki düğme daha bulundu ("CSV indir", "Yolu kopyala").
-    - Beşi de görünen metin + görünmez bağlam (`İşlemler<span class="sr-only">: Dr. X</span>`) biçimine çevrildi; e2e seçicileri güncellendi.
+    - Beşi de görünen metin + görünmez bağlam (`İşlemler<span class="sr-only"> (Dr. X)</span>`) biçimine çevrildi; e2e seçicileri güncellendi.
+    - İlk denemede bağlam ": Dr. X" biçimindeydi. Chromium görünmez öğeyi ayrı saydığı için ada boşluk ekledi ("İşlemler : Dr. X") ve tam e2e seçicileri tutmadı. Parantezli biçim (" (Dr. X)") her iki durumda da aynı adı verir.
     - `scrollable-region-focusable` (telefonda /attendance): DataTable kabı yalnızca gerçekten yatay taşıyorsa `tabIndex=0` + `role=region` + başlığıyla `aria-labelledby` alır (`ResizeObserver`; yoksa ilk ölçüm). Taşmayan tabloya gereksiz Tab durağı eklenmez. Birim testli.
   - **Metin:**
     - Jargon taraması temiz. Kalan iki ifade bilinçli: emülatörde görünen "Authenticator kurulumu emülatörde desteklenmiyor" geliştirici bilgisi ve yöneticiye yönelik yapılandırma sayfası.
