@@ -86,6 +86,7 @@ const FALLBACK_SESSION: ClinicMemberSession = {
   mfaEnrolled: true,
   emailVerified: true,
   mfaRequired: false,
+  emailVerificationRequired: false,
   hasBoundDevice: true,
 };
 

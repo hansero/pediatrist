@@ -25,15 +25,22 @@ service firebase.storage {
       return firestore.get(profilePath()).data;
     }
 
-    // Ortam güvenlik ayarı (N8, D20): Firestore `config/security`; yoksa MFA zorunlu (bkz. firestore.rules).
+    // Ortam güvenlik ayarı (N8, D20, D21): Firestore `config/security`; yoksa şartlar zorunlu (bkz. firestore.rules).
     function securityConfigPath() {
       return /databases/(default)/documents/config/security;
     }
 
-    function mfaSatisfied() {
-      return (firestore.exists(securityConfigPath())
-          && firestore.get(securityConfigPath()).data.get('requireMfa', true) == false)
-        || request.auth.token.get('firebase', {}).get('sign_in_second_factor', null) != null;
+    function securityConfigured(field) {
+      return firestore.exists(securityConfigPath())
+        && firestore.get(securityConfigPath()).data.get(field, true) == false;
+    }
+
+    // Zorunluluk kapalıysa (`false`) geçer; aksi halde şartı sağlamalı (D20, D21).
+    function securitySatisfied() {
+      return (securityConfigured('requireMfa')
+          || request.auth.token.get('firebase', {}).get('sign_in_second_factor', null) != null)
+        && (securityConfigured('requireEmailVerified')
+          || request.auth.token.get('email_verified', false) == true);
     }
 
     function isActive() {
@@ -41,7 +48,7 @@ service firebase.storage {
         && firestore.exists(profilePath())
         && profile().status == 'active'
         && request.auth.token.auth_time > profile().get('tokensValidAfter', 0)
-        && mfaSatisfied();
+        && securitySatisfied();
     }
 
     function isAdmin() {

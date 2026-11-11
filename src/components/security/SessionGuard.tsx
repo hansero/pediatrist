@@ -43,6 +43,11 @@ export function SessionGuard({ session, requireAdmin = false, onSignOut, childre
     );
   }
 
+  // D21: e-posta doğrulaması zorunluysa doğrulanmamış üye veriye erişemez (kurallar ve sunucu da reddeder).
+  if (session.emailVerificationRequired && !session.emailVerified) {
+    return <EmailVerificationGate session={session} onSignOut={onSignOut} />;
+  }
+
   if (requireAdmin && session.role !== "admin") {
     return (
       <Alert tone="critical" title="Bu bölüme erişiminiz yok">
@@ -91,6 +96,36 @@ function PendingNotice({ session, onSignOut }: { session: ClinicMemberSession; o
             reason="Onay beklerken e-posta adresinizi doğrulayın; hesabınızın güvenliği için gereklidir."
           />
         )}
+        {signOut.error && <Alert tone="critical">{signOut.error}</Alert>}
+        <div className="ui-actions">
+          <Button variant="secondary" loading={signOut.pending} onClick={() => signOut.run()}>
+            Çıkış yap
+          </Button>
+        </div>
+      </article>
+    </main>
+  );
+}
+
+/** E-posta doğrulama ekranı (D21). "Doğruladım" token'ı yeniler; oturum bağlamı güncellenince ekran açılır. */
+function EmailVerificationGate({
+  session,
+  onSignOut,
+}: {
+  session: ClinicMemberSession;
+  onSignOut: () => Promise<void>;
+}) {
+  const signOut = useAsyncAction(onSignOut);
+  return (
+    <main className="auth-screen">
+      <article className="auth-card auth-stack" aria-labelledby="verify-email-heading">
+        <h1 id="verify-email-heading" className="auth-title">
+          E-posta adresinizi doğrulayın
+        </h1>
+        <EmailVerification
+          email={session.email}
+          reason="Platformu kullanmaya devam etmek için e-posta adresinizin size ait olduğunu doğrulamanız gerekiyor."
+        />
         {signOut.error && <Alert tone="critical">{signOut.error}</Alert>}
         <div className="ui-actions">
           <Button variant="secondary" loading={signOut.pending} onClick={() => signOut.run()}>

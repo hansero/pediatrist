@@ -1,6 +1,6 @@
 import { HttpsError, type CallableRequest } from "firebase-functions/v2/https";
 import { getFirestore, type Timestamp } from "firebase-admin/firestore";
-import { ENFORCE_APP_CHECK, REQUIRE_EMAIL_VERIFIED } from "./config";
+import { ENFORCE_APP_CHECK } from "./config";
 import { parseSecurityConfig, SECURITY_CONFIG, type SecurityConfigDoc } from "./shared/security";
 import { COLLECTIONS, type MemberDoc } from "./shared/types";
 
@@ -81,7 +81,7 @@ export async function requireActive(request: CallableRequest<unknown>): Promise<
   if (validAfter > 0 && Number(auth.token.auth_time ?? 0) <= validAfter) {
     throw new HttpsError("unauthenticated", "Oturumunuz sonlandırıldı. Lütfen yeniden giriş yapın.");
   }
-  if (isEnforced(REQUIRE_EMAIL_VERIFIED) && auth.token.email_verified !== true) {
+  if (security.requireEmailVerified && auth.token.email_verified !== true) {
     throw new HttpsError("permission-denied", "Devam etmek için e-posta adresinizi doğrulamanız gerekiyor.");
   }
   if (security.requireMfa && !auth.token.firebase?.sign_in_second_factor) {

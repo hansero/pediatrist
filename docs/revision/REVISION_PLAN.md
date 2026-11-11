@@ -103,7 +103,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 - **Tarih:** 2026-11-10
 - **Son tamamlanan adım:** F4.2. Yoklama cihazı = WebAuthn platform passkey'i (sunucuda imza, UV, köken, sayaç, tek kullanımlık ve derse bağlı challenge); `localStorage` cihaz sırrı ve sahte biyometrik/simülasyon arayüzü kaldırıldı; `/account/device`. Testler: unit 181, rules 50, functions 72, e2e 50 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **Kullanıcıya sorulacak (D-kaydı gerektirir):** `REQUIRE_EMAIL_VERIFIED` → `config/security.requireEmailVerified` tek kaynağı önerisi (yanıt bekleniyor).
+- **D21 uygulandı:** e-posta doğrulama zorunluluğu da `config/security`'de (`rev(D21)`).
 - **Sıradaki iş:** F4.3 (M) admin: ders başlat/bitir + projektör kiosk sayfası:
   - `src/app/(protected)/attendance/projector/[sessionId]/page.tsx` (veya `/attendance/projektor`): tam ekran (Fullscreen API), Screen Wake Lock, büyük monospace kod (~15–20vw), QR kod (`qrcode`; içerik: `/attendance?s=<sessionId>&c=<kod>` deep-link, F4.4 kullanır), `Countdown` ile yenilenmeye kalan süre; `getProjectorCode`'u `msUntilRotation`'a göre zamanlayarak çağırır; `useIdleExempt()`.
   - Admin ders başlatma formu `Field`/`Button` ile (süre sınırı `LIMITS.lectureMinutes`), canlı ders kartı ve "Dersi bitir" (`ConfirmDialog`); canlı ders Firestore'dan dinlenir (`attendance_sessions where status == live`), `CLINIC_ROSTER` ve `INITIAL_SESSIONS` mock'ları bu ekrandan kalkar; denetim/rapor kısmı F4.5.
@@ -140,6 +140,7 @@ Bu kararlar bütün adımlar için geçerlidir. Değiştirmek için kullanıcı 
 | D19 | Sunumlar Storage'a **PDF olarak** yüklenir; pptx kabul edilmez. SVG de kabul edilmez. İzinli türler ve boyutlar `MATERIAL_UPLOAD` / `QUIZ_MEDIA_UPLOAD` sabitlerinde ve `storage.rules`'ta aynıdır (birim testiyle denetlenir). | Tarayıcı pptx'i görüntüleyemez, filigran uygulanamaz; SVG betik çalıştırabilir | Evet |
 | D18 | Emülatör ve testler `demo-pediatrist` proje kimliğiyle çalışır. `demo-` önekli projeler gerçek bir Firebase projesine bağlanamaz, yani yanlışlıkla prod'a yazma riski yoktur ve emülatörler çevrimdışı çalışabilir. | Güvenli test izolasyonu | Hayır |
 | D20 | **MFA zorunluluğunun tek kaynağı Firestore `config/security.requireMfa`** (N8; D5'in mekanizmasını değiştirir, kullanıcı onayıyla 2026-11-10). Firestore ve Storage kuralları (`isActive()` → `mfaSatisfied()`), Cloud Functions (`guards.ts`, profil ile aynı `getAll`) ve istemci (oturum bağlamı) aynı dokümanı `parseSecurityConfig` mantığıyla okur. **Doküman yoksa veya değer boolean `false` değilse MFA zorunludur.** Doküman istemciye salt okunur (oturum açmış herkes), yalnızca Admin SDK/konsoldan yazılır. Emülatör seed'i `requireMfa: false` yazar. Kendi profilini okuma MFA istemez. `REQUIRE_MFA` parametresi ve `NEXT_PUBLIC_REQUIRE_MFA` kaldırıldı. Maliyet: kurallı her istekte +1 doküman okuması. | AUDIT C4/C5, N8: şifresi çalınmış hesabın SDK ile doğrudan okuma yapması | Hayır |
+| D21 | **E-posta doğrulama zorunluluğu da `config/security` dokümanında** (`requireEmailVerified`; kullanıcı onayıyla 2026-11-11). D20'deki MFA ile aynı mekanizma ve güvenli varsayılan (doküman yoksa veya değer boolean `false` değilse zorunlu). Firestore ve Storage kuralları (`securitySatisfied()` = MFA ve e-posta), `guards.ts` ve istemci (doğrulama ekranı) aynı dokümanı okur. Kendi profilini okuma e-posta doğrulaması istemez. `REQUIRE_EMAIL_VERIFIED` functions parametresi kaldırıldı. Emülatör seed'i `false` yazar. | Tek kaynak; kurallarda da zorunluluk | Hayır |
 
 ---
 
@@ -1055,8 +1056,8 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - App Check: reCAPTCHA Enterprise anahtarı; Firestore/Storage/Functions için zorlama.
 - Web API anahtarı için HTTP referrer kısıtlaması.
 - Storage → Firestore cross-service izni.
-- Functions parametreleri: `ENFORCE_APP_CHECK=true`, `REQUIRE_EMAIL_VERIFIED=true`, `AUDIT_IP_SALT` secret.
-- MFA (D20): `config/security` dokümanı **oluşturulmaz** (yoksa zorunlu) veya `requireMfa: true` yazılır. `false` yazılmamalı; emülatör dışında `false` görülürse alarm (F9.2).
+- Functions parametreleri: `ENFORCE_APP_CHECK=true`, `WEBAUTHN_RP_ID` (hosting alan adı), `WEBAUTHN_ORIGINS` (`https://…`), `AUDIT_IP_SALT` secret.
+- MFA ve e-posta doğrulaması (D20, D21): `config/security` dokümanı **oluşturulmaz** (yoksa ikisi de zorunlu) veya `requireMfa: true`, `requireEmailVerified: true` yazılır. `false` yazılmamalı; emülatör dışında `false` görülürse alarm (F9.2).
 - WebAuthn RP ID = hosting domaini.
 - **KVKK (F3.5):** `NEXT_PUBLIC_KVKK_CONTROLLER_NAME` (kurumun resmi unvanı) ve `NEXT_PUBLIC_KVKK_CONTACT` (başvuru adresi) tanımlanır; boşsa kayıt alınmaz. `functions/src/shared/consent.ts` metni kurumun KVKK sorumlusu/hukuk birimi tarafından onaylanır; yurt dışı aktarım dayanağı (standart sözleşme veya açık rıza) ve saklama süreleri netleştirilir. Metin değişirse `KVKK_NOTICE_VERSION` artırılır.
 - Auth e-posta şablonları (doğrulama, şifre sıfırlama) Türkçe ve kurumsal gönderen adıyla ayarlanır.

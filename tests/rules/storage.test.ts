@@ -1,6 +1,14 @@
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
-import { claimsOf, createRulesEnv, member, seedMembers, seedSecurityConfig, SECOND_FACTOR } from "./helpers";
+import {
+  claimsOf,
+  createRulesEnv,
+  EMAIL_VERIFIED,
+  member,
+  seedMembers,
+  seedSecurityConfig,
+  SECOND_FACTOR,
+} from "./helpers";
 
 /**
  * Storage güvenlik kuralları (F2.2). Yetki Firestore'daki `users/{uid}` dokümanından
@@ -147,5 +155,20 @@ describe("MFA zorunluluğu (N8)", () => {
   it("doküman yoksa zorunlu (güvenli varsayılan)", async () => {
     await seedSecurityConfig(env, null);
     await assertFails(as(resident).ref(FILE).getMetadata());
+  });
+});
+
+describe("e-posta doğrulama zorunluluğu (D21)", () => {
+  it("zorunluyken doğrulanmamış e-postalı oturum dosya okuyamaz; doğrulanmış okur; doküman yoksa ikisi birden", async () => {
+    await seedSecurityConfig(env, { requireEmailVerified: true });
+    await assertFails(as(resident).ref(FILE).getMetadata());
+    await assertSucceeds(as(resident, EMAIL_VERIFIED).ref(FILE).getMetadata());
+    await seedSecurityConfig(env, null);
+    await assertFails(as(resident, SECOND_FACTOR).ref(FILE).getMetadata());
+    await assertSucceeds(
+      as(resident, { ...SECOND_FACTOR, ...EMAIL_VERIFIED })
+        .ref(FILE)
+        .getMetadata()
+    );
   });
 });

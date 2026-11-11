@@ -1,7 +1,15 @@
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
 import firebase from "firebase/compat/app";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
-import { claimsOf, createRulesEnv, member, seedMembers, seedSecurityConfig, SECOND_FACTOR } from "./helpers";
+import {
+  claimsOf,
+  createRulesEnv,
+  EMAIL_VERIFIED,
+  member,
+  seedMembers,
+  seedSecurityConfig,
+  SECOND_FACTOR,
+} from "./helpers";
 
 /**
  * Firestore güvenlik kuralları (F2.1). Yetkinin kaynağı `users/{uid}` dokümanıdır (D3);
@@ -340,5 +348,27 @@ describe("MFA zorunluluğu (N8: config/security tek kaynak)", () => {
         .set({ uid: resident.uid, secondsSpent: 1, lastPage: 1, completed: false, updatedAt: serverTime() });
     await assertFails(progress(as(resident)));
     await assertSucceeds(progress(as(resident, SECOND_FACTOR)));
+  });
+});
+
+describe("e-posta doğrulama zorunluluğu (D21: config/security tek kaynak)", () => {
+  const materials = (db: ReturnType<typeof as>) => db.collection("materials").doc("m1").get();
+
+  it("zorunluyken doğrulanmamış e-postalı oturum veri okuyamaz; doğrulanmış okur", async () => {
+    await seedSecurityConfig(env, { requireEmailVerified: true });
+    await assertFails(materials(as(resident)));
+    await assertSucceeds(materials(as(resident, EMAIL_VERIFIED)));
+  });
+
+  it("kendi profilini okuma e-posta doğrulaması istemez (doğrulama ekranı için)", async () => {
+    await seedSecurityConfig(env, { requireEmailVerified: true });
+    await assertSucceeds(as(resident).collection("users").doc(resident.uid).get());
+  });
+
+  it("doküman yoksa MFA ve e-posta birlikte zorunlu; ikisini de sağlayan okur", async () => {
+    await seedSecurityConfig(env, null);
+    await assertFails(materials(as(resident, SECOND_FACTOR)));
+    await assertFails(materials(as(resident, EMAIL_VERIFIED)));
+    await assertSucceeds(materials(as(resident, { ...SECOND_FACTOR, ...EMAIL_VERIFIED })));
   });
 });

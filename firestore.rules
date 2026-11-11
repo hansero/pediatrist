@@ -37,7 +37,7 @@ service cloud.firestore {
       return request.auth.token.auth_time > profile().get('tokensValidAfter', 0);
     }
 
-    // Ortam güvenlik ayarı (N8, D20): `config/security`. Doküman yoksa veya `requireMfa` açıkça false
+    // Ortam güvenlik ayarı (N8, D20, D21): `config/security`. Doküman yoksa veya `requireMfa` açıkça false
     // değilse MFA ZORUNLU (güvenli varsayılan). Aynı doküman guards.ts ve istemci tarafından da okunur.
     function securityConfigPath() {
       return /databases/$(database)/documents/config/security;
@@ -56,11 +56,25 @@ service cloud.firestore {
       return !mfaRequired() || hasSecondFactor();
     }
 
-    // Etkin üye: profil `active`, oturum iptal edilmemiş ve (zorunluysa) ikinci faktörle açılmış.
+    // D21: e-posta doğrulama zorunluluğu da aynı dokümandan (yoksa zorunlu).
+    function emailVerificationRequired() {
+      return !exists(securityConfigPath())
+        || get(securityConfigPath()).data.get('requireEmailVerified', true) != false;
+    }
+
+    function emailSatisfied() {
+      return !emailVerificationRequired() || request.auth.token.get('email_verified', false) == true;
+    }
+
+    function securitySatisfied() {
+      return mfaSatisfied() && emailSatisfied();
+    }
+
+    // Etkin üye: profil `active`, oturum iptal edilmemiş, (zorunluysa) ikinci faktörle açılmış ve e-postası doğrulanmış.
     // Not: kendi profilini okuma (`isSelf`) MFA istemez; oturum bağlamı ve MFA kurulum sayfası buna dayanır.
     function isActive() {
       return signedIn() && exists(profilePath()) && profile().status == 'active' && sessionNotRevoked()
-        && mfaSatisfied();
+        && securitySatisfied();
     }
 
     function isAdmin() {

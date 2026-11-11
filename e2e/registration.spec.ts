@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures/test";
 import { fillRegistration, REGISTER_BUTTON } from "./fixtures/registration";
-import { findUserProfileByEmail, listOobCodes, readDocument, writeDocument } from "./fixtures/emulator";
+import { applyOobCode, findUserProfileByEmail, listOobCodes, readDocument, writeDocument } from "./fixtures/emulator";
 
 /**
  * Kayıt akışı (F2.3): hesap Auth'ta açılır, profil sunucuda `completeRegistration` ile yazılır.
@@ -112,4 +112,48 @@ test("uzman hekim başvurusu: kıdem yılı sorulmaz, profilde boş", async ({ p
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Başvurunuz onay bekliyor");
   const profile = await findUserProfileByEmail(email);
   expect(profile).toMatchObject({ title: "Uzm. Dr.", residencyYear: null, status: "pending" });
+});
+
+test.describe("e-posta doğrulaması zorunlu ortam (config/security.requireEmailVerified = true, D21)", () => {
+  test.afterEach(async () => {
+    await writeDocument("config/security", { requireMfa: false, requireEmailVerified: false });
+  });
+
+  test("davetle etkinleşen ama e-postası doğrulanmamış üye doğrulama ekranında kalır; bağlantıyı açıp 'Doğruladım' deyince panel açılır", async ({
+    page,
+  }, testInfo) => {
+    await writeDocument("config/security", { requireMfa: false, requireEmailVerified: true });
+    const stamp = `${testInfo.project.name.toUpperCase()}-${Date.now()}`;
+    const email = `dogrula.${stamp.toLowerCase()}@example.test`;
+    const code = `PED-EV-${stamp}`.replace(/[^A-Z0-9-]/g, "");
+    await writeDocument(`invitations/${code}`, {
+      code,
+      email,
+      intendedRole: "user",
+      residencyYear: 2,
+      invitedBy: "seed-admin",
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 86_400_000),
+      used: false,
+      revoked: false,
+    });
+
+    await fillRegistration(page, email, { inviteCode: code });
+    await expect(page.getByRole("heading", { name: "E-posta adresinizi doğrulayın" })).toBeVisible();
+    expect(await findUserProfileByEmail(email)).toMatchObject({ status: "active" });
+
+    // Kullanıcı e-postadaki bağlantıyı açar.
+    let oob: { oobCode?: string } | undefined;
+    await expect
+      .poll(async () => {
+        const all = (await listOobCodes()) as Array<{ email: string; requestType: string; oobCode?: string }>;
+        oob = all.find((c) => c.email === email && c.requestType === "VERIFY_EMAIL");
+        return Boolean(oob);
+      })
+      .toBe(true);
+    await applyOobCode(String(oob?.oobCode));
+
+    await page.getByRole("button", { name: "Doğruladım" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Deneme Asistan", { timeout: 15_000 });
+  });
 });

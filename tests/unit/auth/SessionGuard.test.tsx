@@ -19,6 +19,7 @@ const session = (status: "active" | "pending"): ClinicMemberSession => ({
   mfaEnrolled: false,
   emailVerified: true,
   mfaRequired: true,
+  emailVerificationRequired: false,
   hasBoundDevice: false,
 });
 
@@ -89,5 +90,28 @@ describe("SessionGuard", () => {
     expect(onSignOut).toHaveBeenCalledTimes(1);
     act(() => vi.advanceTimersByTime(30 * MIN));
     expect(onSignOut).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("SessionGuard: e-posta doğrulama zorunluluğu (D21)", () => {
+  it("zorunluyken doğrulanmamış etkin üye içerik yerine doğrulama ekranını görür; zorunlu değilse içerik", () => {
+    const onSignOut = vi.fn().mockResolvedValue(undefined);
+    const unverified = { ...session("active"), emailVerified: false, emailVerificationRequired: true };
+    const { rerender } = render(
+      <SessionGuard session={unverified} onSignOut={onSignOut}>
+        <p>içerik</p>
+      </SessionGuard>
+    );
+    expect(screen.getByRole("heading", { name: "E-posta adresinizi doğrulayın" })).toBeTruthy();
+    expect(screen.queryByText("içerik")).toBeNull();
+    expect(screen.getByRole("button", { name: "Doğrulama e-postası gönder" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Çıkış yap" })).toBeTruthy();
+
+    rerender(
+      <SessionGuard session={{ ...unverified, emailVerificationRequired: false }} onSignOut={onSignOut}>
+        <p>içerik</p>
+      </SessionGuard>
+    );
+    expect(screen.getByText("içerik")).toBeTruthy();
   });
 });

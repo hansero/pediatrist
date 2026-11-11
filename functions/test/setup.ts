@@ -20,9 +20,8 @@ process.env.METADATA_SERVER_DETECTION = "none";
 // Testler emülatör çalışma ortamında değil vitest sürecinde koşar; `.env.demo-pediatrist` yüklenmez.
 // guards.ts güvenli varsayılan kullandığı için (değişken yoksa zorunluluk AÇIK) burada kapatılır;
 // koruyucu testleri bunları tek tek açar (`withEnforced`). MFA zorunluluğu parametre değil,
-// `config/security` dokümanıdır (N8); `helpers.ts → resetEmulators/setSecurityConfig`.
+// MFA ve e-posta doğrulama zorunlulukları `config/security` dokümanıdır (N8, D21); `helpers.ts → setSecurityConfig`.
 process.env.ENFORCE_APP_CHECK = "false";
-process.env.REQUIRE_EMAIL_VERIFIED = "false";
 
 // WebAuthn RP (F4.2): emülatör .env'iyle aynı değerler; yazılım doğrulayıcı bu kökeni kullanır.
 process.env.WEBAUTHN_RP_ID = "localhost";

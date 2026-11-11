@@ -68,11 +68,17 @@ export async function readDocument(path: string): Promise<Record<string, unknown
 }
 
 /** Auth emülatörünün gönderdiği e-posta eylem kodları (şifre sıfırlama, e-posta doğrulama). */
-export async function listOobCodes(): Promise<Array<{ email: string; requestType: string; oobLink: string }>> {
+export async function listOobCodes(): Promise<
+  Array<{ email: string; requestType: string; oobLink: string; oobCode: string }>
+> {
   const { auth } = firebaseJson.emulators;
   const res = await fetch(`http://${auth.host}:${auth.port}/emulator/v1/projects/demo-pediatrist/oobCodes`);
   return (
-    ((await res.json()) as { oobCodes?: Array<{ email: string; requestType: string; oobLink: string }> }).oobCodes ?? []
+    (
+      (await res.json()) as {
+        oobCodes?: Array<{ email: string; requestType: string; oobLink: string; oobCode: string }>;
+      }
+    ).oobCodes ?? []
   );
 }
 
@@ -92,4 +98,14 @@ export async function hasField(path: string, field: string): Promise<boolean> {
   if (!res.ok) return false;
   const doc = (await res.json()) as { fields?: Record<string, unknown> };
   return Boolean(doc.fields && field in doc.fields);
+}
+
+/** Auth emülatöründe bir e-posta eylem kodunu uygular (kullanıcının e-postadaki bağlantıya tıklaması gibi). */
+export async function applyOobCode(oobCode: string): Promise<void> {
+  const { auth } = firebaseJson.emulators;
+  const res = await fetch(
+    `http://${auth.host}:${auth.port}/identitytoolkit.googleapis.com/v1/accounts:update?key=demo-api-key`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oobCode }) }
+  );
+  if (!res.ok) throw new Error(`Eylem kodu uygulanamadı (HTTP ${res.status})`);
 }

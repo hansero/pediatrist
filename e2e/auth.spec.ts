@@ -57,11 +57,11 @@ test("hesap güvenliği sayfası: menüden ulaşılır, iki aşamalı doğrulama
 
 test.describe("MFA zorunlu ortam (config/security.requireMfa = true, N8)", () => {
   test.afterEach(async () => {
-    await writeDocument("config/security", { requireMfa: false });
+    await writeDocument("config/security", { requireMfa: false, requireEmailVerified: false });
   });
 
   test("kaydı olmayan üye kurulum sayfasına kilitlenir; veri ekranlarına geçemez", async ({ page }) => {
-    await writeDocument("config/security", { requireMfa: true });
+    await writeDocument("config/security", { requireMfa: true, requireEmailVerified: false });
     await loginAs(page, ACCOUNTS.asistan2);
     await expect(page).toHaveURL(/\/account\/security$/);
     await expect(page.getByRole("status").filter({ hasText: "İki aşamalı doğrulama gerekli" })).toBeVisible();

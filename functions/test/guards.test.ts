@@ -97,7 +97,9 @@ describe("parametreyle yönetilen zorunluluklar", () => {
 
   it("güvenli varsayılan: config/security yoksa veya değer bozuksa MFA zorunlu; yalnızca açık false kapatır", async () => {
     await createMember("u1", "user", "active");
-    const attempt = () => errorOf(startQuizAttempt.run(callableRequest({ quizId: "q1" }, asMember("u1"))));
+    // E-postası doğrulanmış üye: bu test yalnızca MFA şartını sınar (doküman yokken ikisi de zorunlu).
+    const member = { ...asMember("u1"), claims: { ...asMember("u1").claims, email_verified: true } };
+    const attempt = () => errorOf(startQuizAttempt.run(callableRequest({ quizId: "q1" }, member)));
     await setSecurityConfig(null);
     expect((await attempt()).message).toContain("iki aşamalı");
     await setSecurityConfig({ requireMfa: "false" });
@@ -106,8 +108,20 @@ describe("parametreyle yönetilen zorunluluklar", () => {
     expect((await attempt()).code).toBe("failed-precondition");
   });
 
+  it("güvenli varsayılan (D21): config/security yoksa e-posta doğrulaması da zorunlu", async () => {
+    await createMember("u1", "user", "active");
+    await setSecurityConfig(null);
+    const mfaOnly = {
+      ...asMember("u1"),
+      claims: { ...asMember("u1").claims, firebase: { sign_in_second_factor: "totp" } },
+    };
+    expect((await errorOf(startQuizAttempt.run(callableRequest({ quizId: "q1" }, mfaOnly)))).message).toContain(
+      "e-posta"
+    );
+  });
+
   it("e-posta doğrulaması zorunluysa doğrulanmamış hesap reddedilir", async () => {
-    withEnforced("REQUIRE_EMAIL_VERIFIED");
+    await setSecurityConfig({ requireEmailVerified: true });
     await createMember("u1", "user", "active");
     expect((await errorOf(startQuizAttempt.run(callableRequest({ quizId: "q1" }, asMember("u1"))))).message).toContain(
       "e-posta"

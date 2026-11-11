@@ -20,14 +20,17 @@ export async function resetEmulators() {
     const res = await fetch(url, { method: "DELETE" });
     if (!res.ok) throw new Error(`Emülatör sıfırlanamadı: ${url} (HTTP ${res.status})`);
   }
-  await setSecurityConfig({ requireMfa: false });
+  await setSecurityConfig({});
 }
 
-/** `config/security` dokümanını yazar; `null` ise siler (güvenli varsayılan davranışı sınamak için). */
-export async function setSecurityConfig(config: { requireMfa?: unknown } | null) {
+/**
+ * `config/security` dokümanını yazar: belirtilmeyen alanlar emülatör değeridir (`false`), böylece bir test
+ * yalnızca sınadığı şartı açar. `null` dokümanı siler (güvenli varsayılan: her şey zorunlu).
+ */
+export async function setSecurityConfig(config: { requireMfa?: unknown; requireEmailVerified?: unknown } | null) {
   const ref = getFirestore().collection("config").doc("security");
   if (config === null) await ref.delete();
-  else await ref.set(config);
+  else await ref.set({ requireMfa: false, requireEmailVerified: false, ...config });
 }
 
 export interface TestActor {
@@ -97,7 +100,7 @@ export async function createMember(uid: string, role: Role, status: MemberStatus
 export const asAdmin = (uid = "admin"): TestActor => ({ uid, claims: { role: "admin", status: "active" } });
 export const asMember = (uid: string): TestActor => ({ uid, claims: { role: "user", status: "active" } });
 
-const ENFORCEMENT_VARS = ["ENFORCE_APP_CHECK", "REQUIRE_EMAIL_VERIFIED"] as const;
+const ENFORCEMENT_VARS = ["ENFORCE_APP_CHECK"] as const;
 
 /** Testin süresince belirtilen zorunlulukları açar (afterEach geri alır). */
 export function withEnforced(...names: (typeof ENFORCEMENT_VARS)[number][]) {

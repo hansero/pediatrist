@@ -141,8 +141,9 @@ async function main() {
   // --- 3b) Ortam güvenlik ayarı (N8, D20) -------------------------------------
   // Auth emülatörü TOTP desteklemediği için (D5) emülatörde MFA zorunluluğu kapatılır. Gerçek projede bu
   // doküman yoksa MFA zorunludur (güvenli varsayılan).
-  await db.collection("config").doc("security").set({ requireMfa: false });
-  console.log("• config/security: requireMfa = false (yalnızca emülatör).");
+  // E-posta doğrulama zorunluluğu da emülatörde kapalıdır (D21); ilgili testler açıp kapatır.
+  await db.collection("config").doc("security").set({ requireMfa: false, requireEmailVerified: false });
+  console.log("• config/security: requireMfa = false, requireEmailVerified = false (yalnızca emülatör).");
 
   // --- 4) Davet --------------------------------------------------------------
   const inv = SEED_INVITATION;

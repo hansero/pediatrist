@@ -64,16 +64,23 @@ export async function seedMembers(
 }
 
 /**
- * `config/security` (N8, D20). Emülatör değeri `requireMfa: false` (Auth emülatörü TOTP desteklemiyor, D5);
+ * `config/security` (N8, D20, D21). Emülatör değerleri `false` (Auth emülatörü TOTP desteklemiyor, D5);
  * `null` dokümanı siler (yoksa MFA zorunlu: güvenli varsayılan).
  */
-export async function seedSecurityConfig(env: RulesTestEnvironment, config: { requireMfa?: unknown } | null) {
+export async function seedSecurityConfig(
+  env: RulesTestEnvironment,
+  config: { requireMfa?: unknown; requireEmailVerified?: unknown } | null
+) {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const ref = ctx.firestore().collection("config").doc("security");
     if (config === null) await ref.delete();
-    else await ref.set(config);
+    // Belirtilmeyen şartlar emülatör değeri (false): test yalnızca sınadığı şartı açar.
+    else await ref.set({ requireMfa: false, requireEmailVerified: false, ...config });
   });
 }
+
+/** E-postası doğrulanmış oturumun token alanı (D21). */
+export const EMAIL_VERIFIED = { email_verified: true };
 
 /** İkinci faktörle (TOTP) açılmış oturumun token alanı. */
 export const SECOND_FACTOR = { firebase: { sign_in_provider: "password", sign_in_second_factor: "totp" } };

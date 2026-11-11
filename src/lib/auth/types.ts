@@ -21,6 +21,8 @@ export interface ClinicMemberSession {
   emailVerified: boolean;
   /** Ortamda MFA zorunlu mu? (`config/security`, N8; kurallar ve sunucuyla aynı kaynak) */
   mfaRequired: boolean;
+  /** Ortamda e-posta doğrulaması zorunlu mu? (`config/security`, D21) */
+  emailVerificationRequired: boolean;
   /** Hesaba yoklama cihazı (passkey, F4.2) kayıtlı mı? Credential ayrıntısı UI'a taşınmaz. */
   hasBoundDevice: boolean;
 }
