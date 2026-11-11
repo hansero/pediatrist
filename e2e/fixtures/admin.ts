@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import firebaseJson from "../../firebase.json";
+import { KVKK_NOTICE_VERSION } from "../../functions/src/shared/consent";
 import { writeDocument } from "./emulator";
 import { REGISTRATION_PASSWORD } from "./registration";
 
@@ -10,7 +11,15 @@ import { REGISTRATION_PASSWORD } from "./registration";
 export async function createMember(
   email: string,
   fullName: string,
-  { status = "pending", residencyYear = 2 }: { status?: "pending" | "active"; residencyYear?: number } = {}
+  {
+    status = "pending",
+    residencyYear = 2,
+    consent = true,
+  }: {
+    status?: "pending" | "active";
+    residencyYear?: number;
+    /** Güncel aydınlatma metni onaylı mı? */ consent?: boolean;
+  } = {}
 ): Promise<string> {
   const { auth } = firebaseJson.emulators;
   const res = await fetch(
@@ -32,6 +41,7 @@ export async function createMember(
     role: "user",
     status,
     createdAt: new Date(),
+    ...(consent ? { consent: { version: KVKK_NOTICE_VERSION, acceptedAt: new Date() } } : {}),
   });
   return localId;
 }

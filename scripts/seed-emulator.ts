@@ -222,6 +222,7 @@ async function main() {
   const { getAuth } = await import("firebase-admin/auth");
   const { getFirestore, Timestamp, FieldValue } = await import("firebase-admin/firestore");
   const { getStorage } = await import("firebase-admin/storage");
+  const { KVKK_NOTICE_VERSION } = await import("../functions/src/shared/consent");
 
   const app = initializeApp({ projectId: PROJECT_ID, storageBucket: BUCKET });
   const auth = getAuth(app);
@@ -258,6 +259,8 @@ async function main() {
         role: u.role,
         status: u.status,
         createdAt: Timestamp.fromMillis(now - 30 * 86_400_000),
+        // Güncel aydınlatma metnini onaylamış sayılırlar (F9.1); onay ekranını e2e kendi üyesiyle sınar.
+        consent: { version: KVKK_NOTICE_VERSION, acceptedAt: Timestamp.fromMillis(now - 30 * 86_400_000) },
         ...(u.status !== "pending" ? { approvedBy: admin.uid, updatedAt: FieldValue.serverTimestamp() } : {}),
       });
   }

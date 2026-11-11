@@ -120,14 +120,16 @@ test("üye yaşam döngüsü: onay → eğitim sorumlusu (adı yazarak) → yetk
   await expectNoHorizontalOverflow(page);
 });
 
-test("kendi satırında rol, durum ve MFA işlemi yok", async ({ page }) => {
+test("kendi satırında yalnızca kendi veri dökümü var; rol, durum, MFA ve silme işlemi yok", async ({ page }) => {
   await loginAs(page, ACCOUNTS.admin);
   await page.goto("/admin");
   await page.getByLabel("Ara").fill(ACCOUNTS.admin);
   const row = await memberRow(page, ACCOUNTS.admin);
   await expect(row).toContainText("(siz)");
-  // Seed admin'in kayıtlı cihazı yok ve kıdemi değiştirilemez (admin) → işlem menüsü hiç yok.
-  await expect(row.getByRole("button", { name: /^İşlemler/ })).toHaveCount(0);
+  const menu = await openMemberMenu(page, ACCOUNTS.admin);
+  // Seed admin'in kayıtlı cihazı yok ve kıdemi değiştirilemez (admin) → tek işlem veri dökümü (F9.1).
+  await expect(menu.locator(".action-list").getByRole("button")).toHaveText(["Veri dökümünü indir"]);
+  await expect(menu).toContainText("hesabınızı silemezsiniz");
 });
 
 test("davet: geçersiz e-posta sunucu hatası gösterir; oluştur → kod → iptal", async ({ page }, testInfo) => {

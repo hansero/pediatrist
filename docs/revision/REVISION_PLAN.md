@@ -85,7 +85,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F8.1 | UX metni sadeleştirme + a11y düzeltmeleri + axe testleri | M | ✅ | Görsel hiyerarşi, Erişilebilirlik |
 | F8.2 | Performans (timer izolasyonu), ölü kod, `admin.ts` kararı | S | ✅ | §7 |
 | **F9** | **Uyum (KVKK) ve operasyon** | | | |
-| F9.1 | Aydınlatma metni, rıza sürümü, üye silme ve veri dışa aktarımı | M | 🟨 | §9 |
+| F9.1 | Aydınlatma metni, rıza sürümü, üye silme ve veri dışa aktarımı | M | ✅ | §9 |
 | F9.2 | Denetim kaydı TTL, hız sınırı, alarm, yedekleme runbook'u | S | ⬜ | S10, §8 |
 | F9.3 | README, `DEPLOY.md`, `Plan.MD` gerçeğe uygun güncelleme | S | ⬜ | §8 |
 | **F10** | **Gerçek teste hazırlık** | | | |
@@ -101,15 +101,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F8.2. **F8 tamamlandı.** Sessiz liste kırpılması yerine açık uyarı (`useCapped`), video ilerlemesinde gereksiz yeniden çizim giderildi, ölü kod (Admin SDK başlatıcısı, eski kanca, `server-only`, 72 satır CSS) silindi. Testler: unit 250, rules 57, functions 102, e2e 109 (+3 bilinçli atlanan).
-- **Devam eden adım:** F9.1 (WIP). **Biten:** sunucu tarafı ve testleri (functions 109): `functions/src/privacyService.ts` (`acceptConsent`, `deleteMember`, `exportMemberData`), `requireSelfOrAdmin` (guards), `completeRegistration` silinmiş hesap denetimi, sözleşmeler (`@shared/schemas`, `DELETED_MEMBER_NAME`, `KVKK_NOTICE_APPROVED`). İstemcide: `session.consentVersion`, "hesap-silindi" çıkış nedeni, callable bağları, denetim etiketleri, `MemberList`'te "Veri dökümünü indir" ve adı yazarak "Üyeyi sil" (`TypedNameDialog`), `src/lib/privacy.ts`.
-- **Sıradaki iş:** F9.1'in kalanı, sırayla:
-  1. `SessionGuard`: `session.consentVersion !== KVKK_NOTICE_VERSION` ise engelleyen onay ekranı (`/kvkk` bağlantısı, onay kutusu, `acceptConsent`, "Çıkış yap") + birim testi. Metin taslaksa (`KVKK_NOTICE_APPROVED === false`) ekranda ve `/kvkk` sayfasında "taslak" uyarısı.
-  2. `/account/security`: "Verilerimi indir" (`downloadMemberExport(session.uid)`).
-  3. Seed kullanıcılarına `consent` yaz (`scripts/seed-emulator.ts`); `e2e/fixtures/emulator.ts` `writeDocument` iç içe harita desteklesin; `e2e/fixtures/admin.ts` `createMember` varsayılan olarak onaylı yazsın (aksi halde dashboard.spec onay ekranına takılır).
-  4. e2e: onay ekranı (onaysız üye → onayla → panel), üye silme (adı yazarak; kayıtlarda "Silinmiş üye"; silinen üyenin açık oturumu `?neden=hesap-silindi` ile kapanır), veri dökümü (indirilen JSON). `admin-panel.spec` "kendi satırı" testi güncellenmeli: kendi satırında artık yalnızca "Veri dökümünü indir" var.
-  5. Tam doğrulama, plan notları (✅ Uygulanan F9.1), commit.
-  - Karar: silmede `users/{uid}` dokümanı anonimleştirilmez, SİLİNİR (plan metninden sapma; kayıtlar `uid` + "Silinmiş üye" ile kalır). Denetim kayıtları saklama süresince tutulur (F9.2 TTL).
+- **Son tamamlanan adım:** F9.1. KVKK altyapısı: sürüm değişince yeniden onay (`acceptConsent` + onay ekranı), üye silme (`deleteMember`: hesap ve profil silinir, kayıtlar addan arındırılır), kişisel veri dökümü (`exportMemberData`: üye kendisi, admin herkes için), "taslak metin" uyarısı. Testler: unit 255, rules 57, functions 109, e2e E2E_COUNT.
+- **Devam eden adım:** —
+- **Sıradaki iş:** F9.2 operasyon (bkz. §F9.2).
+  - `audit_logs.expireAt` alanı (`auditLogger.ts`'te tek yerde) + TTL politikası. **Saklama süresi kullanıcı kararı** (plan örneği 2 yıl): sormadan sabitleme; `functions/src/config.ts`'te parametre + `DEPLOY.md`'de karar notu.
+  - Hız sınırı: uid başına dakikalık sayaç (yoklama kodu denemeleri `verifyRealTimeAttendance`, giriş sonrası hassas callable'lar). Mevcut `ATTENDANCE_*_REJECTED` denetim kayıtlarıyla ilişkisine bak.
+  - `ipHash`: `sha256(salt + rawRequest.ip)`, salt `defineSecret('AUDIT_IP_SALT')`; emülatörde sabit test tuzu (`functions/.env.demo-pediatrist`).
+  - `DEPLOY.md`: log tabanlı alarm (`severity=CRITICAL`; artık `MEMBER_DELETED` de üretir), bütçe alarmı, zamanlanmış yedek / PITR adımları.
+  - Sonra F9.3 dokümantasyon (README, DEPLOY, Plan.MD).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1458,6 +1457,31 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Sürüm değişince yeniden onay istenir.
   - `deleteMember` callable'ı: Auth kullanıcısı silinir, profil anonimleştirilir, attempt/log/progress kayıtlarında ad alanları temizlenir, denetim kaydı yazılır.
   - `exportMemberData` callable'ı: JSON dışa aktarım.
+
+- **✅ Uygulanan F9.1 (sapmalar ve eklemeler):**
+  - **Aydınlatma metni içeriği değiştirilmedi** (kullanıcı kararı: içerik kurumun hukuk birimince onaylanır).
+    - `KVKK_NOTICE_APPROVED = false` (`@shared/consent`): `/kvkk` sayfası ve onay ekranı "Taslak metin" uyarısı gösterir. Yazılı onaydan sonra `true` yapılır; metin değişirse sürüm artırılır ve değer yeniden `false` olur.
+  - **Yeniden onay:** `acceptConsent` callable'ı (etkin üye; yalnızca güncel sürüm; sürüm + zaman + denetim kaydı).
+    - `SessionGuard`: `session.consentVersion` güncel sürüm değilse içerik yerine onay ekranı (metin bağlantısı, onay kutusu, "Onayla", "Çıkış yap"). Kayıttan sonra ekran profil dinleyicisiyle kapanır (iyimser başarı yok).
+    - Hiç onayı olmayan hesaplar da (ör. konsoldan oluşturulan ilk admin) ilk girişte onaylar.
+    - Zorunluluk arayüzdedir; sunucu çağrıları onay sürümüne göre reddedilmez (aydınlatma bir bilgilendirme yükümlülüğüdür, hukuki sebep md. 5/2). İstenirse `guards.ts`'e eklenebilir.
+  - **Üye silme:** `deleteMember` (admin; `functions/src/privacyService.ts`).
+    - **Plandan sapma:** profil anonimleştirilmez, SİLİNİR (veri minimizasyonu; ayrı bir "silinmiş" üyelik durumu gerekmez). Kayıtlar `uid` ile kalır ama kişiyi tanımlayan alanlar temizlenir.
+    - Temizlenenler: sınav girişimlerinde ad → "Silinmiş üye" (`DELETED_MEMBER_NAME`); yoklama logu ve ders kaydında ad/ünvan ve **mazeret notu** (sağlık bilgisi içerebilir); kullanılan davetteki e-posta; admin ise materyal ve protokol notu imzaları.
+    - Silinenler: giriş hesabı, profil (cihaz bağı dahil), materyal ilerlemeleri, sınav yanıt taslakları, kullanılmamış davetler, WebAuthn challenge'ları.
+    - Kalanlar: puanlar ve yoklama durumları (istatistik), ve denetim kayıtları (güvenlik kaydı; saklama süresi F9.2 TTL ile). Denetim kayıtlarında silinen üyenin e-postası `actorEmail` olarak süre sonuna kadar kalır; bu bilinçli.
+    - Sıra yinelenebilir: kayıtlar → giriş hesabı → profil + `MEMBER_DELETED` (CRITICAL, kimlik bilgisi içermez). Yarıda kalırsa profil durduğu için yeniden çalıştırılır (test edildi).
+    - Kendi hesabını silemez; çağıran etkin admin olduğundan en az bir admin her zaman kalır.
+  - **Bulunan ve kapatılan açık:** silinen üyenin süresi dolmamış oturum belirteciyle `completeRegistration` çağrılabiliyor, adı ve e-postası başvuru listesine geri dönebiliyordu. Callable artık giriş hesabının varlığını denetler (test edildi).
+    - İstemci: bu oturumda görülmüş profil kaybolursa kayıt formuna değil `?neden=hesap-silindi` ile giriş ekranına gidilir (`evaluateSession(…, hadProfile)`).
+  - **Veri dökümü:** `exportMemberData` (üye kendisi için, admin her üye için; `requireSelfOrAdmin` guards'ta).
+    - İçerik: profil, onay, sınav girişimleri ve üyenin kendi yanıtları, yoklama, materyal ilerlemesi, kendi yaptığı denetimli işlemler. Liste başına 2000 sınırı, aşılırsa `truncated`.
+    - **Kural 5 korunur:** doğru cevaplar ve açıklama metni dökümde yoktur (test, sınavın bütün açıklama metinlerini dökümde arar).
+    - Her döküm denetim kaydına geçer (`MEMBER_DATA_EXPORTED`).
+  - **Arayüz:** yönetim panelinde "Veri dökümünü indir" (onaylı) ve adı yazarak "Üyeyi sil" (`PromoteDialog` → genel `TypedNameDialog`). "Hesap güvenliği" sayfasında "Kişisel verilerim" kartı ("Verilerimi indir", onaylanan sürüm).
+  - **Testler:** functions 102 → 109 (`privacy.test.ts`: gerçek sınav ve yoklama callable'larıyla kayıt üretip siler/döker). Unit 250 → 255. e2e `privacy.spec.ts` (2 test × 2 proje): onay ekranı (axe dahil) → panel → kendi dökümü; admin dökümü → adı yazarak silme → üyenin açık oturumu kapanır, yeniden giremez, denetim ekranında "Kritik".
+    - Seed kullanıcıları ve e2e `createMember` güncel sürümü onaylı yazılır (`consent: false` seçeneğiyle onay ekranı sınanır).
+  - **Kapsam dışı (not):** üyenin kendi hesabını kendisinin silmesi yok (admin üzerinden); otomatik saklama süresi sonu silme yok (kurum politikası gerekir).
 
 #### F9.2 Operasyon (S)
 - **Yapılacaklar:**
