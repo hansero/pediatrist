@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { LIMITS } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -22,27 +22,25 @@ export interface ExcuseTarget {
  * olan hekim mazeretli işaretlenir; sunucu sayaçları ve denetim kaydını aynı işlemde günceller (D22).
  * Başarı yalnızca sunucu yanıtından sonra gösterilir.
  */
-export function ExcuseDialog({
-  sessionId,
-  target,
-  onClose,
-}: {
+interface ExcuseDialogProps {
   sessionId: string;
   target: ExcuseTarget | null;
   onClose: () => void;
-}) {
+}
+
+/**
+ * Her hekim için yeni bileşen (anahtar): mevcut not ilk çizimde hazırdır. Açıldıktan sonra efektle doldurmak
+ * o arada yazılanı ezebiliyordu (F7.4'te aynı desen e2e'de yakalandı); canlı liste güncellemesi de yazılanı silmez.
+ */
+export function ExcuseDialog(props: ExcuseDialogProps) {
+  return <ExcuseDialogBody key={props.target?.uid ?? "kapali"} {...props} />;
+}
+
+function ExcuseDialogBody({ sessionId, target, onClose }: ExcuseDialogProps) {
   const toast = useToast();
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(target?.excuseNote ?? "");
   const save = useAsyncAction(markAttendanceExcused);
   const noteRef = useRef<HTMLTextAreaElement>(null);
-
-  // Dialog açılırken (veya başka hekim seçilince) mevcut not yüklenir. Nesne kimliğine değil değerlere bağlı:
-  // canlı liste her güncellendiğinde yazılan metin silinmesin.
-  const targetUid = target?.uid;
-  const initialNote = target?.excuseNote ?? "";
-  useEffect(() => {
-    setNote(initialNote);
-  }, [targetUid, initialNote]);
 
   function close() {
     if (save.pending) return;

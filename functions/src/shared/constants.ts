@@ -70,6 +70,21 @@ export const REVEAL_POLICIES = ["after_close", "immediate"] as const;
 export type RevealPolicy = (typeof REVEAL_POLICIES)[number];
 export const DEFAULT_REVEAL_POLICY: RevealPolicy = "after_close";
 
+// --- Hesaplayıcılar (D8) ---------------------------------------------------
+
+/**
+ * Planlanan pediatri hesaplayıcılarının kimlikleri (F7.4). Formül motoru bu revizyonda yok (D8); kimlikler
+ * `calculators_config/{id}` protokol notlarının anahtarıdır ve istemci kataloğu bunlara bağlıdır.
+ */
+export const CALCULATOR_IDS = [
+  "calc_holliday_segar",
+  "calc_bsa_schwartz",
+  "calc_pals_emergency",
+  "calc_neonatal_bilirubin",
+  "calc_growth_clinical_scores",
+] as const;
+export type CalculatorId = (typeof CALCULATOR_IDS)[number];
+
 // --- Materyaller -----------------------------------------------------------
 
 /** Tek kategori listesi: hem yükleme hem filtreleme bunu kullanır (AUDIT kullanılabilirlik bulgusu). */
@@ -137,6 +152,7 @@ export const LIMITS = {
   excuseNoteLength: 200,
   fileNameLength: 200,
   descriptionLength: 2000,
+  protocolNoteLength: 2000,
   idLength: 128,
   /** WebAuthn yanıtındaki base64url alanlar (imza, authenticatorData, attestation) için üst sınır. */
   webAuthnFieldLength: 16_384,

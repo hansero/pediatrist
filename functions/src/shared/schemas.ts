@@ -16,6 +16,7 @@ import { KVKK_NOTICE_VERSION } from "./consent";
 import { z } from "./zod";
 import { QuizQuestionInput } from "./quizQuestion";
 import {
+  CALCULATOR_IDS,
   MATERIAL_CATEGORIES,
   MATERIAL_FILE_TYPES,
   MATERIAL_UPLOAD,
@@ -168,6 +169,16 @@ export const RevokeInvitationResponse = z.object({ revoked: z.literal(true) });
  * Admin: üyenin iki aşamalı doğrulama faktörlerini siler (telefonunu kaybeden üye, F3.4 → F7.1). Oturumları iptal
  * edilir; üye yeniden giriş yapıp Authenticator'ı yeniden kurar (MFA zorunluysa kurulum ekranına yönlenir).
  */
+/**
+ * Admin: hesaplayıcının klinik protokol notu (F7.4, D8). Boş not kaydı siler (not gösterilmez).
+ * Formül/doz bilgisi DEĞİL, kurum protokolüne yönlendiren serbest metindir.
+ */
+export const UpdateCalculatorConfigRequest = z.object({
+  calculatorId: z.enum(CALCULATOR_IDS, { error: "Hesaplayıcı bulunamadı." }),
+  protocolNote: optionalText("Protokol notu", LIMITS.protocolNoteLength),
+});
+export const UpdateCalculatorConfigResponse = z.object({ saved: z.literal(true), cleared: z.boolean() });
+
 export const ResetMemberMfaRequest = z.object({ targetUid: docId("Hedef kullanıcı") });
 export const ResetMemberMfaResponse = z.object({ reset: z.literal(true), factorsRemoved: z.number() });
 
@@ -506,6 +517,7 @@ export const CALLABLES = {
   finalizeMaterialUpload: { request: FinalizeMaterialUploadRequest, response: FinalizeMaterialUploadResponse },
   updateMaterial: { request: UpdateMaterialRequest, response: UpdateMaterialResponse },
   deleteMaterial: { request: DeleteMaterialRequest, response: DeleteMaterialResponse },
+  updateCalculatorConfig: { request: UpdateCalculatorConfigRequest, response: UpdateCalculatorConfigResponse },
 } as const;
 
 export type CallableName = keyof typeof CALLABLES;

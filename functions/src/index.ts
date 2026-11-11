@@ -31,3 +31,4 @@ export {
   getAttemptReport,
 } from "./quizService";
 export { createMaterial, finalizeMaterialUpload, updateMaterial, deleteMaterial } from "./materialsService";
+export { updateCalculatorConfig } from "./calculatorsService";

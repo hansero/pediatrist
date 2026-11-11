@@ -94,6 +94,7 @@ export const deleteQuizDraft = bind("deleteQuizDraft");
 export const saveAttemptDraft = bind("saveAttemptDraft");
 export const getAttemptReport = bind("getAttemptReport");
 export const resetMemberMfa = bind("resetMemberMfa");
+export const updateCalculatorConfig = bind("updateCalculatorConfig");
 export const createMaterial = bind("createMaterial");
 export const finalizeMaterialUpload = bind("finalizeMaterialUpload");
 export const updateMaterial = bind("updateMaterial");

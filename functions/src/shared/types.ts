@@ -315,6 +315,15 @@ export interface QuizAttemptDraftDoc<T> {
 export type MaterialStatus = "draft" | "published";
 
 /** `materials/{materialId}`: yalnızca callable'lar yazar (F6.1). */
+/** `calculators_config/{calculatorId}`: kliniğin protokol notu (F7.4); yalnızca `updateCalculatorConfig` yazar. */
+export interface CalculatorConfigDoc<T> {
+  calculatorId: string;
+  protocolNote: string;
+  updatedBy: string;
+  updatedByName: string;
+  updatedAt: T;
+}
+
 export interface MaterialDoc<T> {
   title: string;
   description: string;

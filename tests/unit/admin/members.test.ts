@@ -79,7 +79,7 @@ describe("denetim kaydı eylem adları (F7.2)", () => {
     const actions = new Set<string>();
     for (const m of source.matchAll(/(?:action: |rejected\(|\? |: )"([A-Z][A-Z_]{5,})"/g)) actions.add(m[1]);
     // Bilinen eylem olmayan sabitler (ör. önem seviyeleri) eşleşmesin diye yalnızca eylem önekleri.
-    const relevant = [...actions].filter((a) => /^(MEMBER|INVITATION|ATTENDANCE|QUIZ|MATERIAL)_/.test(a));
+    const relevant = [...actions].filter((a) => /^(MEMBER|INVITATION|ATTENDANCE|QUIZ|MATERIAL|CALCULATOR)_/.test(a));
     expect(relevant.length).toBeGreaterThan(20);
     expect(relevant.filter((a) => !(a in AUDIT_ACTION_LABEL))).toEqual([]);
   });

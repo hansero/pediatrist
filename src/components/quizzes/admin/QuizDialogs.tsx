@@ -132,7 +132,13 @@ export function PublishDialog({ quiz, onClose }: { quiz: QuizSummary | null; onC
 }
 
 /** Taslağı düzenle (F5.2): ayarlar ve isteğe bağlı olarak soru setinin tamamını yeni CSV ile değiştirme. */
-export function EditDraftDialog({ quiz, onClose }: { quiz: QuizSummary | null; onClose: () => void }) {
+export function EditDraftDialog(props: { quiz: QuizSummary | null; onClose: () => void }) {
+  // Her taslak için yeni bileşen (anahtar): başlangıç değerleri ilk çizimde hazır; efektle doldurmak o arada
+  // yazılanı ezebiliyordu (F7.4).
+  return <EditDraftDialogBody key={props.quiz?.id ?? "kapali"} {...props} />;
+}
+
+function EditDraftDialogBody({ quiz, onClose }: { quiz: QuizSummary | null; onClose: () => void }) {
   const toast = useToast();
   const csv = useCsvQuestions();
   const [title, setTitle] = useState(quiz?.title ?? "");
@@ -140,16 +146,6 @@ export function EditDraftDialog({ quiz, onClose }: { quiz: QuizSummary | null; o
   const [errors, setErrors] = useState<SettingsErrors & { title?: string }>({});
   const update = useAsyncAction(updateQuizDraft);
   const titleRef = useRef<HTMLInputElement>(null);
-
-  const quizId = quiz?.id;
-  useEffect(() => {
-    setTitle(quiz?.title ?? "");
-    setSettings(settingsOf(quiz));
-    setErrors({});
-    csv.reset();
-    update.reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quizId]);
 
   const replacing = csv.fileName !== "";
 

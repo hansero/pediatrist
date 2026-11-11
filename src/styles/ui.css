@@ -1207,3 +1207,50 @@
   font-weight: 600;
   color: var(--status-warning);
 }
+
+/* --- Hesaplayıcılar (F7.4) --- */
+.calculator-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: var(--space-4);
+}
+
+.calculator-grid > li > .surface-card {
+  height: 100%;
+}
+
+.calculator-plan {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.calculator-plan dt {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.calculator-plan dd {
+  margin: var(--space-1) 0 0;
+}
+
+.calculator-note {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.calculator-note h3 {
+  font-size: 0.95rem;
+}
+
+.calculator-note-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

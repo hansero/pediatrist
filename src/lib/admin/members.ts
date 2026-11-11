@@ -242,6 +242,8 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   MEMBER_CLAIMS_INITIALIZED: "Yetki önbelleği oluşturuldu",
   INVITATION_CREATED: "Davet oluşturuldu",
   INVITATION_REVOKED: "Davet iptal edildi",
+  CALCULATOR_NOTE_UPDATED: "Hesaplayıcı protokol notu güncellendi",
+  CALCULATOR_NOTE_CLEARED: "Hesaplayıcı protokol notu kaldırıldı",
   ATTENDANCE_SESSION_STARTED: "Ders yoklaması başladı",
   ATTENDANCE_SESSION_CLOSED: "Ders yoklaması bitirildi",
   ATTENDANCE_SESSION_EXPIRED: "Ders yoklamasının süresi doldu",

@@ -247,7 +247,8 @@ export function MemberList({ selfUid }: { selfUid: string }) {
         }}
       />
       <PromoteDialog member={promote} onClose={() => setPromote(null)} />
-      <YearDialog member={yearFor} onClose={() => setYearFor(null)} />
+      {/* Anahtar: başlangıç kıdemi ilk çizimde hazır (efektle doldurmak o arada yapılan seçimi ezebiliyordu). */}
+      <YearDialog key={yearFor?.uid ?? "kapali"} member={yearFor} onClose={() => setYearFor(null)} />
     </Card>
   );
 }
@@ -320,14 +321,8 @@ function PromoteDialog({ member, onClose }: { member: MemberRow | null; onClose:
 
 function YearDialog({ member, onClose }: { member: MemberRow | null; onClose: () => void }) {
   const toast = useToast();
-  const [year, setYear] = useState<ResidencyYear>(1);
+  const [year, setYear] = useState<ResidencyYear>(() => (member?.residencyYear ?? 1) as ResidencyYear);
   const run = useAsyncAction(updateMemberAccess);
-  const uid = member?.uid;
-  React.useEffect(() => {
-    setYear(((member?.residencyYear ?? 1) as ResidencyYear) || 1);
-    run.reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid]);
 
   function close() {
     if (run.pending) return;

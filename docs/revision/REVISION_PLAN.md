@@ -101,13 +101,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F7.3. Ana sayfa durum odaklı: tek birincil eylem (hekim: ders → sınav → zorunlu materyal; admin: ders → başvuru → sınav), sunucu sayımlı göstergeler, boş/yükleniyor/hata durumları. Mock silindi. Testler: unit 243, rules 57, functions 100, e2e 99 (+3 bilinçli atlanan).
+- **Son tamamlanan adım:** F7.4. Hesaplayıcılar dürüst "Yakında"; uydurma kurum protokolleri ve "aktif" güvenlik kilidi iddiaları kaldırıldı; protokol notu `updateCalculatorConfig` ile (denetim kaydı). Dört diyalogdaki başlangıç değeri yarışı düzeltildi. Testler: unit 243, rules 57, functions 102, e2e E2E_COUNT.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F7.4 hesaplayıcılar (bkz. §F7.4, D8).
-  - `calculators/page.tsx`: "Maksimum doz güvenlik kilidi" gibi çalışmayan iddialar kaldırılır; kartlar "Yakında"/"planlanan".
-  - Admin protokol notu `calculators_config/{id}` dokümanına `updateCalculatorConfig` callable'ı ile yazılır (kural istemci yazımını kapalı tutar; `guards.ts` + denetim kaydı + functions testi). Katalog tanımları ürün metadata'sıdır, kalabilir.
-  - Önce `calculators/page.tsx` ve `src/lib/pediatrics/index.ts`'i oku; mock bekçisi bu dosyaları izin listesinde tutmuyor, ama sahte "aktif" iddiası kontrol edilmeli.
-  - Ardından F7.5: `invokeWithFallback` silinir, `scripts/no-mock-allowlist.json` (yalnızca `callables.ts`) kaldırılır, yapılandırılmamış Firebase için açık hata sayfası.
+- **Sıradaki iş:** F7.5 fallback temizliği (bkz. §F7.5).
+  - `src/lib/firebase/callables.ts`: `invokeWithFallback` (ve kalan `@deprecated` geçiş katmanı) silinir. Çağıran kalmadığını `grep -rn invokeWithFallback src` ile doğrula.
+  - `isFirebaseConfigured` ile gizlenen "demo" yolları ve `FALLBACK_*` kalıntıları aranıp silinir.
+  - Firebase yapılandırılmamışsa açık bir yapılandırma hata sayfası gösterilir (`initPediatristFirebase()` null → `ErrorPanel`).
+  - `scripts/no-mock-allowlist.json` silinir; `check-no-mock.mjs` izin listesiz (istisnasız) çalışır. Plan §F0.5 ve bekçinin "liste yalnızca küçülür" mantığı buna göre güncellenir.
+  - Bitince F7 tamam; sıradaki faz F8 (erişilebilirlik, metin, performans).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1348,6 +1349,26 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - D8 uygulanır: kartlar "Yakında" olarak gösterilir. "Maksimum doz güvenlik kilidi aktif" gibi çalışmayan özellik iddiaları kaldırılır; bunlar "planlanan" olarak etiketlenir.
   - Admin protokol notu `calculators_config/{id}` dokümanına **callable ile** kaydedilir (`updateCalculatorConfig`; F2.1'de kural admin yazımını da kapattı, denetim kaydı için).
   - Katalogdaki statik tanımlar ürün metadata'sıdır (mock değildir) ve kalabilir.
+
+- **✅ Uygulanan F7.4 (sapmalar ve eklemeler):**
+  - **Sunucu:** `updateCalculatorConfig` callable'ı (`functions/src/calculatorsService.ts`, `defineCallable(..., "admin")`).
+    - `calculators_config/{id}` dokümanına not, yazan (uid + ünvanlı ad) ve zaman yazılır. Boş not dokümanı siler.
+    - Aynı batch'te `CALCULATOR_NOTE_UPDATED` / `CALCULATOR_NOTE_CLEARED` denetim kaydı düşer. Kural istemci yazımını kapalı tutmaya devam ediyor.
+    - Sözleşme: `CALCULATOR_IDS` (tek kaynak `@shared/constants`; katalogda olmayan kimlik "Hesaplayıcı bulunamadı."), `LIMITS.protocolNoteLength` = 2000, `CalculatorConfigDoc`.
+    - Functions testleri 100 → 102 (kaydet/kaldır + denetim kaydı; hekim yetkisiz; bilinmeyen kimlik ve uzun not reddi).
+  - **Dürüst katalog** (`src/lib/pediatrics`): ürün yol haritası olarak yeniden yazıldı.
+    - Kaldırılanlar: "Kliniğimizde … tercih edilmektedir" gibi uydurma kurum protokolü metinleri, "tavan sınırı aktiftir" / "Maksimum Doz Güvenlik Kilidi" iddiaları, `isActive` / `placeholder_ready` / `v1.0-placeholder`.
+    - Kalanlar: başlık, özet, planlanan girdi/çıktılar ve "planlanan güvenlik denetimi (henüz etkin değil)". Katalog `Record<CalculatorId, …>`, kimlik listesiyle kayamaz.
+  - **Arayüz** (`components/calculators/Calculators.tsx`): üstte "Hesaplayıcılar yakında" bilgisi (hesaplama yapılmaz; kurum protokollerini kullanın).
+    - 5 kart, her biri "Yakında" çipli. Kliniğin protokol notu canlı okunur, yazan ve zamanla gösterilir; yoksa "henüz protokol notu eklemedi".
+    - Admin "Not ekle / Notu düzenle" diyaloğu: sunucu yanıtından sonra bildirim; hata diyalogda kalır.
+  - **Bulunan ve düzeltilen hata (e2e):** düzenleme diyaloğu başlangıç metnini açıldıktan SONRA bir `useEffect` ile dolduruyordu. Hızlı yazan kullanıcının (testte boşaltılan) metni eski notla eziliyor ve "kaldır" yerine eski not yeniden kaydediliyordu.
+    - Aynı desen dört diyalogda vardı: protokol notu, kıdem değiştir (F7.1), mazeret (F4.3), taslak düzenle (F5.2).
+    - Hepsi anahtarlı gövde bileşenine çevrildi; başlangıç değeri `useState` başlatıcısında, ilk çizimde hazır. Canlı güncelleme de yazılanı ezmez.
+  - **Denetim etiketleri:** iki yeni eylem etiketlendi; birim testindeki önek listesine `CALCULATOR` eklendi.
+  - **e2e:** `calculators.spec.ts` (1 test × 2 proje).
+    - Hekim 5 "Yakında" kartı görür; "kilidi/aktif" metni yoktur; düzenleme düğmesi yoktur.
+    - Admin: uzun not hatası → kaydet (denetim kaydı +1) → hekim yenilemeden görür → boş kaydet = kaldır.
 
 #### F7.5 Fallback temizliği (S)
 - **Yapılacaklar:**
