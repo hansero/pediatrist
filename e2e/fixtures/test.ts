@@ -54,3 +54,12 @@ export async function guardedContext(context: BrowserContext): Promise<BrowserCo
 }
 
 export { expect };
+
+/** Sayfa yatay taşmıyor (telefonda yana kayma yok). F4.3'te bir .sr-only tablo başlığının taşırdığı bulundu. */
+export async function expectNoHorizontalOverflow(page: import("@playwright/test").Page) {
+  const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  expect(scrollWidth, "sayfa yatay taşıyor").toBeLessThanOrEqual(clientWidth);
+}

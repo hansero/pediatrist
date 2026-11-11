@@ -60,7 +60,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F4** | **Yoklama modülü (gerçek)** | | | |
 | F4.1 | Backend sağlamlaştırma (transaction, kilit, süre dolumu, zamanlayıcı) | M | ✅ | S3, S4, S5, S10 |
 | F4.2 | WebAuthn passkey ile cihaz bağlama | L | ✅ | S1, C2 (biyometrik) |
-| F4.3 | Admin: ders başlat/bitir + projektör kiosk sayfası (QR, wake lock) | M | ⬜ | C2, C8 (projektör) |
+| F4.3 | Admin: ders başlat/bitir + projektör kiosk sayfası (QR, wake lock) | M | ✅ | C2, C8 (projektör) |
 | F4.4 | Hekim: QR deep-link ile yoklama + kişisel geçmiş | M | ⬜ | C2 |
 | F4.5 | Ders/katılımcı raporları + CSV | M | ⬜ | C2, Kullanılabilirlik |
 | F4.6 | Yoklama e2e testleri + mock bekçisi temizliği | M | ⬜ | §8 |
@@ -100,15 +100,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
-- **Tarih:** 2026-11-10
-- **Son tamamlanan adım:** F4.2. Yoklama cihazı = WebAuthn platform passkey'i (sunucuda imza, UV, köken, sayaç, tek kullanımlık ve derse bağlı challenge); `localStorage` cihaz sırrı ve sahte biyometrik/simülasyon arayüzü kaldırıldı; `/account/device`. Testler: unit 181, rules 50, functions 72, e2e 50 (+2 ekran boyutuna özel atlanan).
+- **Tarih:** 2026-11-11
+- **Son tamamlanan adımlar:** D21 (e-posta doğrulama zorunluluğu `config/security`'de) ve F4.3 (admin ders yönetimi, projektör kiosk'u, canlı katılım listesi, mazeret; hekim yoklama çekirdeği öne alındı; iki mock bileşen silindi, izin listesi 6 dosya; `.table-wrap` taşma hatası). Testler: unit 186, rules 54, functions 73, e2e 56 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **D21 uygulandı:** e-posta doğrulama zorunluluğu da `config/security`'de (`rev(D21)`).
-- **Sıradaki iş:** F4.3 (M) admin: ders başlat/bitir + projektör kiosk sayfası:
-  - `src/app/(protected)/attendance/projector/[sessionId]/page.tsx` (veya `/attendance/projektor`): tam ekran (Fullscreen API), Screen Wake Lock, büyük monospace kod (~15–20vw), QR kod (`qrcode`; içerik: `/attendance?s=<sessionId>&c=<kod>` deep-link, F4.4 kullanır), `Countdown` ile yenilenmeye kalan süre; `getProjectorCode`'u `msUntilRotation`'a göre zamanlayarak çağırır; `useIdleExempt()`.
-  - Admin ders başlatma formu `Field`/`Button` ile (süre sınırı `LIMITS.lectureMinutes`), canlı ders kartı ve "Dersi bitir" (`ConfirmDialog`); canlı ders Firestore'dan dinlenir (`attendance_sessions where status == live`), `CLINIC_ROSTER` ve `INITIAL_SESSIONS` mock'ları bu ekrandan kalkar; denetim/rapor kısmı F4.5.
-  - `AdminLiveAttendanceProjector.tsx` allowlist'ten düşer (F4.3).
-  - e2e: admin ders başlatır → projektör sayfası kod ve QR gösterir → kod sunucudaki ile aynı (`computeSlotCode` e2e yardımcısında aynı HMAC) → dersi bitir.
+- **Sıradaki iş:** F4.4 (M) hekim ekranının kalanı:
+  - Kişisel katılım geçmişi: `attendance_logs where uid == me orderBy sessionStartedAt desc` (indeks var; kurallar kendi logunu okumaya izin veriyor), `DataTable` + boş durum; mazeret notu görünür.
+  - Katılmadığı dersler: geçmişte yalnızca kayıtları var; "katılmadım" satırları için hekimin okuyabileceği bir kaynak yok (kapanmış dersler hekime kapalı). Seçenek: sunucuda kapanışta `attendance_logs`'a `absent` kaydı yazmak (F4.1 `closeSessionWrites` + `closeExpiredLectures`) ya da yalnızca katıldığı/mazeretli dersleri göstermek. Karar verilip D-kaydı olarak yazılmalı (kullanıcıya sorulabilir).
+  - Metin ve mobil cilası; yoklama kodu alanı için `inputMode` ve büyük dokunma hedefleri.
+  - e2e: geçmişte yeni ders görünür.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -816,6 +815,42 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Canlı katılımcı listesi `attendance_sessions/{id}/records` dinlenerek gösterilir. Liste `expectedAttendees` + `users` ile birleştirilir.
   - Mazeret girişi `markAttendanceExcused` ile yapılır.
 - **Doğrulama:** e2e (F4.6).
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **Veri katmanı** `src/lib/attendance/live.ts`: canlı okumalar (`onSnapshot`) için kancalar: `useLiveLecture`, `useLecture`, `useLectureRecords`, `useMyRecord`, `useRecentLectures`, `useActiveDoctors`; dönüştürücüler `toLecture`, `toRecord`. `isLectureOpen`: süresi dolmuş ama henüz kapatılmamış ders açık sayılmaz. Bileşik indeks `attendance_sessions (status, startedAt desc)`.
+  - **Admin** (`src/components/attendance/admin/AdminAttendance.tsx`; plandaki parçalı klasör yerine tek dosyada alt bileşenler):
+    - Ders başlatma formu (`Field`, sınırlar `LIMITS.lectureMinutes`, kategori `LECTURE_CATEGORIES`, eğitici varsayılanı oturumdaki admin).
+    - Canlı ders kartı: katılan/beklenen, mazeretli, `Countdown`, süre doldu uyarısı, "Projektör ekranını aç" (yeni sekme), "Dersi bitir" (`ConfirmDialog`).
+    - **Canlı katılım listesi** `buildRoster`: ders başındaki `expectedAttendees` + sonradan katılanlar, etkin hekimler (`users`), kayıtlar canlı. Sıra: bekleyen, mazeretli, katılan. Kıdem ve yoklama cihazı durumu da gösteriliyor.
+    - Mazeret penceresi (`Dialog` + not alanı, `markAttendanceExcused`).
+    - Son 10 kapanan ders (kapanış nedeniyle). Ayrıntılı raporlar F4.5.
+    - Başarı bildirimi yalnızca sunucu yanıtından sonra (`Toast`).
+  - **Projektör** `/attendance/projector/[sessionId]` + `ProjectorKiosk`:
+    - Kod `getProjectorCode` ile sunucudan, **sunucunun bildirdiği `msUntilRotation` anında** yenileniyor; geçici hatada 5 sn sonra tekrar; ders bitince duruyor.
+    - Büyük monospace kod (`clamp(3rem, 11vw, 11rem)`), yenilenme geri sayımı ve boşalan çubuk.
+    - QR (`qrcode`, yerel üretim): `${origin}/attendance?s=<ders>&c=<kod>`.
+    - Fullscreen API, Screen Wake Lock (destek yoksa uyarı), `useIdleExempt`, canlı katılan sayısı.
+    - Yalnızca admin (hekim için açık uyarı; kod üretimi sunucuda zaten admin'e özel).
+  - **Plandan sapma: hekim yoklama çekirdeği F4.4'ten öne alındı** (`DoctorCheckIn.tsx`). Uçtan uca gerçek yoklama ancak böyle test edilebiliyordu.
+    - Canlı ders dinleniyor; kod + passkey ile katılım; "katıldınız" bilgisi kendi kaydı dinlenerek gösteriliyor (iyimser başarı yok).
+    - QR bağlantısındaki kod, ders eşleşirse önceden dolduruluyor.
+    - Cihaz kayıtlı değilse yönlendirme var; mazeretliyse bilgi veriliyor.
+    - F4.4'e kalanlar: kişisel katılım geçmişi (`attendance_logs`), metin/cilalama.
+  - **Silinenler:** `AdminLiveAttendanceProjector.tsx` (794 satır mock: sahte kadro, sahte oturumlar, istemcide `Math.random` kod) ve `DoctorRealTimeCheckIn.tsx` ("kamera ile tara" düğmesi beklenen kodu doğrudan kopyalıyordu). `attendance/page.tsx` artık yalnızca rol yönlendirmesi. **Sahte veri izin listesi 9 → 6 dosya.**
+  - **E2E ile bulunan mobil düzen hatası:** `DataTable`'ın ekran okuyucuya özel başlık hücresi (`.sr-only`, mutlak konumlu) kaydırma kabını aşıp **sayfayı telefonda 486 px'e genişletiyordu**; diyaloglar kayıyor, düğmeler "sabit" olmuyordu. Çözüm: `.table-wrap { position: relative }` (bütün tablolar). E2E'ye `expectNoHorizontalOverflow` eklendi (yoklama ve gezinme testleri).
+  - `.env.development`: boşluklu KVKK değeri tırnaklandı (kabukta `source` edilebilir).
+  - Testler:
+    - unit +4: `buildRoster` sıralama/birleştirme, ayrılmış üyenin kayıttaki adı, `checkInUrl`, `isLectureOpen`.
+    - **e2e `attendance.spec.ts`** (iki ekran boyutu, üç sekme):
+      - hekim sanal doğrulayıcıyla cihazını kaydeder → admin dersi başlatır → hekim ekranı yenilenmeden dersi görür;
+      - projektör sunucu kodunu ve QR'ı gösterir → hekim QR bağlantısıyla gelir (kod dolu) ve passkey onayıyla katılır → "Yoklamanız alındı";
+      - admin sayacı, listesi ve projektör sayacı canlı güncellenir; yatay taşma yok;
+      - mazeret penceresi → dersi bitir (onay penceresi, odak "Vazgeç"te) → son derslerde "Eğitici kapattı" → projektörde "Yoklama kapandı" → hekimde açık ders yok.
+      - Ayrıca: hekim projektör ekranını açamaz.
+    - Yardımcılar `e2e/fixtures/webauthn.ts` (`withVirtualAuthenticator`, `registerDeviceViaUi`), `closeLiveLectures` (yarım kalmış koşudan kalan canlı dersi temizler).
+  - **Ekran görüntüsüyle bulunan ve düzeltilen görsel hatalar:**
+    - Projektör kodu harf arasına konan boşluklarla iki satıra bölünüyor, sonra kırpılıyordu. Boşluklar kaldırıldı, harf aralığı CSS'te, `white-space: nowrap`, boyut `clamp(2.5rem, 6vw, 7.5rem)`. E2E kodun sütuna sığdığını ölçüyor.
+    - Tabloda satır başlığı hücresi diğer hücrelerden farklı dikey hizadaydı ve son satırda fazladan alt çizgi vardı (`vertical-align: middle`, son satır kuralı).
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 186, rules 54, functions 73, e2e 56 (+2 ekran boyutuna özel atlanan), next build; ek olarak yoklama, gezinme ve CSP testleri son CSS değişikliğinden sonra yeniden koşturuldu.
 
 #### F4.4 Hekim yoklama ekranı (M)
 - **Dosyalar:** `src/components/attendance/DoctorCheckIn/*`

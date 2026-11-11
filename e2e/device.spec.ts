@@ -1,7 +1,7 @@
-import type { BrowserContext, CDPSession, Page } from "@playwright/test";
 import { ACCOUNTS, loginAs } from "./fixtures/auth";
 import { deleteField, hasField } from "./fixtures/emulator";
 import { expect, guardedContext, test } from "./fixtures/test";
+import { withVirtualAuthenticator } from "./fixtures/webauthn";
 
 /**
  * F4.2 (D6): yoklama cihazı = WebAuthn platform passkey'i. Chromium'un sanal doğrulayıcısı (CDP) gerçek bir
@@ -10,22 +10,6 @@ import { expect, guardedContext, test } from "./fixtures/test";
  */
 const UID = "seed-asistan-4";
 const EMAIL = "asistan4@pediatrist.test";
-
-async function withVirtualAuthenticator(context: BrowserContext, page: Page): Promise<{ cdp: CDPSession; id: string }> {
-  const cdp = await context.newCDPSession(page);
-  await cdp.send("WebAuthn.enable");
-  const { authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", {
-    options: {
-      protocol: "ctap2",
-      transport: "internal",
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      automaticPresenceSimulation: true,
-    },
-  });
-  return { cdp, id: authenticatorId };
-}
 
 test("yoklama cihazı: passkey kaydı sunucuda doğrulanır; admin sıfırlayınca oturum kapanır ve yeniden kayıt yapılır", async ({
   browser,

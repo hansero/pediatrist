@@ -109,3 +109,31 @@ export async function applyOobCode(oobCode: string): Promise<void> {
   );
   if (!res.ok) throw new Error(`Eylem kodu uygulanamadı (HTTP ${res.status})`);
 }
+
+/**
+ * Önceki (yarım kalmış) bir koşudan kalan canlı dersleri kapatır ve tek canlı ders kilidini siler,
+ * böylece yoklama testi temiz başlar. Yalnızca emülatör (owner token).
+ */
+export async function closeLiveLectures(): Promise<void> {
+  const res = await fetch(`${BASE}:runQuery`, {
+    method: "POST",
+    headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "attendance_sessions" }],
+        where: { fieldFilter: { field: { fieldPath: "status" }, op: "EQUAL", value: { stringValue: "live" } } },
+      },
+    }),
+  });
+  const rows = (await res.json()) as Array<{ document?: { name: string } }>;
+  for (const row of rows) {
+    if (!row.document) continue;
+    const path = row.document.name.split("/documents/")[1];
+    await fetch(`${BASE}/${path}?updateMask.fieldPaths=status`, {
+      method: "PATCH",
+      headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: { status: { stringValue: "closed" } } }),
+    });
+  }
+  await fetch(`${BASE}/attendance_meta/live`, { method: "DELETE", headers: { Authorization: "Bearer owner" } });
+}

@@ -505,6 +505,8 @@ h3 {
 
 /* Klinik Veri Tablosu */
 .table-wrap {
+  /* Konumlandırılmış kap: içerideki mutlak konumlu öğeler (ör. .sr-only başlık) sayfayı yatay taşırmaz (F4.3). */
+  position: relative;
   width: 100%;
   overflow-x: auto;
   border: 1px solid var(--border-subtle);
