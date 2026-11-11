@@ -9,7 +9,7 @@ import { QuizImage, questionTypeLabel } from "../QuestionPreview";
 export type ReportData = Pick<
   CallableResponse<"getAttemptReport">,
   "score" | "correctCount" | "totalQuestions" | "lateSubmission" | "revealed" | "revealAtMs" | "items"
-> & { autoSubmitted?: boolean; quizTitle?: string };
+> & { autoSubmitted?: boolean; timedOut?: boolean; quizTitle?: string };
 
 const dateTime = new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" });
 
@@ -29,6 +29,11 @@ export function AttemptReport({ report, title }: { report: ReportData; title: st
       }
     >
       <div className="auth-stack">
+        {report.timedOut && (
+          <Alert tone="info" title="Süre doldu">
+            Sınav süresi bittiği için o ana kadar verdiğiniz yanıtlar otomatik olarak teslim edildi.
+          </Alert>
+        )}
         {report.autoSubmitted && (
           <Alert tone="info">Süre dolduğunda süre içinde kaydedilmiş yanıtlarınızla otomatik teslim edildi.</Alert>
         )}

@@ -16,14 +16,19 @@ export async function openStudio(page: Page, tab?: "Yeni sınav" | "Görseller" 
 export const quizRow = (page: Page, title: string) =>
   page.getByRole("table", { name: "Sınav listesi" }).getByRole("row").filter({ hasText: title });
 
-export async function createDraft(page: Page, title: string, policy: "Sınav kapanınca (önerilen)" | "Teslimde hemen") {
+export async function createDraft(
+  page: Page,
+  title: string,
+  policy: "Sınav kapanınca (önerilen)" | "Teslimde hemen",
+  durationMinutes = 15
+) {
   await page.getByRole("tab", { name: "Yeni sınav" }).click();
   await page
     .getByLabel("Soru dosyası (CSV)")
     .setInputFiles({ name: "quiz-ornek.csv", mimeType: "text/csv", buffer: SAMPLE_CSV });
   await expect(page.getByText("quiz-ornek.csv: 3 soru")).toBeVisible();
   await page.getByLabel("Sınav başlığı").fill(title);
-  await page.getByLabel("Süre (dakika)").fill("15");
+  await page.getByLabel("Süre (dakika)").fill(String(durationMinutes));
   await page.getByLabel(policy).check();
   await page.getByRole("button", { name: "Taslak olarak kaydet" }).click();
   await expect(

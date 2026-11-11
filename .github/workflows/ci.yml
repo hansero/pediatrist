@@ -134,8 +134,9 @@ jobs:
           done
           exit 1
 
+      # Derleme + emülatörler + ~4,5 dk test (F5.5'te süre dolumu senaryosu gerçek saatle ~70 sn ekledi).
       - name: End-to-end tests
-        timeout-minutes: 10
+        timeout-minutes: 20
         run: npm run test:e2e
 
       - name: Upload Playwright report

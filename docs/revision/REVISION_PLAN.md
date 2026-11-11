@@ -69,7 +69,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F5.2 | Admin sınav stüdyosu (taslak, yayın, kapatma, görsel yükleme, arşiv) | L | ✅ | C3 |
 | F5.3 | Sınav ekranı (sunucu süresi, kalıcı yanıtlar, görseller, uyarılar) | M | ✅ | C3, C8 (sınav) |
 | F5.4 | Hekim paneli + karne + admin analitiği | M | ✅ | C3, Kullanılabilirlik |
-| F5.5 | Sınav testleri + mock bekçisi temizliği | M | ⬜ | §8 |
+| F5.5 | Sınav testleri + mock bekçisi temizliği | M | ✅ | §8 |
 | **F6** | **Materyaller modülü (gerçek)** | | | |
 | F6.1 | Backend callable'ları + kurallar | M | ⬜ | C11, S12 |
 | F6.2 | Admin yükleme / düzenleme / silme / okunma raporu | M | ⬜ | C11 |
@@ -101,18 +101,22 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F5.4. Sınav analitiği: admin "Sonuçlar" (özet, soru oranları, süzgeçler, karne, CSV) ve "Hekimler" (uid'e göre gelişim grafiği), hekim "Gelişimim". Testler: unit 221, rules 56, functions 92, e2e 82 (+2 ekran boyutuna özel atlanan).
+- **Son tamamlanan adım:** F5.5. **F5 sınav modülü tamamlandı.** Süre dolumu otomatik teslimi e2e'si ve karnede kalıcı "süre doldu" notu. Testler: unit 221, rules 56, functions 92, e2e 83 (+3 bilinçli atlanan: 2 ekran boyutu, 1 süre dolumu telefonda). CI e2e adımı zaman sınırı 10 → 20 dk.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F5.5 (M) sınav testlerinin tamamlanması (bkz. §F5.5):
-  - **Kapsananlar** (F5.2–F5.4 e2e'leri):
-    - CSV + görsel → önizleme → after_close yayın; hekim başlar → yanıtlar → yeniler → korunur → teslim → doğru cevapları göremez.
-    - Admin kapatır → tam karne; immediate akışı.
-  - **Eksik:** süre dolumu otomatik teslimi e2e.
-    - 1 dk'lık sınav yayınla, hekim bir soruyu yanıtlasın, süre dolunca otomatik teslim ve karne görünsün.
-    - 60 sn+ sürer: tek ekran boyutunda koş, diğerinde `test.skip`.
-    - İsteğe bağlı: sunucu saatini taklit etmeden, sayfa kapalıyken `finalizeExpiredAttempts` yolu functions testinde zaten var.
-  - Mock bekçisi: `quizzes/*` artık izin listesinde değil (F5.3). Doğrula ve plana yaz.
-  - Sonra F6 (materyaller).
+- **Sıradaki iş:** F6.1 (M) materyal backend'i (bkz. §F6.1). Mevcut durum: `materials` seed'de doğrudan yazılıyor; istemci `AdminMaterialManager` ve sayfası mock (izin listesinde, F6.2).
+  1. Sözleşmeler (`shared/schemas.ts`): `createMaterial`, `finalizeMaterialUpload`, `updateMaterial`, `deleteMaterial`.
+     - `MATERIAL_UPLOAD` sabitleri (D19: PDF/video/görsel, pptx ve SVG yok).
+     - Kategori ve kıdem ortak listeden (`MATERIAL_CATEGORIES`, `RESIDENCY_YEARS`).
+  2. `functions/src/materialsService.ts`:
+     - `createMaterial` → `status: "draft"` doküman + yükleme yolu `materials/{id}/{güvenli-ad}`.
+     - İstemci Storage'a yükler (kural: admin, tür ve boyut).
+     - `finalizeMaterialUpload`: dosya var mı, boyut ve MIME (Storage metadata) → `status: "published"`, `sizeBytes`, `contentType`, `fileType`.
+     - `updateMaterial`: meta veriler.
+     - `deleteMaterial`: Storage dosyası + `progress` alt koleksiyonu + doküman.
+     - Hepsi denetim kaydı; `uploadedBy` ve `uploadedByName` profilden.
+  3. Kurallar: `materials` hekime yalnızca `published` ve hedef kıdem? (F2.1 kurallarını kontrol et.) `progress/{uid}` şeması (S12) F2.1'de var.
+  4. Seed: materyaller callable'larla mı? `createMaterial` → Storage'a admin SDK ile yükleme → `finalizeMaterialUpload`. Ya da doğrudan yazım D1 seed istisnası. Karar: sınavdaki gibi gerçek callable'larla.
+  5. Testler: `functions/test/materials.test.ts` (Storage emülatörü `test:functions`'ta var).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -1148,6 +1152,17 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `immediate` politikasıyla ikinci bir akış.
   - Süre dolumu otomatik teslimi.
 - Allowlist'ten `quizzes/*` çıkarılır.
+- **✅ Uygulanan:**
+  - Senaryonun bütün adımları e2e'de (`quiz-admin`, `quiz-exam`, `quiz-results`, `quiz-timeout` spec'leri; iki ekran boyutu):
+    - CSV + görsel yükleme → önizleme → after_close yayın.
+    - Hekim başlar → yanıtlar → yeniler → korunur → teslim → doğru cevapları göremez.
+    - Admin kapatır → tam karne; immediate akışı.
+    - **Süre dolumu** (`e2e/quiz-timeout.spec.ts`): 1 dk'lık sınav, hekim bir soruyu yanıtlar ve bekler. Ekran kendiliğinden teslim eder (gerçek saat, sunucu toleransı içinde; geç sayılmaz). Karne 33 puan ve tam karne (immediate).
+      - ~70 sn sürer; ekran boyutundan bağımsız olduğu için yalnızca masaüstünde koşar (telefonda `test.skip`, gerekçeli).
+  - **Testin yakaladığı UX boşluğu:** süre dolup ekran kendiliğinden teslim ettiğinde hekime bu yalnızca bir anlık uyarıyla söyleniyordu; teslim hızlıysa hiç görünmüyordu.
+    - Karneye kalıcı "Süre doldu, yanıtlarınız otomatik teslim edildi" notu eklendi: `onSubmitted(result, timedOut)` → `ReportData.timedOut`.
+    - Sunucunun otomatik teslimi (`autoSubmitted`) ve geç teslim (`lateSubmission`) notlarından ayrı.
+  - Mock bekçisi: `quizzes/*` F5.3'te izin listesinden çıktı. Sınav kodunda `INITIAL_` / `FALLBACK_` / `Math.random` / `sampleGraded` / `invokeWithFallback` yok (kontrol edildi). İzin listesi 5 dosya (F6.2, F7.1, F7.3, F7.5).
 
 ---
 

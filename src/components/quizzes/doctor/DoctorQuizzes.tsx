@@ -67,9 +67,9 @@ export function DoctorQuizzes({ session }: { session: ClinicMemberSession }) {
   }, [active, view.kind, begin]);
 
   const onSubmitted = useCallback(
-    (result: SubmitResponse) => {
+    (result: SubmitResponse, timedOut: boolean) => {
       const title = view.kind === "exam" ? view.start.quizTitle : "Sınav sonucu";
-      setView({ kind: "report", title, report: result });
+      setView({ kind: "report", title, report: { ...result, timedOut } });
     },
     [view]
   );

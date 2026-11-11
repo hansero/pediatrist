@@ -46,7 +46,8 @@ export function QuizExam({
   quizId: string;
   start: StartResponse;
   clockOffsetMs: number;
-  onSubmitted: (result: SubmitResponse) => void;
+  /** `timedOut`: süre dolduğu için ekran kendiliğinden teslim etti (karnede belirtilir). */
+  onSubmitted: (result: SubmitResponse, timedOut: boolean) => void;
   onLeave: () => void;
 }) {
   useIdleExempt();
@@ -130,29 +131,32 @@ export function QuizExam({
     requestAnimationFrame(() => headingRef.current?.focus());
   }
 
-  const submitOnce = useCallback(async (): Promise<void> => {
-    if (submittingRef.current) return;
-    submittingRef.current = true;
-    setSubmitting(true);
-    try {
-      const res = await submitQuizAttempt({
-        quizId,
-        responses: responsesRef.current,
-        tabSwitchCount: tabSwitches.current,
-      });
-      dirty.current = false;
-      onSubmitted(res);
-    } finally {
-      submittingRef.current = false;
-      setSubmitting(false);
-    }
-  }, [quizId, onSubmitted]);
+  const submitOnce = useCallback(
+    async (timedOut = false): Promise<void> => {
+      if (submittingRef.current) return;
+      submittingRef.current = true;
+      setSubmitting(true);
+      try {
+        const res = await submitQuizAttempt({
+          quizId,
+          responses: responsesRef.current,
+          tabSwitchCount: tabSwitches.current,
+        });
+        dirty.current = false;
+        onSubmitted(res, timedOut);
+      } finally {
+        submittingRef.current = false;
+        setSubmitting(false);
+      }
+    },
+    [quizId, onSubmitted]
+  );
 
   const onExpire = useCallback(() => {
     setExpired(true);
     setConfirmSubmit(false);
     setAutoSubmitError("");
-    submitOnce().catch((err: unknown) => setAutoSubmitError(toUserMessage(err)));
+    submitOnce(true).catch((err: unknown) => setAutoSubmitError(toUserMessage(err)));
   }, [submitOnce]);
 
   const answeredCount = questions.filter((q) => isAnswered(responses[q.questionId])).length;
@@ -269,7 +273,7 @@ export function QuizExam({
         }
         confirmLabel="Teslim et"
         pendingLabel="Teslim ediliyor…"
-        onConfirm={submitOnce}
+        onConfirm={() => submitOnce(false)}
       />
       <ConfirmDialog
         open={confirmLeave}
