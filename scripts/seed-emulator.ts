@@ -199,6 +199,8 @@ async function main() {
   const startedAtMs = now - a.daysAgo * 86_400_000;
   const startedAt = Timestamp.fromMillis(startedAtMs);
   const sessionRef = db.collection("attendance_sessions").doc(a.id);
+  const expected = SEED_USERS.filter((u) => u.role === "user" && u.status === "active");
+  const absent = expected.filter((u) => !a.records.some((r) => r.uid === u.uid));
   const batch = db.batch();
   batch.set(sessionRef, {
     title: a.title,
@@ -211,6 +213,11 @@ async function main() {
     startedBy: admin.uid,
     presentCount: a.records.filter((r) => r.status === "present").length,
     excusedCount: a.records.filter((r) => r.status === "excused").length,
+    // D22: ders başındaki etkin hekimler ve kapanışta "katılmadı" yazılanların sayısı (sunucunun yaptığı gibi).
+    expectedAttendees: expected.map((u) => u.uid),
+    expectedCount: expected.length,
+    absentCount: absent.length,
+    closeReason: "manual",
     closedAt: Timestamp.fromMillis(startedAtMs + a.durationMinutes * 60_000),
     closedBy: admin.uid,
   });
@@ -237,8 +244,29 @@ async function main() {
       sessionStartedAt: startedAt,
     });
   }
+  for (const u of absent) {
+    const record = {
+      uid: u.uid,
+      fullName: u.fullName,
+      title: u.title,
+      residencyYear: u.residencyYear,
+      verifiedAt: null,
+      markedAt: Timestamp.fromMillis(startedAtMs + a.durationMinutes * 60_000),
+      method: "system_absent",
+      status: "absent",
+    };
+    batch.set(sessionRef.collection("records").doc(u.uid), record);
+    batch.set(db.collection("attendance_logs").doc(`${a.id}_${u.uid}`), {
+      ...record,
+      sessionId: a.id,
+      sessionTitle: a.title,
+      lecturer: a.lecturer,
+      category: a.category,
+      sessionStartedAt: startedAt,
+    });
+  }
   await batch.commit();
-  console.log(`• 1 kapanmış yoklama oturumu (${a.records.length} kayıt).`);
+  console.log(`• 1 kapanmış yoklama oturumu (${a.records.length} kayıt + ${absent.length} katılmadı).`);
 
   console.log(`
 ✔ Seed tamamlandı (proje: ${PROJECT_ID}).

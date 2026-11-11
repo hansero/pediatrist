@@ -1,5 +1,5 @@
 import { HttpsError } from "firebase-functions/v2/https";
-import { FieldValue, Timestamp, getFirestore, type Transaction } from "firebase-admin/firestore";
+import { FieldValue, Timestamp, getFirestore, type DocumentSnapshot, type Transaction } from "firebase-admin/firestore";
 import * as crypto from "crypto";
 import { auditIn, writeAuditLog } from "./auditLogger";
 import { defineCallable } from "./callable";
@@ -43,22 +43,62 @@ const liveLock = () => getFirestore().collection(COLLECTIONS.attendanceMeta).doc
 
 const NO_LIVE_SESSION = "Bu ders için aktif yoklama bulunmuyor.";
 
-/** Oturumu kapatma yazımları (transaction veya batch içinde). Kilit bu oturuma aitse bırakılır. */
-function closeSessionWrites(
-  writer: Transaction,
-  sessionId: string,
+/**
+ * Dersi kapatır (transaction içinde). D22: dersin başındaki beklenen hekimlerden kaydı olmayanlar için
+ * `absent` kaydı ve düz log yazılır; böylece hekim kişisel geçmişinde katılmadığı dersi de görür ve raporlar
+ * tek kaynaktan çalışır. Firestore kuralı gereği ÖNCE bütün okumalar (kayıtlar, eksik hekimlerin profilleri),
+ * SONRA yazmalar yapılır; çağıran bu fonksiyondan önce yazma yapmamış olmalıdır.
+ */
+async function closeLecture(
+  tx: Transaction,
+  session: DocumentSnapshot,
   lockSessionId: string | undefined,
   closedBy: string,
   reason: "manual" | "expired"
-) {
-  writer.update(sessions().doc(sessionId), {
+): Promise<number> {
+  const db = getFirestore();
+  const data = session.data() ?? {};
+  const expected: string[] = Array.isArray(data.expectedAttendees) ? data.expectedAttendees.map(String) : [];
+  const recordsSnap = await tx.get(session.ref.collection(COLLECTIONS.attendanceRecords));
+  const recorded = new Set(recordsSnap.docs.map((d) => d.id));
+  const missing = expected.filter((uid) => !recorded.has(uid));
+  const profiles = missing.length
+    ? await tx.getAll(...missing.map((uid) => db.collection(COLLECTIONS.users).doc(uid)))
+    : [];
+
+  for (const profile of profiles) {
+    const p = profile.data() ?? {};
+    const record = {
+      uid: profile.id,
+      fullName: p.fullName ?? "",
+      title: p.title ?? "",
+      residencyYear: p.residencyYear ?? null,
+      verifiedAt: null,
+      markedAt: FieldValue.serverTimestamp(),
+      method: "system_absent",
+      status: "absent",
+    };
+    tx.set(session.ref.collection(COLLECTIONS.attendanceRecords).doc(profile.id), record);
+    tx.set(db.collection(COLLECTIONS.attendanceLogs).doc(`${session.id}_${profile.id}`), {
+      ...record,
+      sessionId: session.id,
+      sessionTitle: data.title,
+      lecturer: data.lecturer,
+      category: data.category,
+      sessionStartedAt: data.startedAt,
+    });
+  }
+
+  tx.update(session.ref, {
     status: "closed",
     closedAt: FieldValue.serverTimestamp(),
     closedBy,
     closeReason: reason,
+    absentCount: profiles.length,
   });
-  writer.delete(secrets().doc(sessionId));
-  if (lockSessionId === sessionId) writer.delete(liveLock());
+  tx.delete(secrets().doc(session.id));
+  if (lockSessionId === session.id) tx.delete(liveLock());
+  return profiles.length;
 }
 
 /**
@@ -86,7 +126,7 @@ export const startLectureSession = defineCallable("startLectureSession", "admin"
       // Süresi dolmuş ama kapatılmamış ders: burada kapatılır.
       const stale = await tx.get(sessions().doc(lock.sessionId));
       if (stale.exists && stale.data()?.status === "live") {
-        closeSessionWrites(tx, lock.sessionId, lock.sessionId, "system", "expired");
+        await closeLecture(tx, stale, lock.sessionId, "system", "expired");
         auditIn(tx, {
           actorUid: "system",
           actorEmail: "system",
@@ -139,13 +179,14 @@ export const endLectureSession = defineCallable("endLectureSession", "admin", as
     if (sessionSnap.data()?.status !== "live") {
       throw new HttpsError("failed-precondition", "Bu ders yoklaması zaten kapatılmış.");
     }
-    closeSessionWrites(tx, data.sessionId, lockSnap.data()?.sessionId, actor.uid, "manual");
+    const absent = await closeLecture(tx, sessionSnap, lockSnap.data()?.sessionId, actor.uid, "manual");
     auditIn(tx, {
       actorUid: actor.uid,
       actorEmail: actor.email,
       action: "ATTENDANCE_SESSION_CLOSED",
       resourceType: "attendance",
       resourceId: data.sessionId,
+      metadata: { absentCount: absent },
     });
   });
   return { closed: true as const };
@@ -353,14 +394,20 @@ export const markAttendanceExcused = defineCallable("markAttendanceExcused", "ad
       category: session.category,
       sessionStartedAt: session.startedAt,
     });
-    if (previous !== "excused") tx.update(sessionRef, { excusedCount: FieldValue.increment(1) });
+    if (previous !== "excused") {
+      tx.update(sessionRef, {
+        excusedCount: FieldValue.increment(1),
+        // D22: kapanışta "katılmadı" yazılmış hekime sonradan mazeret girilirse katılmadı sayısı düşer.
+        ...(previous === "absent" ? { absentCount: FieldValue.increment(-1) } : {}),
+      });
+    }
     auditIn(tx, {
       actorUid: actor.uid,
       actorEmail: actor.email,
       action: previous === "excused" ? "ATTENDANCE_EXCUSE_UPDATED" : "ATTENDANCE_MARKED_EXCUSED",
       resourceType: "attendance",
       resourceId: data.sessionId,
-      metadata: { targetUid: data.targetUid },
+      metadata: { targetUid: data.targetUid, ...(previous ? { previousStatus: previous } : {}) },
     });
   });
 
@@ -380,7 +427,7 @@ export async function closeExpiredLectures(now: Date = new Date()): Promise<stri
     const done = await db.runTransaction(async (tx) => {
       const [snap, lockSnap] = await Promise.all([tx.get(doc.ref), tx.get(liveLock())]);
       if (snap.data()?.status !== "live") return false;
-      closeSessionWrites(tx, doc.id, lockSnap.data()?.sessionId, "system", "expired");
+      await closeLecture(tx, snap, lockSnap.data()?.sessionId, "system", "expired");
       auditIn(tx, {
         actorUid: "system",
         actorEmail: "system",

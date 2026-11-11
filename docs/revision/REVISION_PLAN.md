@@ -61,7 +61,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F4.1 | Backend sağlamlaştırma (transaction, kilit, süre dolumu, zamanlayıcı) | M | ✅ | S3, S4, S5, S10 |
 | F4.2 | WebAuthn passkey ile cihaz bağlama | L | ✅ | S1, C2 (biyometrik) |
 | F4.3 | Admin: ders başlat/bitir + projektör kiosk sayfası (QR, wake lock) | M | ✅ | C2, C8 (projektör) |
-| F4.4 | Hekim: QR deep-link ile yoklama + kişisel geçmiş | M | ⬜ | C2 |
+| F4.4 | Hekim: QR deep-link ile yoklama + kişisel geçmiş | M | ✅ | C2 |
 | F4.5 | Ders/katılımcı raporları + CSV | M | ⬜ | C2, Kullanılabilirlik |
 | F4.6 | Yoklama e2e testleri + mock bekçisi temizliği | M | ⬜ | §8 |
 | **F5** | **Sınav modülü (gerçek)** | | | |
@@ -101,13 +101,15 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adımlar:** D21 (e-posta doğrulama zorunluluğu `config/security`'de) ve F4.3 (admin ders yönetimi, projektör kiosk'u, canlı katılım listesi, mazeret; hekim yoklama çekirdeği öne alındı; iki mock bileşen silindi, izin listesi 6 dosya; `.table-wrap` taşma hatası). Testler: unit 186, rules 54, functions 73, e2e 56 (+2 ekran boyutuna özel atlanan).
+- **Son tamamlanan adım:** F4.4 + D22. Ders kapanırken "katılmadı" kayıtları (kapanışın her yolunda), mazeretle düzeltme, hekimin kişisel katılım geçmişi ve oranı, admin son derslerde katılmadı sütunu. Testler: unit 188, rules 54, functions 77, e2e 58 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F4.4 (M) hekim ekranının kalanı:
-  - Kişisel katılım geçmişi: `attendance_logs where uid == me orderBy sessionStartedAt desc` (indeks var; kurallar kendi logunu okumaya izin veriyor), `DataTable` + boş durum; mazeret notu görünür.
-  - Katılmadığı dersler: geçmişte yalnızca kayıtları var; "katılmadım" satırları için hekimin okuyabileceği bir kaynak yok (kapanmış dersler hekime kapalı). Seçenek: sunucuda kapanışta `attendance_logs`'a `absent` kaydı yazmak (F4.1 `closeSessionWrites` + `closeExpiredLectures`) ya da yalnızca katıldığı/mazeretli dersleri göstermek. Karar verilip D-kaydı olarak yazılmalı (kullanıcıya sorulabilir).
-  - Metin ve mobil cilası; yoklama kodu alanı için `inputMode` ve büyük dokunma hedefleri.
-  - e2e: geçmişte yeni ders görünür.
+- **Sıradaki iş:** F4.5 (M) yoklama raporları + CSV (admin):
+  - Ders bazlı rapor: ders seçimi → katılan/mazeretli/katılmadı listesi (`records` alt koleksiyonu; kapanmış derste D22 sayesinde eksiksiz), oran = katıldı/(katıldı+katılmadı).
+  - Hekim bazlı karne: `attendance_logs where uid == X orderBy sessionStartedAt desc` (admin okur); dönem filtresi (tarih aralığı); `summarizeHistory` yeniden kullanılır.
+  - Eşik uyarısı: oranı %70 altındaki hekimler (eşik ortak sabit `ATTENDANCE_WARN_RATE`).
+  - CSV dışa aktarım `src/lib/csv.ts → downloadCsv` (`;`, BOM, formül koruması) — ders ve hekim raporları.
+  - Sekmeler `Tabs` primitifiyle (Canlı ders | Ders raporu | Hekim karnesi).
+  - e2e: ders raporu seed dersini doğru sayılarla gösterir; CSV indirilir ve içeriği doğrulanır.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -140,6 +142,7 @@ Bu kararlar bütün adımlar için geçerlidir. Değiştirmek için kullanıcı 
 | D18 | Emülatör ve testler `demo-pediatrist` proje kimliğiyle çalışır. `demo-` önekli projeler gerçek bir Firebase projesine bağlanamaz, yani yanlışlıkla prod'a yazma riski yoktur ve emülatörler çevrimdışı çalışabilir. | Güvenli test izolasyonu | Hayır |
 | D20 | **MFA zorunluluğunun tek kaynağı Firestore `config/security.requireMfa`** (N8; D5'in mekanizmasını değiştirir, kullanıcı onayıyla 2026-11-10). Firestore ve Storage kuralları (`isActive()` → `mfaSatisfied()`), Cloud Functions (`guards.ts`, profil ile aynı `getAll`) ve istemci (oturum bağlamı) aynı dokümanı `parseSecurityConfig` mantığıyla okur. **Doküman yoksa veya değer boolean `false` değilse MFA zorunludur.** Doküman istemciye salt okunur (oturum açmış herkes), yalnızca Admin SDK/konsoldan yazılır. Emülatör seed'i `requireMfa: false` yazar. Kendi profilini okuma MFA istemez. `REQUIRE_MFA` parametresi ve `NEXT_PUBLIC_REQUIRE_MFA` kaldırıldı. Maliyet: kurallı her istekte +1 doküman okuması. | AUDIT C4/C5, N8: şifresi çalınmış hesabın SDK ile doğrudan okuma yapması | Hayır |
 | D21 | **E-posta doğrulama zorunluluğu da `config/security` dokümanında** (`requireEmailVerified`; kullanıcı onayıyla 2026-11-11). D20'deki MFA ile aynı mekanizma ve güvenli varsayılan (doküman yoksa veya değer boolean `false` değilse zorunlu). Firestore ve Storage kuralları (`securitySatisfied()` = MFA ve e-posta), `guards.ts` ve istemci (doğrulama ekranı) aynı dokümanı okur. Kendi profilini okuma e-posta doğrulaması istemez. `REQUIRE_EMAIL_VERIFIED` functions parametresi kaldırıldı. Emülatör seed'i `false` yazar. | Tek kaynak; kurallarda da zorunluluk | Hayır |
+| D22 | **Ders kapanırken "katılmadı" kaydı yazılır** (kullanıcı kararı, 2026-11-11, seçenek A). Kapanışın her yolunda (admin bitirir, süre dolar, süresi dolmuş kilit yeni başlatmada temizlenir) dersin başındaki `expectedAttendees`'ten kaydı olmayanlara `records/{uid}` ve `attendance_logs/{ders}_{uid}`: `status: "absent"`, `method: "system_absent"`, `verifiedAt: null`, `markedAt`. Derse `absentCount` yazılır. Sonradan mazeret girilirse katılmadı → mazeretli (`absentCount` −1). Katılım oranı = katıldı / (katıldı + katılmadı); mazeretliler paydaya girmez. Ders başladıktan sonra üye olan hekim o ders için beklenmez. | Hekim kendi devamsızlığını görebilsin; raporlar tek kaynaktan | Evet |
 
 ---
 
@@ -861,6 +864,22 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Mobilde yoklama kartı en üstte yer alır.
   - Kişisel geçmiş: `attendance_logs where uid==me orderBy sessionStartedAt desc` (indeks mevcut).
   - Sahte "kamera ile tara" butonu silinir. Gerçek tarama telefonun kendi kamera uygulamasıyla QR üzerinden deep-link'tir.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - Çekirdek (canlı ders, kod + passkey ile katılım, QR bağlantısıyla dolu kod, sahte "kamera ile tara" düğmesinin kaldırılması) **F4.3'te** yapıldı.
+  - **D22 (kullanıcı kararı A):**
+    - `functions/src/attendanceService.ts → closeLecture()` kapanışın üç yolunda da çalışıyor. Önce kayıtlar ve eksik hekimlerin profilleri okunuyor, sonra yazılıyor (transaction kuralı).
+    - Eksik hekimlere `absent` kaydı ve log yazılıyor, derse `absentCount`, denetimde `absentCount`.
+    - `markAttendanceExcused`: katılmadı → mazeretli geçişi (`absentCount` −1, denetimde `previousStatus`).
+    - Tipler: `AttendanceStatus` + `absent`, `AttendanceMethod` + `system_absent`, kayıt `verifiedAt: T | null`, `markedAt`.
+  - **Kişisel geçmiş** `AttendanceHistory.tsx` + `useMyAttendanceHistory` (`attendance_logs where uid == me orderBy sessionStartedAt desc`, son 100; mevcut indeks):
+    - Özet: katılım oranı, katıldım, mazeretli, katılmadım (`summarizeHistory`; mazeretliler paydaya girmez).
+    - Tablo: tarih, ders, eğitici, durum (saatli "Katıldım" / not ile "Mazeretli" / "Katılmadım"), boş durum.
+  - Admin "Son dersler" tablosuna "Katılmadı" sütunu.
+  - Seed: kapanmış seed dersine `expectedAttendees`, `expectedCount`, `absentCount` ve asistan-4 için `absent` kaydı/logu (sunucunun yapacağı gibi).
+  - Testler:
+    - functions +4: bitirmede absent (katılan/mazeretli dokunulmaz, sayaçlar); süre dolumunda absent; kapanış sonrası mazeret geçişi ve denetim; ders sonrası üye olan beklenmez.
+    - unit +2: `toRecord`, `summarizeHistory`.
+    - e2e: yoklama akışının sonunda hekimin geçmişinde "Katıldım" ve son derslerde sayılar; asistan-4'ün geçmişinde seed dersi "Katılmadım" ve katılım oranı.
 
 #### F4.5 Raporlar (M)
 - **Dosyalar:** `src/components/attendance/reports/*`

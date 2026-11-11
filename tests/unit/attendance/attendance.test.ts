@@ -60,3 +60,27 @@ describe("isLectureOpen", () => {
     expect(isLectureOpen(null)).toBe(false);
   });
 });
+
+describe("katılım geçmişi (F4.4, D22)", () => {
+  it("toRecord mazeretli ve katılmadı durumlarını korur", async () => {
+    const { toRecord } = await import("@/lib/attendance/live");
+    expect(toRecord({ uid: "u", status: "absent", verifiedAt: null }).status).toBe("absent");
+    expect(toRecord({ uid: "u", status: "excused", excuseNote: "İzin" })).toMatchObject({
+      status: "excused",
+      excuseNote: "İzin",
+    });
+  });
+
+  it("özet: mazeretliler paydaya girmez; ders yoksa oran yok", async () => {
+    const { summarizeHistory } = await import("@/lib/attendance/live");
+    const s = (status: "present" | "excused" | "absent") => ({ status });
+    expect(summarizeHistory([s("present"), s("present"), s("absent"), s("excused")])).toEqual({
+      present: 2,
+      excused: 1,
+      absent: 1,
+      rate: 2 / 3,
+    });
+    expect(summarizeHistory([s("excused")]).rate).toBeNull();
+    expect(summarizeHistory([]).rate).toBeNull();
+  });
+});

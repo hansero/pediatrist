@@ -345,3 +345,55 @@ describe("F4.1: ders sonu ve süre dolumu", () => {
     expect((await db().doc("attendance_meta/live").get()).data()?.sessionId).toBe(next.sessionId);
   });
 });
+
+describe("D22: ders kapanırken 'katılmadı' kayıtları", () => {
+  const record = async (id: string, uid: string) =>
+    (await db().doc(`attendance_sessions/${id}/records/${uid}`).get()).data();
+  const log = async (id: string, uid: string) => (await db().doc(`attendance_logs/${id}_${uid}`).get()).data();
+
+  it("dersi bitirince beklenen ama kaydı olmayan hekime absent kaydı ve log yazılır; katılan/mazeretli değişmez", async () => {
+    await createMember("r3", "user", "active");
+    const { sessionId, code } = await startLive();
+    await verify(sessionId, code, "r1");
+    await excuse(sessionId, "r3");
+    await endLectureSession.run(callableRequest({ sessionId }, asAdmin()));
+
+    expect(await record(sessionId, "r2")).toMatchObject({
+      status: "absent",
+      method: "system_absent",
+      verifiedAt: null,
+      fullName: "Test r2",
+    });
+    expect(await log(sessionId, "r2")).toMatchObject({ status: "absent", sessionTitle: "Sabah Dersi", uid: "r2" });
+    expect((await record(sessionId, "r1"))?.status).toBe("present");
+    expect((await record(sessionId, "r3"))?.status).toBe("excused");
+    expect(await sessionDoc(sessionId)).toMatchObject({ presentCount: 1, excusedCount: 1, absentCount: 1 });
+  });
+
+  it("süre dolumunda da (zamanlayıcı) absent kayıtları yazılır", async () => {
+    const { sessionId } = await startLive();
+    await expire(sessionId);
+    await closeExpiredLectures();
+    expect((await record(sessionId, "r1"))?.status).toBe("absent");
+    expect((await record(sessionId, "r2"))?.status).toBe("absent");
+    expect((await sessionDoc(sessionId))?.absentCount).toBe(2);
+  });
+
+  it("kapanıştan sonra mazeret: katılmadı → mazeretli (mazeretli +1, katılmadı −1), denetimde önceki durum", async () => {
+    const { sessionId } = await startLive();
+    await endLectureSession.run(callableRequest({ sessionId }, asAdmin()));
+    expect((await sessionDoc(sessionId))?.absentCount).toBe(2);
+    await excuse(sessionId, "r1", "Yıllık izin");
+    expect(await sessionDoc(sessionId)).toMatchObject({ excusedCount: 1, absentCount: 1 });
+    expect(await log(sessionId, "r1")).toMatchObject({ status: "excused", excuseNote: "Yıllık izin" });
+    const audit = await db().collection("audit_logs").where("action", "==", "ATTENDANCE_MARKED_EXCUSED").get();
+    expect(audit.docs[0].data().metadata).toMatchObject({ targetUid: "r1", previousStatus: "absent" });
+  });
+
+  it("ders başladıktan sonra kayıt olan hekim beklenen listede yok: absent yazılmaz", async () => {
+    const { sessionId } = await startLive();
+    await createMember("yeni", "user", "active");
+    await endLectureSession.run(callableRequest({ sessionId }, asAdmin()));
+    expect(await record(sessionId, "yeni")).toBeUndefined();
+  });
+});

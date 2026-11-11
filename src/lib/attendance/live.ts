@@ -32,6 +32,8 @@ export interface Lecture {
   endsAtMs: number;
   presentCount: number;
   excusedCount: number;
+  /** Kapanışta yazılır (D22); canlı derste yok. */
+  absentCount: number | null;
   expectedAttendees: string[];
   expectedCount: number;
   closeReason?: "manual" | "expired";
@@ -66,6 +68,7 @@ export function toLecture(id: string, d: DocumentData): Lecture {
     endsAtMs: ms(d.endsAt) ?? 0,
     presentCount: Number(d.presentCount ?? 0),
     excusedCount: Number(d.excusedCount ?? 0),
+    absentCount: typeof d.absentCount === "number" ? d.absentCount : null,
     expectedAttendees: Array.isArray(d.expectedAttendees) ? d.expectedAttendees.map(String) : [],
     expectedCount: Number(d.expectedCount ?? 0),
     closeReason: d.closeReason === "expired" || d.closeReason === "manual" ? d.closeReason : undefined,
@@ -77,7 +80,7 @@ export function toRecord(d: DocumentData): AttendanceRecordView {
     uid: String(d.uid ?? ""),
     fullName: String(d.fullName ?? ""),
     title: String(d.title ?? ""),
-    status: d.status === "excused" ? "excused" : "present",
+    status: d.status === "excused" || d.status === "absent" ? d.status : "present",
     verifiedAtMs: ms(d.verifiedAt),
     excuseNote: typeof d.excuseNote === "string" && d.excuseNote ? d.excuseNote : undefined,
   };
@@ -230,4 +233,68 @@ export function useActiveDoctors(): LiveState<MemberSummary[]> {
       onError
     );
   }, []);
+}
+
+export interface HistoryItem {
+  sessionId: string;
+  title: string;
+  lecturer: string;
+  category: string;
+  startedAtMs: number | null;
+  status: AttendanceStatus;
+  verifiedAtMs: number | null;
+  excuseNote?: string;
+}
+
+/** Hekim: kendi katılım geçmişi (`attendance_logs`, kurallar yalnızca kendi kayıtlarını açar). D22 ile katılmadığı dersler de var. */
+export function useMyAttendanceHistory(uid: string, count = 100): LiveState<HistoryItem[]> {
+  return useSnapshot<HistoryItem[]>(
+    (onData, onError) => {
+      const db = initPediatristFirebase()?.db;
+      if (!db) return null;
+      const q = query(
+        collection(db, COLLECTIONS.attendanceLogs),
+        where("uid", "==", uid),
+        orderBy("sessionStartedAt", "desc"),
+        limit(count)
+      );
+      return onSnapshot(
+        q,
+        (snap) =>
+          onData(
+            snap.docs.map((d) => {
+              const v = d.data();
+              const r = toRecord(v);
+              return {
+                sessionId: String(v.sessionId ?? ""),
+                title: String(v.sessionTitle ?? ""),
+                lecturer: String(v.lecturer ?? ""),
+                category: String(v.category ?? ""),
+                startedAtMs: ms(v.sessionStartedAt),
+                status: r.status,
+                verifiedAtMs: r.verifiedAtMs,
+                excuseNote: r.excuseNote,
+              };
+            })
+          ),
+        onError
+      );
+    },
+    [uid, count]
+  );
+}
+
+export interface HistorySummary {
+  present: number;
+  excused: number;
+  absent: number;
+  /** Katılım oranı: katıldı / (katıldı + katılmadı); mazeretliler paydaya girmez. Ders yoksa `null`. */
+  rate: number | null;
+}
+
+export function summarizeHistory(items: Pick<HistoryItem, "status">[]): HistorySummary {
+  const count = (s: AttendanceStatus) => items.filter((i) => i.status === s).length;
+  const present = count("present");
+  const absent = count("absent");
+  return { present, excused: count("excused"), absent, rate: present + absent ? present / (present + absent) : null };
 }

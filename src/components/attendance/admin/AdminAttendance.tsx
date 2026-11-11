@@ -393,6 +393,12 @@ function RecentLectures() {
       cell: (l) => <span className="mono-num">{l.excusedCount}</span>,
     },
     {
+      key: "absent",
+      header: "Katılmadı",
+      align: "end",
+      cell: (l) => <span className="mono-num">{l.absentCount ?? "—"}</span>,
+    },
+    {
       key: "close",
       header: "Kapanış",
       cell: (l) => (l.closeReason === "expired" ? "Süre doldu" : "Eğitici kapattı"),

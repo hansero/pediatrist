@@ -91,6 +91,11 @@ test("ders başlat → projektör kodu → hekim passkey ile katılır → canl�
   await expect(projector.getByRole("heading", { name: "Yoklama kapandı" })).toBeVisible();
   await expect(doctor.getByText("Şu anda açık ders yoklaması yok")).toBeVisible();
 
+  // F4.4: hekimin kişisel geçmişinde ders "Katıldım"; kapanışta katılmayanlar "katılmadı" sayılır (D22).
+  const history = doctor.getByRole("table", { name: "Kişisel ders katılım geçmişi" });
+  await expect(history.getByRole("row").filter({ hasText: title })).toContainText("Katıldım");
+  await expect(recent.getByRole("row").filter({ hasText: title })).toContainText(/\d/);
+
   await doctorCtx.close();
   await adminCtx.close();
 });
@@ -99,4 +104,19 @@ test("hekim projektör ekranını açamaz", async ({ page }) => {
   await loginAs(page, ACCOUNTS.asistan2);
   await page.goto("/attendance/projector/herhangi-bir-ders");
   await expect(page.getByRole("alert").filter({ hasText: "yalnızca eğitim sorumlusu" })).toBeVisible();
+});
+
+test("kişisel geçmiş: katılmadığı ders 'Katılmadım' olarak görünür, katılım oranı hesaplanır (D22)", async ({
+  page,
+}) => {
+  await loginAs(page, "asistan4@pediatrist.test");
+  await page.goto("/attendance");
+  const history = page.getByRole("table", { name: "Kişisel ders katılım geçmişi" });
+  await expect(
+    history.getByRole("row").filter({ hasText: "Sabah Olgu Sunumu: Ateşli Süt Çocuğuna Yaklaşım" })
+  ).toContainText("Katılmadım");
+  // asistan4 hiçbir derse katılmadı: oran = katıldım / (katıldım + katılmadım) = %0 (mazeretliler paydada değil).
+  const rate = page.locator("dl.history-stats > div").filter({ has: page.getByText("Katılım oranı", { exact: true }) });
+  const zero = new Intl.NumberFormat("tr-TR", { style: "percent", maximumFractionDigits: 0 }).format(0);
+  await expect(rate.locator("dd")).toHaveText(zero);
 });

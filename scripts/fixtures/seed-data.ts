@@ -152,6 +152,6 @@ export const SEED_ATTENDANCE = {
     { uid: "seed-asistan-1", status: "present" as const, minuteOffset: 1 },
     { uid: "seed-asistan-2", status: "present" as const, minuteOffset: 2 },
     { uid: "seed-asistan-3", status: "excused" as const, minuteOffset: 5, excuseNote: "Nöbet ertesi" },
-    // seed-asistan-4 katılmadı (kayıt yok)
+    // seed-asistan-4 katılmadı: seed, sunucunun kapanışta yaptığı gibi "absent" kaydı yazar (D22).
   ],
 };

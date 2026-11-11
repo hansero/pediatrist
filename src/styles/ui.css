@@ -600,3 +600,13 @@
     grid-template-columns: 1fr;
   }
 }
+
+.history-stats {
+  margin-bottom: var(--space-4);
+}
+
+.history-excuse {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}

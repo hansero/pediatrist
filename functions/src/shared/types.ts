@@ -102,9 +102,10 @@ export interface InvitationDoc<T> {
 // --- Yoklama ----------------------------------------------------------------
 
 export type AttendanceSessionStatus = "live" | "closed";
-export type AttendanceStatus = "present" | "excused";
+/** `absent`: ders kapanırken beklenen ama kaydı olmayan hekim için sunucunun yazdığı durum (D22). */
+export type AttendanceStatus = "present" | "excused" | "absent";
 /** Sunucuda doğrulanmış yöntem: `qr+webauthn` = projektör kodu + sunucuda doğrulanan passkey (kullanıcı doğrulamalı). */
-export type AttendanceMethod = "qr+webauthn" | "admin_excused";
+export type AttendanceMethod = "qr+webauthn" | "admin_excused" | "system_absent";
 
 /** `attendance_sessions/{sessionId}` */
 export interface AttendanceSessionDoc<T> {
@@ -118,6 +119,8 @@ export interface AttendanceSessionDoc<T> {
   startedBy: string;
   presentCount: number;
   excusedCount: number;
+  /** Ders kapanırken yazılır (D22): beklenen ama katılmayan ve mazeret girilmemiş hekim sayısı. */
+  absentCount?: number;
   /**
    * Ders başladığı anda etkin hekimlerin (rol `user`) uid listesi (F4.1). Katılım oranının paydası budur;
    * sonradan katılan/ayrılan üyeler geçmiş derslerin oranını değiştirmez.
@@ -142,7 +145,9 @@ export interface AttendanceRecordDoc<T> {
   fullName: string;
   title: string;
   residencyYear: number | null;
-  verifiedAt: T;
+  /** Katılım/mazeret anı; `absent` kayıtlarda `null` (bkz. `markedAt`). */
+  verifiedAt: T | null;
+  markedAt?: T;
   method: AttendanceMethod;
   status: AttendanceStatus;
   excuseNote?: string;
