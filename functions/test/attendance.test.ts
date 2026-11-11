@@ -1,5 +1,5 @@
 import { getFirestore } from "firebase-admin/firestore";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Timestamp } from "firebase-admin/firestore";
 import {
   closeExpiredLectures,
@@ -9,6 +9,7 @@ import {
   startLectureSession,
   verifyRealTimeAttendance,
 } from "../src/attendanceService";
+import { ATTENDANCE_SLOT_MS } from "../src/shared/constants";
 import { CALLABLES } from "../src/shared/schemas";
 import { updateMemberAccess } from "../src/members";
 import { beginAttendanceAssertion } from "../src/webauthn";
@@ -94,6 +95,29 @@ describe("yoklama akışı (sunucu)", () => {
     expect((await errorOf(verify(sessionId, wrong, "r1"))).code).toBe("deadline-exceeded");
     expect(await auditActions()).toContain("ATTENDANCE_EXPIRED_OR_INVALID_CODE");
     expect((await sessionDoc(sessionId))?.presentCount).toBe(0);
+  });
+
+  it("kod penceresi: bir önceki kod (ağ gecikmesi toleransı) kabul, iki pencere önceki kod reddedilir (F4.6)", async () => {
+    const realNow = Date.now();
+    // Pencerenin başına hizala: kod t0'da üretilir, saat ileri alınarak sonraki pencerelerde gönderilir.
+    const t0 = Math.floor(realNow / ATTENDANCE_SLOT_MS) * ATTENDANCE_SLOT_MS + 500;
+    const clock = vi.spyOn(Date, "now");
+    try {
+      clock.mockReturnValue(t0);
+      const { sessionId, code } = await startLive();
+
+      clock.mockReturnValue(t0 + ATTENDANCE_SLOT_MS);
+      expect(await verify(sessionId, code, "r1")).toEqual({ verified: true, alreadyRecorded: false });
+
+      clock.mockReturnValue(t0 + 2 * ATTENDANCE_SLOT_MS);
+      const err = await errorOf(verify(sessionId, code, "r2"));
+      expect(err.code).toBe("deadline-exceeded");
+      expect(err.message).toContain("Projektördeki güncel kodu girin");
+      expect((await db().doc(`attendance_sessions/${sessionId}/records/r2`).get()).exists).toBe(false);
+      expect((await sessionDoc(sessionId))?.presentCount).toBe(1);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it("eski sözleşme (deviceId, imzasız) reddedilir", async () => {

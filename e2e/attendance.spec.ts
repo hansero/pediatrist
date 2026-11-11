@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
-import type { Download, Locator, Page } from "@playwright/test";
+import type { Browser, Download, Locator, Page } from "@playwright/test";
 import { ACCOUNTS, loginAs } from "./fixtures/auth";
-import { closeLiveLectures, deleteField } from "./fixtures/emulator";
+import { closeLiveLectures, countAuditLogs, deleteField } from "./fixtures/emulator";
 import { expect, expectNoHorizontalOverflow, guardedContext, test } from "./fixtures/test";
 import { registerDeviceViaUi, withVirtualAuthenticator } from "./fixtures/webauthn";
 
@@ -266,4 +266,135 @@ test("ders raporu: kapanmış derste katılmadı → sonradan mazeret, sayılar 
   await expect(editDialog.getByLabel("Mazeret notu")).toHaveValue("Yıllık izin");
   await editDialog.getByRole("button", { name: "Vazgeç" }).click();
   await expect(editDialog).toHaveCount(0);
+});
+
+// --- F4.6: hata senaryoları ----------------------------------------------------------------------
+
+/** Admin bağlamında dersi arayüzden başlatır ve projektörü açar. */
+async function startLectureWithProjector(browser: Browser, title: string) {
+  const adminCtx = await guardedContext(await browser.newContext());
+  const admin = await adminCtx.newPage();
+  await loginAs(admin, ACCOUNTS.admin);
+  await admin.goto("/attendance");
+  await admin.getByLabel("Ders başlığı").fill(title);
+  await admin.getByRole("button", { name: "Yoklamayı başlat" }).click();
+  const liveCard = admin.getByRole("region", { name: title });
+  await expect(liveCard.getByText("Yoklama açık")).toBeVisible();
+  const href = String(await liveCard.getByRole("link", { name: "Projektör ekranını aç" }).getAttribute("href"));
+  const projector = await adminCtx.newPage();
+  await projector.goto(href);
+  const codeEl = projector.getByTestId("projector-code");
+  await expect(codeEl).toHaveText(/^[A-Z0-9]{6}$/);
+  return {
+    adminCtx,
+    admin,
+    liveCard,
+    sessionId: decodeURIComponent(href.split("/").pop()!),
+    codeEl,
+    currentCode: async () => (await codeEl.textContent())!.trim(),
+    async end() {
+      await liveCard.getByRole("button", { name: "Dersi bitir" }).click();
+      await admin.getByRole("alertdialog").getByRole("button", { name: "Dersi bitir" }).click();
+      await expect(admin.getByRole("button", { name: "Yoklamayı başlat" })).toBeVisible();
+      await adminCtx.close();
+    },
+  };
+}
+
+test("yanlış kod ve süresi geçmiş kod reddedilir, kayıt yazılmaz; güncel kodla katılır (F4.6)", async ({
+  browser,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await closeLiveLectures();
+  await deleteField("users/seed-asistan-2", "webauthn");
+  const lecture = await startLectureWithProjector(browser, `E2E kod dersi ${testInfo.project.name} ${Date.now()}`);
+
+  const doctorCtx = await guardedContext(await browser.newContext());
+  const doctor = await doctorCtx.newPage();
+  await withVirtualAuthenticator(doctorCtx, doctor);
+  await loginAs(doctor, ACCOUNTS.asistan2);
+  await registerDeviceViaUi(doctor);
+  await doctor.goto("/attendance");
+  const codeInput = doctor.getByLabel("Projektördeki kod");
+  const submit = doctor.getByRole("button", { name: "Yoklamaya katıl" });
+  const rejected = () => countAuditLogs("ATTENDANCE_EXPIRED_OR_INVALID_CODE", lecture.sessionId);
+  const codeError = doctor.getByRole("alert").filter({ hasText: "Kod geçersiz veya süresi doldu" });
+
+  // 1) Yanlış kod: cihaz imzası geçerli olsa bile sunucu reddeder.
+  const firstCode = await lecture.currentCode();
+  await codeInput.fill(firstCode === "AAAAAA" ? "BBBBBB" : "AAAAAA");
+  await submit.click();
+  await expect(codeError).toBeVisible();
+  await expect.poll(rejected).toBe(1);
+
+  // 2) Eski kod: projektör iki kez yenilendikten sonra ilk kod artık geçmez (yalnızca bir önceki pencere kabul).
+  await expect.poll(lecture.currentCode, { timeout: 20_000 }).not.toBe(firstCode);
+  const secondCode = await lecture.currentCode();
+  await expect.poll(lecture.currentCode, { timeout: 20_000 }).not.toBe(secondCode);
+  await codeInput.fill(firstCode);
+  await submit.click();
+  await expect.poll(rejected).toBe(2);
+  await expect(codeError).toBeVisible();
+  await expect(lecture.admin.getByTestId("present-count")).toHaveText(/^0 \/ \d+$/);
+
+  // 3) Güncel kod: aynı telefonla katılım alınır.
+  await codeInput.fill(await lecture.currentCode());
+  await submit.click();
+  await expect(doctor.getByRole("status").filter({ hasText: "Yoklamanız alındı" })).toBeVisible();
+  await expect(lecture.admin.getByTestId("present-count")).toHaveText(/^1 \/ \d+$/);
+
+  await doctorCtx.close();
+  await lecture.end();
+});
+
+test("kayıtsız cihazda yoklama kapalı; başka telefondan imza denemesi Türkçe yönlendirmeyle reddedilir (F4.6)", async ({
+  browser,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await closeLiveLectures();
+  await deleteField("users/seed-asistan-1", "webauthn");
+  const email = "asistan1@pediatrist.test";
+  const lecture = await startLectureWithProjector(browser, `E2E cihaz dersi ${testInfo.project.name} ${Date.now()}`);
+
+  // Cihazı kayıtlı değil: uyarı ve kayıt bağlantısı; düğme kapalı (sunucuya istek gitmez).
+  const otherCtx = await guardedContext(await browser.newContext());
+  const other = await otherCtx.newPage();
+  await loginAs(other, email);
+  await other.goto("/attendance");
+  const warning = other.getByRole("status").filter({ hasText: "Önce telefonunuzu kaydedin" });
+  await expect(warning).toBeVisible();
+  await expect(warning.getByRole("link", { name: "Yoklama cihazını kaydet" })).toHaveAttribute(
+    "href",
+    "/account/device"
+  );
+  await expect(other.getByRole("button", { name: "Yoklamaya katıl" })).toBeDisabled();
+
+  // Hekim kendi telefonunu kaydeder.
+  const phoneCtx = await guardedContext(await browser.newContext());
+  const phone = await phoneCtx.newPage();
+  await withVirtualAuthenticator(phoneCtx, phone);
+  await loginAs(phone, email);
+  await registerDeviceViaUi(phone);
+
+  // Başka bir cihaz (kendi doğrulayıcısı var ama bu hesabın anahtarı yok): imza alınamaz, açık yönlendirme.
+  await withVirtualAuthenticator(otherCtx, other);
+  await other.reload();
+  await expect(warning).toHaveCount(0);
+  await other.getByLabel("Projektördeki kod").fill(await lecture.currentCode());
+  await other.getByRole("button", { name: "Yoklamaya katıl" }).click();
+  await expect(
+    other.getByRole("alert").filter({ hasText: "Bu cihazda hesabınıza kayıtlı yoklama anahtarı bulunamadı" })
+  ).toBeVisible();
+  await expect(lecture.admin.getByTestId("present-count")).toHaveText(/^0 \/ \d+$/);
+
+  // Kayıtlı telefonla katılım alınır.
+  await phone.goto("/attendance");
+  await phone.getByLabel("Projektördeki kod").fill(await lecture.currentCode());
+  await phone.getByRole("button", { name: "Yoklamaya katıl" }).click();
+  await expect(phone.getByRole("status").filter({ hasText: "Yoklamanız alındı" })).toBeVisible();
+  await expect(lecture.admin.getByTestId("present-count")).toHaveText(/^1 \/ \d+$/);
+
+  await otherCtx.close();
+  await phoneCtx.close();
+  await lecture.end();
 });

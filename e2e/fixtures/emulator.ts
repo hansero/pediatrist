@@ -137,3 +137,27 @@ export async function closeLiveLectures(): Promise<void> {
   }
   await fetch(`${BASE}/attendance_meta/live`, { method: "DELETE", headers: { Authorization: "Bearer owner" } });
 }
+
+/** Bir kaynak için belirli eylemdeki denetim kaydı sayısı (sunucunun reddi gerçekten işlediğini doğrulamak için). */
+export async function countAuditLogs(action: string, resourceId: string): Promise<number> {
+  const res = await fetch(`${BASE}:runQuery`, {
+    method: "POST",
+    headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "audit_logs" }],
+        where: {
+          compositeFilter: {
+            op: "AND",
+            filters: [
+              { fieldFilter: { field: { fieldPath: "action" }, op: "EQUAL", value: { stringValue: action } } },
+              { fieldFilter: { field: { fieldPath: "resourceId" }, op: "EQUAL", value: { stringValue: resourceId } } },
+            ],
+          },
+        },
+      },
+    }),
+  });
+  const rows = (await res.json()) as Array<{ document?: unknown }>;
+  return rows.filter((r) => r.document).length;
+}

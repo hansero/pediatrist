@@ -92,3 +92,17 @@ describe("katılım geçmişi (F4.4, D22)", () => {
     expect(summarizeHistory([]).rate).toBeNull();
   });
 });
+
+describe("yoklamada passkey hatası (F4.6)", () => {
+  it("NotAllowedError (anahtar yok / iptal) yoklamaya özgü, çözüm gösteren mesaja çevrilir; diğerleri aynen geçer", async () => {
+    const { attendancePasskeyError, ATTENDANCE_PASSKEY_MISSING } = await import("@/lib/webauthn");
+    const { toUserMessage } = await import("@/lib/errors");
+    const notAllowed = Object.assign(new Error("The operation either timed out or was not allowed."), {
+      name: "NotAllowedError",
+    });
+    expect(toUserMessage(attendancePasskeyError(notAllowed))).toBe(ATTENDANCE_PASSKEY_MISSING);
+    expect(ATTENDANCE_PASSKEY_MISSING).toContain("cihaz sıfırlaması");
+    const other = new Error("x");
+    expect(attendancePasskeyError(other)).toBe(other);
+  });
+});

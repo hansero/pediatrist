@@ -63,7 +63,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F4.3 | Admin: ders başlat/bitir + projektör kiosk sayfası (QR, wake lock) | M | ✅ | C2, C8 (projektör) |
 | F4.4 | Hekim: QR deep-link ile yoklama + kişisel geçmiş | M | ✅ | C2 |
 | F4.5 | Ders/katılımcı raporları + CSV | M | ✅ | C2, Kullanılabilirlik |
-| F4.6 | Yoklama e2e testleri + mock bekçisi temizliği | M | ⬜ | §8 |
+| F4.6 | Yoklama e2e testleri + mock bekçisi temizliği | M | ✅ | §8 |
 | **F5** | **Sınav modülü (gerçek)** | | | |
 | F5.1 | Backend: soruların attempt ile teslimi, `revealPolicy`, taslak kayıt, transaction | L | ⬜ | C3, C7, S6, S7 |
 | F5.2 | Admin sınav stüdyosu (taslak, yayın, kapatma, görsel yükleme, arşiv) | L | ⬜ | C3 |
@@ -101,17 +101,19 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F4.5. Yoklama raporları sekmelerde (Canlı ders | Ders raporu | Hekim karnesi): ders raporu (özet, döküm, sonradan mazeret, CSV), hekim karnesi (oran, %70 eşiği `ATTENDANCE_WARN_RATE`, döküm, iki CSV). Testler: unit 199, rules 55, functions 77, e2e 64 (+2 ekran boyutuna özel atlanan).
+- **Son tamamlanan adım:** F4.6. **F4 yoklama modülü tamamlandı.** Yanlış/eski kod, kayıtsız/farklı cihaz e2e senaryoları; kod penceresi functions testi; yoklamaya özgü passkey hata mesajı. Testler: unit 200, rules 55, functions 78, e2e 68 (+2 ekran boyutuna özel atlanan).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F4.6 (M) yoklama testlerinin tamamlanması:
-  - Mevcut kapsam: `e2e/attendance.spec.ts` uçtan uca akış, raporlar, D22 ve sanal doğrulayıcı (F4.3–F4.5).
-  - Eksik senaryolar:
-    - Yanlış kod hata mesajı verir.
-    - Süresi geçmiş (iki pencere önceki) kod reddedilir. Gerekirse functions testindeki saat kaydırmasıyla ya da beklemeden, sunucuya eski kod gönderilerek.
-    - Kayıtsız cihazla katılım reddi, arayüz mesajıyla.
-    - Mazeretten sonra rapor oranı.
-  - Mock bekçisi: `attendance/*` allowlist'te zaten yok (F4.3'te çıkarıldı). Kontrol et ve plana yaz.
-  - Sonra F5 (sınav modülü).
+- **Sıradaki iş:** F5.1 (L) sınav backend'i (`functions/src/quizService.ts`, bkz. §F5.1). Önerilen bölme (WIP commit'leriyle):
+  1. Şemalar (`functions/src/shared/schemas.ts`):
+     - `saveQuizDraft`/`updateQuizDraft`/`deleteQuizDraft`, `publishQuiz {force}`, `startQuizAttempt` yanıtı `{deadlineMs, questions, savedResponses}`, `saveAttemptDraft`, `getAttemptReport`.
+     - `revealPolicy` (D7, varsayılan `after_close`).
+  2. Taslak CRUD + yayın:
+     - Ortak CSV doğrulayıcı, `quiz_media` Storage varlık kontrolü, `closesAt` gelecekte olmalı.
+     - Yayında devam eden attempt sayısı döner; istemci uyarı gösterip `force` ile tekrar çağırır.
+  3. Attempt: soru teslimi attempt'ten, resume ve `quiz_attempt_drafts`. Kurallar: `questions_public` hekime kapalı kalır (F2.1).
+  4. `submitQuizAttempt` transaction + `in_progress` ön koşulu. Attempt'e yalnızca puan ve doğru/yanlış yazılır. `getAttemptReport` revealPolicy'ye uyar.
+  5. `closeExpiredQuizzes` zamanlayıcısı (`scheduled.ts`). Testler: çift teslim, deadline + 30 sn, `after_close` sızıntısı, resume.
+  6. Seed: gerçek callable'larla sınav, puanlanmış girişimler ve taslak (F0.4'ten devredildi).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -927,6 +929,22 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Yanlış kod hata mesajı verir. Süresi geçmiş kod reddedilir.
   - Mazeret işaretlenir → rapor oranları doğrulanır → CSV indirilir.
 - Allowlist'ten `attendance/*` dosyaları çıkarılır.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **Senaryonun ana akışı F4.3–F4.5'te yazılmıştı:**
+    - Admin/hekim/projektör bağlamları, iki ekran boyutu (1280 px ve iPhone 13, 390 px), sanal doğrulayıcı, QR bağlantısıyla katılım.
+    - Canlı liste, mazeret, raporların sayıları ve CSV indirimi.
+  - **F4.6'da eklenen e2e senaryoları** (`e2e/attendance.spec.ts`, ortak `startLectureWithProjector` yardımcısı):
+    - Yanlış kod reddedilir, cihaz imzası geçerli olsa bile.
+    - **Süresi geçmiş kod**: test projektörün iki kez yenilenmesini bekler (≈30 sn), ilk kod reddedilir. Bu, gerçek saatle, sahte zaman olmadan yapılır.
+    - Her iki ret sunucuda denetim kaydıyla doğrulanır: yeni fixture `countAuditLogs`, `ATTENDANCE_EXPIRED_OR_INVALID_CODE` = 2. Sayaç 0 kalır, ardından güncel kodla katılım alınır.
+    - Kayıtsız cihaz: uyarı ve "Yoklama cihazını kaydet" bağlantısı görünür, düğme kapalıdır.
+    - Başka telefon (kendi doğrulayıcısı var, hesabın anahtarı yok) reddedilir; ardından kayıtlı telefonla katılım alınır.
+  - **Bulunan ve düzeltilen UX sorunu:** başka telefondan denemede tarayıcının `NotAllowedError`'u genel "iptal edildi" mesajına düşüyordu; hekim nedenini anlayamıyordu.
+    - Yoklamaya özgü mesaj eklendi (`src/lib/webauthn.ts → attendancePasskeyError`, `ATTENDANCE_PASSKEY_MISSING`): kayıtlı anahtar yok ya da onay tamamlanmadı; kayıtlı telefonla dene; telefon değiştiyse cihaz sıfırlaması iste.
+    - Tarayıcı bu iki durumu gizlilik gereği ayırt ettirmez.
+  - **functions +1:** kod penceresi. Saat (`Date.now`) pencere başına hizalanıp ileri alınır: bir önceki pencerenin kodu kabul edilir, iki önceki reddedilir (kayıt yok, sayaç değişmez). Mutasyonla sınandı: `[slot, slot-1, slot-2]` ve `[slot]` ikisi de testi kırıyor.
+  - **unit +1:** yoklama passkey hata eşlemesi.
+  - Mock bekçisi: `attendance/*` dosyaları F4.3'te allowlist'ten çıkarılmıştı. Yoklama kodunda `INITIAL_`/`FALLBACK_`/`Math.random`/simülasyon yok (kontrol edildi). Allowlist'te 6 dosya (F5.2, F6.2, F7.1, F7.3, F7.5).
 
 ---
 

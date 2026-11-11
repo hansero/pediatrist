@@ -9,6 +9,7 @@ import {
   type PublicKeyCredentialRequestOptionsJSON,
 } from "@simplewebauthn/browser";
 import type { CallableRequestInput } from "@shared/schemas";
+import { AppError } from "@/lib/errors";
 import {
   beginAttendanceAssertion,
   beginDeviceRegistration,
@@ -42,11 +43,27 @@ export async function registerAttendanceDevice(): Promise<{ backedUp: boolean }>
   return { backedUp: result.backedUp };
 }
 
+/**
+ * Yoklamada tarayıcının `NotAllowedError`'u iki durumda gelir: kullanıcı onayı iptal etti/zaman aşımı ya da bu
+ * cihazda hesaba kayıtlı anahtar yok (başka telefon, sıfırlanmış cihaz). Tarayıcı ikisini ayırt ettirmez
+ * (gizlilik); bu yüzden yoklamaya özgü mesaj ikisini de söyler ve çözümü gösterir (F4.6).
+ */
+export const ATTENDANCE_PASSKEY_MISSING =
+  "Bu cihazda hesabınıza kayıtlı yoklama anahtarı bulunamadı ya da onay tamamlanmadı. Kayıtlı telefonunuzla tekrar deneyin; telefonunuz değiştiyse eğitim sorumlusundan cihaz sıfırlaması isteyin.";
+
+export function attendancePasskeyError(err: unknown): unknown {
+  return (err as { name?: unknown })?.name === "NotAllowedError"
+    ? new AppError("failed-precondition", ATTENDANCE_PASSKEY_MISSING)
+    : err;
+}
+
 /** Canlı derste yoklama: challenge al → cihazla imzala (yüz/parmak izi) → kod + imzayı gönder. */
 export async function checkInWithPasskey(sessionId: string, code: string) {
   const { options } = await beginAttendanceAssertion({ sessionId });
   const assertion = await startAuthentication({
     optionsJSON: options as unknown as PublicKeyCredentialRequestOptionsJSON,
+  }).catch((err: unknown) => {
+    throw attendancePasskeyError(err);
   });
   return verifyRealTimeAttendance({
     sessionId,
