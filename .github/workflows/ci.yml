@@ -113,23 +113,27 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
 
-      # Run #8'de `--with-deps` kurulumu 29 dk asılı kaldı (apt). Zaman sınırı + yeniden deneme.
+      # Tarayıcı ikilisi Playwright CDN'inden gelir (apt değil). Önbellekte yoksa indirilir.
       - name: Install Playwright Chromium
         if: steps.pw-cache.outputs.cache-hit != 'true'
         timeout-minutes: 10
         run: |
           for i in 1 2 3; do
-            timeout 180 npx playwright install --with-deps chromium && exit 0
+            timeout 180 npx playwright install chromium && exit 0
             echo "Deneme $i başarısız, tekrar deneniyor..."; sleep 10
           done
           exit 1
 
-      - name: Install Playwright system dependencies (cache hit)
-        if: steps.pw-cache.outputs.cache-hit == 'true'
+      # Sistem kütüphaneleri: runner imajında (Chrome önceden kurulu) çoğunlukla zaten vardır. Önce Chromium
+      # gerçekten başlatılarak denenir; açılırsa apt atlanır. Run #8 (29 dk asılı) ve #44 (Ubuntu aynasına
+      # ulaşılamadı, e2e hiç koşmadı) apt'ye bağımlılığın CI'yı kırdığını gösterdi.
+      - name: Ensure Chromium system dependencies
         timeout-minutes: 10
         run: |
+          probe() { node -e "require('@playwright/test').chromium.launch().then((b) => b.close()).catch((e) => { console.error(e.message); process.exit(1); })"; }
+          if probe; then echo "Chromium açılıyor; sistem paketleri kurulmadı."; exit 0; fi
           for i in 1 2 3; do
-            timeout 180 npx playwright install-deps chromium && exit 0
+            timeout 180 npx playwright install-deps chromium && probe && exit 0
             echo "Deneme $i başarısız, tekrar deneniyor..."; sleep 10
           done
           exit 1
