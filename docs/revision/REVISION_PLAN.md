@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F7.1 + F7.2. Yönetim paneli gerçek veriyle çalışıyor: canlı üye listesi; onay, yeniden etkinleştirme, askı, rol ve kıdem işlemleri; cihaz ve iki aşamalı doğrulama sıfırlama (`resetMemberMfa`); davetler; sayfalı ve süzgeçli denetim kayıtları. Mock silindi. Testler: unit 235, rules 57, functions 100, e2e E2E_COUNT.
+- **Son tamamlanan adım:** F7.1 + F7.2. Yönetim paneli gerçek veriyle çalışıyor: canlı üye listesi; onay, yeniden etkinleştirme, askı, rol ve kıdem işlemleri; cihaz ve iki aşamalı doğrulama sıfırlama (`resetMemberMfa`); davetler; sayfalı ve süzgeçli denetim kayıtları. Mock silindi. Testler: unit 235, rules 57, functions 100, e2e 95 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
 - **Sıradaki iş:** F7.3 dashboard (bkz. §F7.3). `dashboard/page.tsx` sabit KPI'lar ("76 / 100", "1 Hekim", "Canlı Ders Açık") ile izin listesinde.
   - Ana kart duruma göre tek bir birincil eylem gösterir: canlı ders → "Yoklamaya katıl"; yayında sınav → "Sınava başla / devam et" (`resumableAttempt` hazır); yoksa zorunlu materyal.
