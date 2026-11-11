@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F9.2. Denetim kayıtlarına saklama süresi (`expireAt` + TTL, varsayılan 2 yıl), tuzlu ağ özeti ve tarayıcı bilgisi; üye başına hız sınırı; yoklamada "aynı ağ" işareti; kritik olayların Cloud Logging'e düşmesi; `DEPLOY.md` (operasyon bölümleri). Testler: unit 255, rules 58, functions 118, e2e E2E_COUNT.
+- **Son tamamlanan adım:** F9.2. Denetim kayıtlarına saklama süresi (`expireAt` + TTL, varsayılan 2 yıl), tuzlu ağ özeti ve tarayıcı bilgisi; üye başına hız sınırı; yoklamada "aynı ağ" işareti; kritik olayların Cloud Logging'e düşmesi; `DEPLOY.md` (operasyon bölümleri). Testler: unit 255, rules 58, functions 118, e2e 113 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
 - **Sıradaki iş:** F9.3 dokümantasyon (bkz. §F9.3).
   - `README.md` (şu an 2 satır): kurulum (`npm ci`, emülatör, seed, `npm run dev`), test komutları, mimari özet (Next istemci, callable'lar, kurallar, `@shared`), sahte veri bekçisi, CLAUDE.md'deki değişmez kurallara bağlantı.
