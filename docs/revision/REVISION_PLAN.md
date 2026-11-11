@@ -72,7 +72,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F5.5 | Sınav testleri + mock bekçisi temizliği | M | ✅ | §8 |
 | **F6** | **Materyaller modülü (gerçek)** | | | |
 | F6.1 | Backend callable'ları + kurallar | M | ✅ | C11, S12 |
-| F6.2 | Admin yükleme / düzenleme / silme / okunma raporu | M | ⬜ | C11 |
+| F6.2 | Admin yükleme / düzenleme / silme / okunma raporu | M | ✅ | C11 |
 | F6.3 | Görüntüleyici (pdf.js / video) + ilerleme takibi | L | ⬜ | C11, S13 |
 | F6.4 | Materyal testleri + mock bekçisi temizliği | S | ⬜ | §8 |
 | **F7** | **Admin paneli, dashboard, hesaplayıcılar** | | | |
@@ -101,16 +101,19 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F6.1. Materyal backend'i (create → Storage → finalize doğrulaması → yayın; update; delete Storage + ilerleme), kurallar, seed callable'larla. Testler: unit 221, rules 57, functions 98, e2e 83 (+3 bilinçli atlanan).
+- **Son tamamlanan adım:** F6.2. Admin materyal yönetimi (yükleme + ilerleme + iptal + taslak temizliği, düzenle/sil, canlı okunma raporu + CSV). Testler: unit 227, rules 57, functions 98, e2e 87 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F6.2 (M) admin materyal yönetimi (bkz. §F6.2). Mevcut: `src/components/materials/AdminMaterialManager.tsx` ve `materials/page.tsx` mock (izin listesinde).
-  - Admin listesi: `materials orderBy createdAt desc` canlı (admin taslakları da görür; taslak = yükleme yarım kalmış, silinebilir).
-  - Yükleme formu: başlık, açıklama, kategori (ortak liste), hedef kıdemler (çoklu), zorunlu, indirme izni, dosya.
-    - Akış: `createMaterial` → `uploadBytesResumable(storagePath)` (ilerleme çubuğu, **iptal**) → `finalizeMaterialUpload`.
-    - İptal/hata: taslağı `deleteMaterial` ile temizle.
-  - Düzenle (`updateMaterial`), sil (`ConfirmDialog`, `deleteMaterial`; silinen ilerleme sayısı toast'ta).
-  - Okunma raporu: materyal bazında `materials/{id}/progress` (admin okur). Hedef kitle = hedef kıdemdeki etkin asistanlar (`useActiveDoctors`). Tamamlayan / başlayan / başlamayan; CSV.
-  - Hekim tarafı (görüntüleyici) F6.3; o zamana kadar `materials/page.tsx` hekim dalı izin listesinde kalır.
+- **Sıradaki iş:** F6.3 (L) hekim görüntüleyicisi (bkz. §F6.3). Mevcut: `materials/page.tsx → LegacyDoctorMaterials` + `WatermarkedMaterialViewer.tsx` (mock, sabit metin "sayfalar").
+  - Liste: `materials where status == published` (kural gereği filtre şart). Varsayılan filtre hekimin kıdemi; kategori filtresi ortak listeden. Kendi ilerlemem `progress/{uid}` (sahibi okur).
+  - **PDF:** `pdfjs-dist` ile canvas'a sayfa sayfa çizim.
+    - Worker `blob:`/aynı köken. **CSP** `worker-src` gerekebilir (config/securityHeaders.ts tek kaynak; e2e CSP bekçisi var).
+    - `standardFontDataUrl`: fontlar `public/` altına kopyalanır.
+    - Üstte filigran (ad, e-posta, zaman).
+  - Video `<video controls controlsList="nodownload">`; görsel `<img>`. URL `getDownloadURL`.
+  - İlerleme: görünür sekmede geçen süre + son sayfa, `progress/{uid}`'e debounce'lu yazım (kural şeması: uid, secondsSpent ≤ 604800, lastPage, completed, `updatedAt == request.time` → `serverTimestamp()`).
+  - "Tamamlandı" ancak son sayfaya ulaşınca veya video ≥ %90 izlenince. `allowDownload` → indirme butonu.
+  - Etiket "Filigranlı görüntüleme" (D11); Storage yolu UI'da gösterilmez.
+  - F6.4 e2e: hekim (doğru kıdem) görür, açar, sayfaları gezer, tamamlar → admin raporu güncellenir; hedef dışı kıdem varsayılan filtrede görmez; ardından izin listesinden `materials/*` çıkar.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Admin paneli hâlâ mock karışık (F7.1); e2e onu yalnızca gerçek callable'ları tetiklemek için kullanıyor.
 
@@ -1197,6 +1200,32 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - Kategori, hedef kıdem, zorunluluk ve indirme izni seçimi; kategori ortak listeden gelir.
   - Düzenle ve sil (onay diyaloğu ile).
   - Okunma raporu: `collectionGroup('progress')` veya materyal bazlı `progress` sorgusu. Hedef kitle = hedef kıdemdeki aktif asistanlar.
+- **✅ Uygulanan (sapmalar ve eklemeler):**
+  - **Sayfa:** admin `/materials` → `MaterialsAdmin` (sekmeler: Materyaller | Yükle).
+    - Eski `AdminMaterialManager.tsx` (dosya seçicisiz "yükleme", sabit "Prof. Dr. Selim Kaya", sahte `.slides`) silindi.
+    - **Sapma:** hekim görüntüleyicisi sayfada geçici olarak eski haliyle duruyor (`LegacyDoctorMaterials`, F6.3). `materials/page.tsx` izin listesinde, etiketi F6.3. İzin listesi 5 → 4 dosya.
+  - **Yükleme** (`MaterialUploadForm`):
+    - Dosya türü ve boyutu `MATERIAL_UPLOAD` ile istemcide denetlenir (pptx için "sunumları PDF olarak" mesajı).
+    - Başlık geçerli dosyanın adından önerilir. **e2e'nin yakaladığı hata:** reddedilen dosyanın adı da öneriliyordu.
+    - Kategori ortak listeden; hedef kıdemler çoklu onay kutusu (en az bir); zorunlu; indirme izni.
+    - Akış `runMaterialUpload` (saf, birim testli): `createMaterial` → `uploadBytesResumable` (ilerleme çubuğu + **iptal**) → `finalizeMaterialUpload`.
+      - İptal, yükleme hatası ya da sunucu reddi olursa yarım taslak `deleteMaterial` ile silinir; asıl hata gösterilir.
+      - Temizlik de başarısızsa "taslağı elle silin" denir. Liste taslağı "Yükleme tamamlanmadı" diye gösterir; silinebilir.
+    - Başarı yalnızca sunucu yayınlayınca gösterilir.
+  - **Liste** (`MaterialList`): canlı (taslak dahil), tür, boyut, hedef kıdem, durum, zorunlu.
+    - Düzenle (yalnızca meta veri; "dosyayı değiştirmek için silip yeniden yükleyin").
+    - Sil (`ConfirmDialog`; toast silinen okuma kaydı sayısını söyler).
+  - **Okunma raporu** (`MaterialReadReport`, `buildReadReport` saf):
+    - Hedef kitle = hedef kıdemdeki **etkin** asistanlar (`useActiveDoctors`).
+    - Hedef dışından okuyan "(hedef dışı)" olarak listelenir ama sayılara katılmaz. Etkin olmayan üye adıyla gösterilir.
+    - Özet: hedef / tamamladı / başladı / başlamadı. İlerleme canlı. CSV (`;`, dakika).
+    - Kaynak, materyal bazlı `progress` alt koleksiyonu.
+  - Hata eşlemesi `storage/canceled` → "Yükleme iptal edildi." (F5.2'de eklenmişti).
+  - **Testler:**
+    - unit +6 (`tests/unit/materials/admin.test.ts`): akış, iptal/hata/sunucu reddinde taslak temizliği, temizlik hatası, oluşturma hatasında temizlik denenmemesi, dosya denetimi, okunma raporu hedef kitle/sıralama, CSV.
+    - e2e +2 (`e2e/materials-admin.spec.ts`, iki ekran boyutu):
+      - Seed listesi; okunma raporu ve canlı ilerleme (hazırlık kaydı emülatöre yazılır; hekim görüntüleyicisi F6.3); CSV.
+      - pptx reddi; PDF yükle → yayında, hedef kıdem/kategori/tür; düzenle; sil (sunucuda doküman yok).
 
 #### F6.3 Görüntüleyici (L)
 - **Dosyalar:** `src/components/materials/viewer/*` (eski `WatermarkedMaterialViewer.tsx`)

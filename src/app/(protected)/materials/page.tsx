@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { WatermarkedMaterialViewer, TrainingMaterialItem } from "@/components/materials/WatermarkedMaterialViewer";
-import { AdminMaterialManager } from "@/components/materials/AdminMaterialManager";
+import { MaterialsAdmin } from "@/components/materials/admin/MaterialsAdmin";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 import type { ClinicMemberSession } from "@/lib/auth/types";
 
@@ -90,12 +91,31 @@ const FALLBACK_SESSION: ClinicMemberSession = {
   hasBoundDevice: true,
 };
 
+/**
+ * Materyaller (/materials). Eğitim sorumlusu: materyal yönetimi (F6.2; gerçek veri, callable'lar).
+ * Hekim: GEÇİCİ olarak eski görüntüleyici (F6.3'te pdf.js ve gerçek ilerleme kaydıyla değişir).
+ */
 export default function TrainingMaterialsPage() {
+  const { session } = useClinicSession();
+  if (!session) return null;
+  if (session.role === "admin") {
+    return (
+      <>
+        <PageHeader
+          title="Materyal yönetimi"
+          description="PDF, video veya görsel yükleyin; hedef kıdemi seçin, okunma durumunu izleyin."
+        />
+        <MaterialsAdmin />
+      </>
+    );
+  }
+  return <LegacyDoctorMaterials />;
+}
+
+function LegacyDoctorMaterials() {
   const { session: ctxSession } = useClinicSession();
   const session = ctxSession ?? FALLBACK_SESSION;
-  const isAdmin = session.role === "admin";
 
-  const [adminTab, setAdminTab] = useState<"browse" | "manage">("browse");
   const [materials, setMaterials] = useState<TrainingMaterialItem[]>(INITIAL_MATERIALS);
   const [selectedCategory, setSelectedCategory] = useState<string>("Tümü");
   const [selectedYear, setSelectedYear] = useState<number>(0);
@@ -142,49 +162,9 @@ export default function TrainingMaterialsPage() {
             ve okunma takibi.
           </p>
         </div>
-
-        {isAdmin && (
-          <div className="mode-switcher" role="tablist" aria-label="Materyal Yönetim Sekmeleri">
-            <button
-              id="materials-tab-browse-btn"
-              type="button"
-              className={`mode-btn ${adminTab === "browse" ? "active" : ""}`}
-              onClick={() => setAdminTab("browse")}
-            >
-              Materyal Kütüphanesi
-            </button>
-            <button
-              id="materials-tab-manage-btn"
-              type="button"
-              className={`mode-btn ${adminTab === "manage" ? "active" : ""}`}
-              onClick={() => setAdminTab("manage")}
-            >
-              Materyal Yükle &amp; Okunma Raporu
-            </button>
-          </div>
-        )}
       </div>
 
-      {isAdmin && adminTab === "manage" ? (
-        <AdminMaterialManager
-          materials={materials}
-          onUploadMaterial={(newMat) => {
-            setMaterials((prev) => [
-              {
-                ...newMat,
-                id: `mat_${Date.now()}`,
-                createdAt: new Date().toISOString().split("T")[0],
-                readerStats: {},
-              },
-              ...prev,
-            ]);
-            setAdminTab("browse");
-          }}
-          onToggleAllowDownload={(id) =>
-            setMaterials((prev) => prev.map((m) => (m.id === id ? { ...m, allowDownload: !m.allowDownload } : m)))
-          }
-        />
-      ) : activeMaterial ? (
+      {activeMaterial ? (
         <WatermarkedMaterialViewer
           material={activeMaterial}
           session={session}

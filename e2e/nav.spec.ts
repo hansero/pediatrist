@@ -18,7 +18,7 @@ test("menüden geçiş sayfayı yeniden yüklemez; aktif sayfa işaretlenir", as
 
   await expect(page).toHaveURL(/\/materials$/);
   await expectNoHorizontalOverflow(page);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Eğitim Materyalleri");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Materyal yönetimi");
   expect(await page.evaluate(() => (window as unknown as { __navMarker?: number }).__navMarker)).toBe(42);
   if (isPhone(page)) await expect(page.getByRole("dialog", { name: "Menü" })).toHaveCount(0);
 
