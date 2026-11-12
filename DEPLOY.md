@@ -2,14 +2,129 @@
 
 Bu belge canlı (ve staging) ortamın kurulması ve işletilmesi içindir. Yerel geliştirme için `README.md`'ye bakın.
 
-> **Durum:** Bu belgedeki operasyon adımları (bölüm 2–6) kod tarafında hazırdır ve emülatörde test edilmiştir;
-> ancak **gerçek bir Firebase projesinde henüz denenmemiştir**. İlk staging kurulumunda her bölümün sonundaki
-> "Doğrulama" adımını uygulayın (REVISION_PLAN F10.2).
+> **Durum:** Bu belgedeki adımlar kod tarafında hazırdır ve emülatörde test edilmiştir; ancak **gerçek bir
+> Firebase projesinde henüz denenmemiştir**. Konsol adımları ve `gcloud` / `gsutil` / Admin SDK komutları
+> yazıldığı günkü bilgiye dayanır: ilk staging kurulumunda resmî Firebase belgeleriyle karşılaştırın ve her
+> bölümün sonundaki "Doğrulama" adımını uygulayın (REVISION_PLAN F10.2).
 
-## 1. Dağıtım sırası ve ilk kurulum
+## 1. İlk kurulum ve dağıtım
 
-Dağıtım sırası, ilk eğitim sorumlusunun oluşturulması ve ortam değişkenleri REVISION_PLAN F9.3'te bu bölüme
-yazılacaktır. O zamana kadar: `docs/revision/REVISION_PLAN.md` §F10.2 kontrol listesi geçerlidir.
+### 1.1 Proje kurulumu (bir kez, Firebase / Google Cloud konsolunda)
+
+1. **Proje ve plan:** yeni Firebase projesi, Blaze (kullandıkça öde) planı. Bütçe uyarısını hemen kurun (bölüm 4.3).
+2. **Firestore:** veritabanını oluştururken konumu seçin: `eur3` veya `europe-west1` (KVKK ve gecikme;
+   REVISION_PLAN D10). **Konum sonradan değiştirilemez.**
+3. **Authentication:**
+   - "Identity Platform'a yükselt" (TOTP ve gelişmiş şifre politikası için gerekir).
+   - Oturum açma yöntemi: yalnızca E-posta/Şifre.
+   - Şifre politikası: en az 10 karakter, karışık karakter zorunlu.
+   - E-posta şablonları (doğrulama, şifre sıfırlama): Türkçe ve kurumsal gönderen adı.
+   - **TOTP (Authenticator) ikinci faktörü** konsoldan değil Admin SDK / REST ile açılır. Örnek (bir kez, proje
+     sahibinin kimliğiyle çalıştırılır):
+
+     ```js
+     import { initializeApp } from "firebase-admin/app";
+     import { getAuth } from "firebase-admin/auth";
+     initializeApp();
+     await getAuth()
+       .projectConfigManager()
+       .updateProjectConfig({
+         multiFactorConfig: {
+           providerConfigs: [{ state: "ENABLED", totpProviderConfig: { adjacentIntervals: 1 } }],
+         },
+       });
+     ```
+
+4. **App Check:** web uygulamasını reCAPTCHA Enterprise sağlayıcısıyla kaydedin; Firestore ve Storage için
+   zorlamayı açın. (Cloud Functions tarafında zorlama `ENFORCE_APP_CHECK` parametresiyledir; bölüm 2.)
+5. **Web API anahtarı:** Google Cloud konsolu › Kimlik bilgileri › anahtara HTTP yönlendiren (referrer)
+   kısıtlaması ekleyin (yalnızca uygulamanın alan adı).
+6. **Storage:** varsayılan kovayı oluşturun. Storage kuralları üyeliği Firestore'dan okur; ilk kural
+   dağıtımında CLI'nin sorduğu "Storage'ın Firestore'a erişim izni"ni onaylayın.
+7. **Storage CORS** (PDF görüntüleyici dosyayı tarayıcıdan `fetch` ile okur; bu olmadan PDF açılmaz):
+
+   ```json
+   [{ "origin": ["https://<uygulama-alan-adı>"], "method": ["GET"], "maxAgeSeconds": 3600 }]
+   ```
+
+   ```bash
+   gsutil cors set cors.json gs://<kova-adı>
+   ```
+
+### 1.2 Ortam değişkenleri
+
+- **İstemci (derleme zamanı):** `.env.example` dosyasını `.env.local` olarak kopyalayıp doldurun (Firebase web
+  yapılandırması, reCAPTCHA Enterprise site anahtarı, KVKK veri sorumlusu adı ve başvuru adresi).
+  `.env.local` git'e girmez. Zorunlu Firebase değerlerinden biri eksikse uygulama hiçbir sayfayı açmaz ve
+  eksik değişkenlerin adlarını gösteren bir hata sayfası çıkar. KVKK bilgileri boşsa kayıt formu başvuru almaz.
+- **Sunucu:** bölüm 2'deki gizli değer ve parametreler.
+- **`config/security` dokümanını OLUŞTURMAYIN.** Doküman yokken iki aşamalı doğrulama ve e-posta doğrulaması
+  zorunludur (güvenli varsayılan). Bu dokümana `false` yalnızca emülatör test verisi yazar; gerçek projede
+  `false` görülmesi bir güvenlik olayıdır.
+
+### 1.3 Dağıtım sırası
+
+Önce bütün doğrulama komutları yeşil olmalı (`README.md` › Doğrulama komutları; CI aynı komutları çalıştırır).
+
+```bash
+node scripts/firebase.mjs use <proje-kimliği>
+```
+
+```bash
+node scripts/firebase.mjs functions:secrets:set AUDIT_IP_SALT
+```
+
+```bash
+npm run deploy:rules
+```
+
+```bash
+npm run deploy:functions
+```
+
+```bash
+node scripts/firebase.mjs deploy --only hosting
+```
+
+Sıranın nedeni: önce kurallar ve indeksler (yeni istemci eski kurallarla karşılaşmasın, sorgular indeks
+bulsun), sonra Cloud Functions (istemcinin çağıracağı işlemler hazır olsun), en son arayüz. İndekslerin ve TTL
+politikalarının oluşması dakikalar sürebilir; konsolda "Etkin" görünene kadar ilgili ekranlar hata verebilir.
+
+`scripts/firebase.mjs`, Firebase CLI'yi Next.js barındırması için gereken deneysel özellik açık olarak
+çalıştırır; hosting dağıtımını doğrudan `firebase deploy` ile yapmayın.
+
+### 1.4 İlk eğitim sorumlusu
+
+Yönetim paneli ilk admin olmadan kullanılamaz; ilk admin konsoldan atanır:
+
+1. Uygulamada `/register` üzerinden normal kayıt olun (aydınlatma metni onayı dahil). Ekran "Başvurunuz onay
+   bekliyor" der.
+2. Gelen e-postadaki bağlantıyla e-posta adresinizi doğrulayın.
+3. Firebase konsolu › Firestore › `users/<uid>` dokümanında iki alanı değiştirin: `role: "admin"`,
+   `status: "active"`. (`<uid>` Authentication › Kullanıcılar listesindedir.)
+4. Açık olan sayfa kendiliğinden panele geçer. İki aşamalı doğrulama zorunlu olduğundan önce "Hesap güvenliği"
+   sayfasında Authenticator kurulumu istenir; kurulumdan sonra oturum kapanır ve kodla yeniden girilir.
+5. Diğer eğitim sorumluları ve üyeler bundan sonra yönetim panelinden (onay, davet, rol) yönetilir. Konsoldan
+   elle rol vermeyi yalnızca bu ilk adım için kullanın: paneldeki işlemler denetim kaydına kişiyle birlikte
+   geçer, konsoldaki değişiklik "sistem" olarak görünür.
+
+### 1.5 Dağıtım sonrası kısa kontrol
+
+- Giriş › iki aşamalı doğrulama kodu › Genel bakış açılıyor.
+- Yönetim paneli › Denetim kayıtları listeleniyor; Ayrıntı'da "ağ kimliği" var (bölüm 2).
+- Bir PDF materyal yükleyip hekim hesabıyla açın (Storage CORS).
+- Ders başlatıp projektör ekranını açın; telefondan passkey ile katılın (`WEBAUTHN_*` parametreleri).
+- Kısa bir sınav yayınlayıp hekim hesabıyla çözün; karne ve sonuçlar görünüyor.
+- Tarayıcı konsolunda içerik güvenlik politikası (CSP) ihlali yok.
+
+Ayrıntılı kabul senaryoları: `docs/revision/REVISION_PLAN.md` §F10.3.
+
+### 1.6 Geri alma
+
+- **Arayüz:** Firebase konsolu › Hosting › sürüm geçmişinden önceki sürüme dönün.
+- **Cloud Functions ve kurallar:** önceki commit'i çıkarıp aynı dağıtım komutlarını yeniden çalıştırın.
+  Kuralların önceki sürümleri konsolda (Firestore › Kurallar › geçmiş) da durur.
+- **Veri:** bölüm 5 (PITR / yedekten yeni veritabanına geri yükleme).
 
 ## 2. Gizli değerler ve parametreler (dağıtımdan ÖNCE)
 
@@ -27,7 +142,7 @@ openssl rand -hex 32
 ```
 
 ```bash
-firebase functions:secrets:set AUDIT_IP_SALT
+node scripts/firebase.mjs functions:secrets:set AUDIT_IP_SALT
 ```
 
 Parametreler proje bazlı dosyada tutulur (`functions/.env.<proje-kimliği>`, git'e girmez), örneğin:
@@ -53,7 +168,7 @@ Notlar:
   (`audit_logs.expireAt` ve hız sınırı sayaçları için `rate_limits.expireAt`) ve indekslerle birlikte dağıtılır:
 
 ```bash
-firebase deploy --only firestore:indexes
+node scripts/firebase.mjs deploy --only firestore:indexes
 ```
 
 - TTL silmesi anlık değildir; Firestore süresi dolan kayıtları genellikle 24 saat içinde siler.
@@ -119,7 +234,7 @@ açık olmalıdır; böylece silinen bir materyal dosyası saklama süresi için
 Kimlik doğrulama hesapları Firestore yedeğine dahil DEĞİLDİR. Gerekirse:
 
 ```bash
-firebase auth:export hesaplar.json --format=json
+node scripts/firebase.mjs auth:export hesaplar.json --format=json
 ```
 
 (Dosya kişisel veri ve şifre özetleri içerir; şifreli ve erişimi kısıtlı bir yerde saklayın.)

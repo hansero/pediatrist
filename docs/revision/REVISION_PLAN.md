@@ -79,7 +79,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F7.1 | Üye paneli (onay/askı/rol, onay diyalogları) + davet yönetimi | M | ✅ | C10, Kullanılabilirlik |
 | F7.2 | Denetim kaydı görüntüleyici (gerçek `audit_logs`) | S | ✅ | C10 |
 | F7.3 | Durum odaklı dashboard + gerçek KPI'lar | M | ✅ | C10, Görsel hiyerarşi |
-| F7.4 | Hesaplayıcılar: dürüst "yakında" durumu + `calculators_config` | S | ⬜ | Kullanılabilirlik |
+| F7.4 | Hesaplayıcılar: dürüst "yakında" durumu + `calculators_config` | S | ✅ | Kullanılabilirlik |
 | F7.5 | `invokeWithFallback` ve tüm fallback'lerin silinmesi; bekçi listesi boş | S | ✅ | C1 (final) |
 | **F8** | **Erişilebilirlik, metin, performans cilası** | | | |
 | F8.1 | UX metni sadeleştirme + a11y düzeltmeleri + axe testleri | M | ✅ | Görsel hiyerarşi, Erişilebilirlik |
@@ -87,7 +87,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F9** | **Uyum (KVKK) ve operasyon** | | | |
 | F9.1 | Aydınlatma metni, rıza sürümü, üye silme ve veri dışa aktarımı | M | ✅ | §9 |
 | F9.2 | Denetim kaydı TTL, hız sınırı, alarm, yedekleme runbook'u | S | ✅ | S10, §8 |
-| F9.3 | README, `DEPLOY.md`, `Plan.MD` gerçeğe uygun güncelleme | S | ⬜ | §8 |
+| F9.3 | README, `DEPLOY.md`, `Plan.MD` gerçeğe uygun güncelleme | S | ✅ | §8 |
 | **F10** | **Gerçek teste hazırlık** | | | |
 | F10.1 | Tam e2e paketi CI'da yeşil | M | ⬜ | Hepsi |
 | F10.2 | Staging Firebase projesi kurulum kontrol listesi | S | ⬜ | Hepsi |
@@ -100,14 +100,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
-- **Tarih:** 2026-11-11
-- **Son tamamlanan adım:** F9.2. Denetim kayıtlarına saklama süresi (`expireAt` + TTL, varsayılan 2 yıl), tuzlu ağ özeti ve tarayıcı bilgisi; üye başına hız sınırı; yoklamada "aynı ağ" işareti; kritik olayların Cloud Logging'e düşmesi; `DEPLOY.md` (operasyon bölümleri). Testler: unit 255, rules 58, functions 118, e2e 113 (+3 bilinçli atlanan).
+- **Tarih:** 2026-11-12
+- **Son tamamlanan adım:** F9.3. **F9 tamamlandı.** README yeniden yazıldı; `DEPLOY.md` bölüm 1 (kurulum, dağıtım sırası, ilk admin); `Plan.MD` gerçeğe göre düzeltildi (farklılaşan kararlar tablosu, güncel şema/kurallar/dizin, gerçek durum). Yalnızca belge değişti. Testler (değişmedi): unit 255, rules 58, functions 118, e2e 113 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F9.3 dokümantasyon (bkz. §F9.3).
-  - `README.md` (şu an 2 satır): kurulum (`npm ci`, emülatör, seed, `npm run dev`), test komutları, mimari özet (Next istemci, callable'lar, kurallar, `@shared`), sahte veri bekçisi, CLAUDE.md'deki değişmez kurallara bağlantı.
-  - `DEPLOY.md` bölüm 1: dağıtım sırası (rules → indexes → functions → hosting), ortam değişkenleri (`.env.example`), `config/security` dokümanı (MFA / e-posta doğrulama), ilk admin (konsolda `users/{uid}`: `role: 'admin', status: 'active'`; `syncUserClaims` claim'leri yazar; ilk girişte aydınlatma metni onayı istenir), Storage CORS (pdf.js), App Check, TOTP'nin Identity Platform'da açılması.
-  - `Plan.MD`: "Tamamlandı" işaretleri gerçeğe göre düzeltilir, bu plana bağlantı verilir.
-  - Sonra F10 (doğrulama ve teslim): F10.1 CI'da tam e2e (zaten koşuyor; kanıtla), F10.2 staging kontrol listesi, F10.3 UAT senaryoları, F10.4 denetim izlenebilirliği.
+- **Sıradaki iş:** F10 (bkz. §F10). Kod işi büyük ölçüde bitti; F10 belge ve kanıt ağırlıklı.
+  - **F10.1 Tam e2e paketi CI'da yeşil:** zaten her push'ta koşuyor. Son yeşil çalışmayı kanıt olarak kaydet; "3 bilinçli atlanan" testin hangileri olduğunu ve nedenini yaz (`grep -rn "test.skip" e2e`).
+  - **F10.2 Staging kontrol listesi** → `docs/revision/STAGING_CHECKLIST.md`: plan §F10.2 maddeleri + `DEPLOY.md`'deki "Doğrulama" adımları tek, işaretlenebilir listede. Kullanıcının konsolda yapacağı işler; ben yapamam.
+  - **F10.3 UAT senaryoları** → `docs/revision/UAT_SCENARIOS.md`: gerçek hekim ve eğitim sorumlusu için Türkçe adım adım senaryolar, beklenen sonuç, hata bildirme şablonu (plan §F10.3 listesi + F9.1 KVKK akışları).
+  - **F10.4 İzlenebilirlik** → `docs/revision/TRACEABILITY.md`: AUDIT.md'deki her bulgu (C1–C11, S1–S15 ve diğer bölümler) için kapatan adım, kanıt (test adı) ve kapatılmayanların gerekçesi (ör. S2 kısmen: işaretleme var, engelleme yok; App Check replay yok; hesaplayıcı motoru D8).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1513,6 +1513,17 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
   - `Plan.MD`: "Tamamlandı" işaretleri gerçeğe göre düzeltilir ve bu plana link verilir.
 
 ---
+
+- **✅ Uygulanan F9.3 (sapmalar ve eklemeler):**
+  - **`README.md`** yeniden yazıldı (2 satırdı): modül tablosu (admin / hekim), yerel kurulum (Node 22, Java 21, emülatör, seed, test hesapları), doğrulama komutları, mimari özet, beş temel ilke, bilinen sınırlar. Projenin gerçek bir Firebase projesine henüz dağıtılmadığı açıkça yazıyor.
+  - **`DEPLOY.md` bölüm 1** yazıldı: konsol kurulumu (Firestore konumu, Identity Platform, TOTP'nin Admin SDK ile açılması, App Check, API anahtarı kısıtı, Storage → Firestore izni, Storage CORS), ortam değişkenleri, dağıtım sırası ve nedeni, ilk eğitim sorumlusu, dağıtım sonrası kısa kontrol, geri alma.
+    - CLI komutları `node scripts/firebase.mjs …` sarmalayıcısıyla verildi (Next barındırması için gereken deneysel özellik).
+    - **Doğrulanamadı:** konsol adımları, TOTP'yi açan Admin SDK çağrısı ve `gcloud`/`gsutil` komutları resmî belgeyle karşılaştırılamadı (Firebase bilgi aracı etkin proje istiyor; proje yok). Belgenin başında bu açıkça yazıyor; staging'de doğrulanacak (F10.2).
+  - **`Plan.MD`:**
+    - Başa durum notu ve "İlk plandan farklılaşan kararlar" tablosu (13 konu, karar kayıtlarına bağlı).
+    - Bölüm 1–4 tarihsel metin olarak korundu; yanlış kalan maddelere yerinde "**Güncel:**" notu eklendi (yetki kaynağı, cihaz bağlama, App Check, filigran, denetim kapsamı, hareketsizlik, hesaplayıcılar, sınav soruları ve karne, yönetim paneli).
+    - Bölüm 5 (şema), 6 (kurallar), 7 (dizin) güncel koddan yeniden yazıldı. Bölüm 8'deki asılsız "Tamamlandı" işaretleri kaldırıldı; yerine gerçek durum tablosu ve "henüz yapılmayanlar" listesi geldi.
+  - **İlerleme tablosu düzeltmesi:** F7.4 satırı iş bittiği halde ⬜ kalmıştı (metin eşleşmediği için güncelleme sessizce atlanmış); ✅ yapıldı. Devir notları doğruydu.
 
 ### F10 — Gerçek teste hazırlık
 
