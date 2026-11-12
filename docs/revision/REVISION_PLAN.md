@@ -92,7 +92,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F10.1 | Tam e2e paketi CI'da yeşil | M | ✅ | Hepsi |
 | F10.2 | Staging Firebase projesi kurulum kontrol listesi | S | ✅ | Hepsi |
 | F10.3 | Kullanıcı kabul testi (UAT) senaryoları | S | ✅ | Hepsi |
-| F10.4 | Denetim izlenebilirlik kontrolü (her bulgu → kanıt) | S | ⬜ | Hepsi |
+| F10.4 | Denetim izlenebilirlik kontrolü (her bulgu → kanıt) | S | ✅ | Hepsi |
 
 ---
 
@@ -101,13 +101,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-12
-- **Son tamamlanan adım:** F10.1–F10.3. CI'daki tam e2e kanıtı kaydedildi (58 senaryo × 2 ekran; 113 koşar, 3 bilinçli atlanır); `STAGING_CHECKLIST.md` ve `UAT_SCENARIOS.md` yazıldı. Yalnızca belge değişti. Testler (değişmedi): unit 255, rules 58, functions 118, e2e 113 (+3).
+- **Son tamamlanan adım:** F10.4. **Revizyon programı tamamlandı (F0–F10, bütün adımlar ✅).** İzlenebilirlik tablosu yazıldı (81 bulgu: 72 kapandı, 8 kısmen, 1 kapanmadı); sınav ekranı ve karne erişilebilirlik denetimine eklendi. Testler: unit 255, rules 58, functions 118, e2e E2E_COUNT.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F10.4 izlenebilirlik (bkz. §F10.4) → `docs/revision/TRACEABILITY.md`. **Programın son adımı.**
-  - `docs/revision/AUDIT.md`'deki her bulgu için satır: C1–C11, S1–S15, kullanılabilirlik tablosu, görsel hiyerarşi, tutarlılık tablosu, erişilebilirlik, performans/mimari, test/araçlar, KVKK.
-  - Sütunlar: bulgu, durum (kapandı / kısmen / kapanmadı), kapatan adım(lar), kanıt (test dosyası ve adı ya da belge), not.
-  - Kanıtı uydurma: test adlarını `grep` ile doğrula. Dürüstçe "kısmen" denecekler: S2 (işaretleme var, engelleme yok), S10 (App Check replay yok), S13 (filigran caydırıcı), hesaplayıcı motoru (D8), "use client" / SSR (karar notu), gerçek cihaz ve staging doğrulamaları (UAT'ye devredildi).
-  - Bitince: plan §1 tablosunda F10.4 ✅, §2 "program tamamlandı; kalan işler kullanıcı tarafında (staging, UAT, hukuk onayı)" notu.
+- **Sıradaki iş:** Planlı kod işi kalmadı. Kalanlar kullanıcı tarafında ya da karar bekliyor (`docs/revision/TRACEABILITY.md` › "Açık kalanlar"):
+  1. Staging kurulumu: `docs/revision/STAGING_CHECKLIST.md` + `DEPLOY.md`. Komutlar resmî belgelerle karşılaştırılamadı; ilk kurulumda düzeltme gerekebilir. Kurulumda bir adım yazıldığı gibi çalışmazsa `DEPLOY.md` düzeltilmeli.
+  2. Kullanıcı kabul testi: `docs/revision/UAT_SCENARIOS.md` (önce ⚠ işaretli dokuz senaryo). Bulunan hatalar yeni iş olarak ele alınır.
+  3. KVKK metninin hukuk onayı → `functions/src/shared/consent.ts` içinde `KVKK_NOTICE_APPROVED = true` (metin değişirse `KVKK_NOTICE_VERSION` artırılır).
+  4. Karar bekleyenler: hesaplayıcı formül motoru (D8), yoklamada konum/ikinci etken (S2), sunucuda sayfa görüntüsü (S13), App Check replay ve BigQuery (S10), nonce CSP (C6), otomatik bağımlılık denetimi (S14), görsel açıklaması, sunucu tarafı sayfa koruması, `minInstances`.
+  - Yeni bir oturumda kullanıcı bunlardan birini isterse: yeni adım olarak §1 tablosuna satır ekle (F11.x), aynı ritüelle ilerle.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1575,9 +1576,19 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 #### F10.4 Denetim izlenebilirliği (S)
 `docs/revision/AUDIT.md` içindeki her bulgu için "kapatan commit + kanıt (test adı veya ekran)" tablosu `docs/revision/TRACEABILITY.md` dosyasına yazılır. Kapatılmayan bulgu varsa gerekçesi yazılır.
 
+- **✅ Uygulanan F10.4 (sapmalar ve eklemeler):**
+  - `docs/revision/TRACEABILITY.md`: AUDIT.md'deki 81 bulgu için durum, kapatan adım, kanıt ve not. Bölümler denetimle aynı (kritik, güvenlik, kullanılabilirlik, görsel hiyerarşi, tutarlılık, erişilebilirlik, performans/mimari, test/işletim, KVKK).
+    - Sonuç: 72 kapandı, 8 kısmen, 1 kapanmadı (`minInstances`). Kapananların 8'i gerçek ortamda doğrulama bekliyor (🔎).
+    - Kanıt olarak yazılan test adları depodaki testlerden derlenen dizinle (446 test adı) karşılaştırıldı; dosya başına test sayıları `grep` ile sayıldı.
+    - "Açık kalanlar" bölümü üç başlıkta: yalnızca gerçek ortamda yapılabilenler (4), bilinçli olarak yapılmayanlar (10; neden ve risk sütunlarıyla), otomatik testle kanıtlanamayanlar (görsel/metin bulguları).
+  - **Bulunan boşluk ve kapatılması:** erişilebilirlik denetimi sınav ekranının kendisini (sınav sürerken) ve karneyi kapsamıyordu. `e2e/quiz-exam.spec.ts`'e üç axe denetimi eklendi (sınav ekranı, cevapları kapalı karne, cevapları açık karne); hepsi temiz geçti.
+  - Otomatik bağımlılık denetimi (Dependabot / CI'da `npm audit`) eklenmedi: depoda kendiliğinden PR/uyarı açacağı için kullanıcıya bırakıldı (TRACEABILITY "açık kalanlar").
+
 ---
 
 ## 6. Bulgu → Adım İzlenebilirlik Özeti
+
+> Bu tablo planlama aşamasındaki eşlemedir. Her bulgunun gerçekleşen durumu, kanıtı ve açık kalanlar: [`TRACEABILITY.md`](TRACEABILITY.md).
 
 | Bulgu | Adım(lar) |
 |---|---|

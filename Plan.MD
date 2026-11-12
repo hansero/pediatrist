@@ -408,7 +408,7 @@ pediatrist/
 | Yönetim paneli, ana sayfa, hesaplayıcı sayfası | Tamamlandı (F7). Hesaplayıcılarda **hesaplama yok** (bilinçli karar, D8). |
 | Erişilebilirlik, metin, performans | Tamamlandı (F8) |
 | KVKK, operasyon, dokümantasyon | Tamamlandı (F9). Aydınlatma metni **hukuk onayı bekliyor** (taslak işaretli). |
-| Staging kurulumu, kullanıcı kabul testi, izlenebilirlik | Sırada (F10); staging ve kabul testi kullanıcı tarafında yapılacak |
+| Teslim belgeleri: staging kontrol listesi, kabul testi senaryoları, izlenebilirlik | Tamamlandı (F10). **Staging kurulumunun ve kabul testinin kendisi yapılmadı**; kullanıcı tarafında. |
 
 **Henüz yapılmayanlar / doğrulanmayanlar:**
 

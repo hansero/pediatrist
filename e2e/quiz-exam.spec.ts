@@ -1,5 +1,6 @@
 import type { Browser, Page } from "@playwright/test";
 import { parseNineFieldQuizCsv } from "../functions/src/shared/quizCsv";
+import { seriousViolations } from "./fixtures/a11y";
 import { loginAs } from "./fixtures/auth";
 import { createDraft, openStudio, publishForce, quizRow, SAMPLE_CSV } from "./fixtures/quiz";
 import { expect, expectNoHorizontalOverflow, guardedContext, test } from "./fixtures/test";
@@ -69,6 +70,8 @@ test("after_close: yanıtlar kaydedilir, yenilemede devam edilir, teslimde doğr
   await expect(page.getByText("40 karakter", { exact: false })).toBeVisible();
   await expect(pill(page, 1, true)).toBeVisible();
   await expectNoHorizontalOverflow(page);
+  // Erişilebilirlik (F10.4): sınav sürerken ekranın kendisi de denetlenir (a11y.spec yalnızca sınav listesini görür).
+  expect(await seriousViolations(page), "sınav ekranı").toEqual([]);
 
   // Yenileme: sınava kendiliğinden dönülür, yanıtlar sunucudan gelir.
   await page.reload();
@@ -89,6 +92,7 @@ test("after_close: yanıtlar kaydedilir, yenilemede devam edilir, teslimde doğr
   await expect(page.getByRole("status").filter({ hasText: "Doğru cevaplar henüz kapalı" })).toBeVisible();
   await expect(report.getByText("Öğrenme noktası:")).toHaveCount(0);
   await expect(report.getByText("Doğru cevap:")).toHaveCount(0);
+  expect(await seriousViolations(page), "karne (cevaplar kapalı)").toEqual([]);
   await expect(page.getByText(QUESTIONS[0].feedbackText)).toHaveCount(0);
 
   // Admin kapatır → karne açılır (bu sınavda süresi süren başka hekim yok: revealAt = kapanış anı).
@@ -142,6 +146,7 @@ test("immediate: sınavdan ayrılıp dönülür; teslimde tam karne hemen görü
 
   const report = page.getByRole("region", { name: title });
   await expect(report.getByLabel("Puan 100 / 100")).toBeVisible();
+  expect(await seriousViolations(page), "karne (cevaplar açık)").toEqual([]);
   await expect(page.getByText(QUESTIONS[0].feedbackText)).toBeVisible();
   await expect(report.getByText("Yanlış", { exact: true })).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
