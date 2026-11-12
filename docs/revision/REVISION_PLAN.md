@@ -89,9 +89,9 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F9.2 | Denetim kaydı TTL, hız sınırı, alarm, yedekleme runbook'u | S | ✅ | S10, §8 |
 | F9.3 | README, `DEPLOY.md`, `Plan.MD` gerçeğe uygun güncelleme | S | ✅ | §8 |
 | **F10** | **Gerçek teste hazırlık** | | | |
-| F10.1 | Tam e2e paketi CI'da yeşil | M | ⬜ | Hepsi |
-| F10.2 | Staging Firebase projesi kurulum kontrol listesi | S | ⬜ | Hepsi |
-| F10.3 | Kullanıcı kabul testi (UAT) senaryoları | S | ⬜ | Hepsi |
+| F10.1 | Tam e2e paketi CI'da yeşil | M | ✅ | Hepsi |
+| F10.2 | Staging Firebase projesi kurulum kontrol listesi | S | ✅ | Hepsi |
+| F10.3 | Kullanıcı kabul testi (UAT) senaryoları | S | ✅ | Hepsi |
 | F10.4 | Denetim izlenebilirlik kontrolü (her bulgu → kanıt) | S | ⬜ | Hepsi |
 
 ---
@@ -101,13 +101,13 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-12
-- **Son tamamlanan adım:** F9.3. **F9 tamamlandı.** README yeniden yazıldı; `DEPLOY.md` bölüm 1 (kurulum, dağıtım sırası, ilk admin); `Plan.MD` gerçeğe göre düzeltildi (farklılaşan kararlar tablosu, güncel şema/kurallar/dizin, gerçek durum). Yalnızca belge değişti. Testler (değişmedi): unit 255, rules 58, functions 118, e2e 113 (+3 bilinçli atlanan).
+- **Son tamamlanan adım:** F10.1–F10.3. CI'daki tam e2e kanıtı kaydedildi (58 senaryo × 2 ekran; 113 koşar, 3 bilinçli atlanır); `STAGING_CHECKLIST.md` ve `UAT_SCENARIOS.md` yazıldı. Yalnızca belge değişti. Testler (değişmedi): unit 255, rules 58, functions 118, e2e 113 (+3).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F10 (bkz. §F10). Kod işi büyük ölçüde bitti; F10 belge ve kanıt ağırlıklı.
-  - **F10.1 Tam e2e paketi CI'da yeşil:** zaten her push'ta koşuyor. Son yeşil çalışmayı kanıt olarak kaydet; "3 bilinçli atlanan" testin hangileri olduğunu ve nedenini yaz (`grep -rn "test.skip" e2e`).
-  - **F10.2 Staging kontrol listesi** → `docs/revision/STAGING_CHECKLIST.md`: plan §F10.2 maddeleri + `DEPLOY.md`'deki "Doğrulama" adımları tek, işaretlenebilir listede. Kullanıcının konsolda yapacağı işler; ben yapamam.
-  - **F10.3 UAT senaryoları** → `docs/revision/UAT_SCENARIOS.md`: gerçek hekim ve eğitim sorumlusu için Türkçe adım adım senaryolar, beklenen sonuç, hata bildirme şablonu (plan §F10.3 listesi + F9.1 KVKK akışları).
-  - **F10.4 İzlenebilirlik** → `docs/revision/TRACEABILITY.md`: AUDIT.md'deki her bulgu (C1–C11, S1–S15 ve diğer bölümler) için kapatan adım, kanıt (test adı) ve kapatılmayanların gerekçesi (ör. S2 kısmen: işaretleme var, engelleme yok; App Check replay yok; hesaplayıcı motoru D8).
+- **Sıradaki iş:** F10.4 izlenebilirlik (bkz. §F10.4) → `docs/revision/TRACEABILITY.md`. **Programın son adımı.**
+  - `docs/revision/AUDIT.md`'deki her bulgu için satır: C1–C11, S1–S15, kullanılabilirlik tablosu, görsel hiyerarşi, tutarlılık tablosu, erişilebilirlik, performans/mimari, test/araçlar, KVKK.
+  - Sütunlar: bulgu, durum (kapandı / kısmen / kapanmadı), kapatan adım(lar), kanıt (test dosyası ve adı ya da belge), not.
+  - Kanıtı uydurma: test adlarını `grep` ile doğrula. Dürüstçe "kısmen" denecekler: S2 (işaretleme var, engelleme yok), S10 (App Check replay yok), S13 (filigran caydırıcı), hesaplayıcı motoru (D8), "use client" / SSR (karar notu), gerçek cihaz ve staging doğrulamaları (UAT'ye devredildi).
+  - Bitince: plan §1 tablosunda F10.4 ✅, §2 "program tamamlandı; kalan işler kullanıcı tarafında (staging, UAT, hukuk onayı)" notu.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1556,6 +1556,21 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
 - Materyal
 - Admin işlemleri
 - Askıya alma etkisinin anında görülmesi
+
+- **✅ Uygulanan F10.1–F10.3 (sapmalar ve eklemeler):**
+  - **F10.1 kanıt:** CI çalışması [#57](https://github.com/hansero/pediatrist/actions/runs/43108681873) (commit `279747c`): lint, biçim, typecheck, sahte veri bekçisi, birim testleri, iki derleme, kural testleri, functions testleri ve e2e adımlarının hepsi başarılı (e2e adımı 6 dk 24 sn).
+    - Kapsam: 20 spec dosyasında 58 senaryo × 2 proje (masaüstü 1280 px, telefon 390 px) = 116. 113 koşar, 3'ü bilinçli atlanır:
+      - `quiz-timeout.spec` telefonda (gerçek saatle ~70 sn sürer; ekran boyutundan bağımsız, masaüstünde koşar),
+      - `nav.spec` "çekmece" testi masaüstünde (yalnızca dar ekran),
+      - `nav.spec` "İçeriğe geç" testi telefonda (yalnızca geniş ekran).
+    - Yeniden deneme yok (`retries: 0`): geçen test ilk denemede geçmiştir. Bu oturumdaki tam koşularda kararsız (flaky) test görülmedi; görülen tek e2e hatası gerçek bir uyumsuzluktu (F8.1, erişilebilir ad boşluğu) ve düzeltildi.
+    - Bilinen altyapı riski: runner'ın Ubuntu paket aynasına erişememesi (F7.5 eki); Chromium önce başlatılarak denendiği için artık e2e'yi engellemiyor.
+  - **F10.2:** `docs/revision/STAGING_CHECKLIST.md`. İşaretlenebilir tablo: proje ve hizmetler (12), yapılandırma (8), dağıtım (5), ilk admin ve kısa kontrol (3), operasyon (7), hukuk ve kurum kararları (5). Her satırda "nasıl doğrulanır". Komutlar tekrar edilmedi, `DEPLOY.md` bölümlerine gönderme yapıldı.
+    - Plandaki maddelere eklenenler: `AUDIT_IP_SALT`, saklama süresi, TTL, kritik olay alarmı, PITR/yedek ve geri yükleme tatbikatı, "aynı ağ" işareti, hız sınırı, `KVKK_NOTICE_APPROVED`, üye silme sürecinin sahibi.
+  - **F10.3:** `docs/revision/UAT_SCENARIOS.md`. 32 senaryo: kayıt/giriş/hesap güvenliği (8), yoklama (6), sınav (5), materyal (3), yönetim ve kişisel veriler (7), genel kullanım (3 — biri isteğe bağlı). Her senaryoda rol, adımlar, beklenen sonuç, G/K/A işareti; hata bildirme şablonu ve kabul ölçütü.
+    - ⚠ işaretli 9 senaryo otomatik testlerde hiç denenemeyenlerdir (gerçek e-posta, TOTP, gerçek telefonda passkey, ders salonunda projektör, kod iletme, gerçek Storage'dan PDF).
+    - "Beklenen" ifadeleri kodla karşılaştırıldı (ör. şifre sıfırlama kayıtlı olmayan adresi belli etmez; yoklamadan sonra form yerine "Yoklamanız alındı").
+  - Bu üç adımda uygulama kodu değişmedi.
 
 #### F10.4 Denetim izlenebilirliği (S)
 `docs/revision/AUDIT.md` içindeki her bulgu için "kapatan commit + kanıt (test adı veya ekran)" tablosu `docs/revision/TRACEABILITY.md` dosyasına yazılır. Kapatılmayan bulgu varsa gerekçesi yazılır.
