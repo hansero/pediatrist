@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-12
-- **Son tamamlanan adım:** F10.4. **Revizyon programı tamamlandı (F0–F10, bütün adımlar ✅).** İzlenebilirlik tablosu yazıldı (81 bulgu: 72 kapandı, 8 kısmen, 1 kapanmadı); sınav ekranı ve karne erişilebilirlik denetimine eklendi. Testler: unit 255, rules 58, functions 118, e2e E2E_COUNT.
+- **Son tamamlanan adım:** F10.4. **Revizyon programı tamamlandı (F0–F10, bütün adımlar ✅).** İzlenebilirlik tablosu yazıldı (81 bulgu: 72 kapandı, 8 kısmen, 1 kapanmadı); sınav ekranı ve karne erişilebilirlik denetimine eklendi. Testler: unit 255, rules 58, functions 118, e2e 113 (+3 bilinçli atlanan).
 - **Devam eden adım:** —
 - **Sıradaki iş:** Planlı kod işi kalmadı. Kalanlar kullanıcı tarafında ya da karar bekliyor (`docs/revision/TRACEABILITY.md` › "Açık kalanlar"):
   1. Staging kurulumu: `docs/revision/STAGING_CHECKLIST.md` + `DEPLOY.md`. Komutlar resmî belgelerle karşılaştırılamadı; ilk kurulumda düzeltme gerekebilir. Kurulumda bir adım yazıldığı gibi çalışmazsa `DEPLOY.md` düzeltilmeli.
