@@ -132,6 +132,11 @@ export const updateMemberAccess = defineCallable("updateMemberAccess", "admin", 
     const snap = await tx.get(userRef);
     if (!snap.exists) throw new HttpsError("not-found", "Üye profili bulunamadı.");
     const existing = snap.data() as MemberDoc<Timestamp>;
+    // Kıdem yılı yalnızca asistanlar içindir (F3.5); uzman/öğretim üyesine yıl atanırsa yoklama uygunluğu (D24) ve
+    // raporlar bozulur.
+    if (data.residencyYear !== undefined && !isResidentTitle(String(existing.title ?? ""))) {
+      throw new HttpsError("failed-precondition", "Kıdem yılı yalnızca asistanlar için değiştirilebilir.");
+    }
 
     const role = data.role ?? normalizeRole(existing.role);
     const status = data.status ?? normalizeStatus(existing.status);

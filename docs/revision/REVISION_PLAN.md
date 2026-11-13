@@ -97,7 +97,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F11.1 | Yoklama cihazını (passkey) kaldır | L | ✅ | Madde 1 (D23) |
 | F11.2 | Uygulama içi QR okuyucu | M | ✅ | Madde 2 (D27) |
 | F11.3 | Ders kategorisini kaldır | S | ✅ | Madde 3 |
-| F11.4 | Yoklama verme yetkisi: yalnızca 1–4. yıl asistan | M | ⬜ | Madde 7 (D24) |
+| F11.4 | Yoklama verme yetkisi: yalnızca 1–4. yıl asistan | M | ✅ | Madde 7 (D24) |
 | F11.5 | Materyal etiketleri | M | ⬜ | Madde 4 (D25) |
 | F11.6 | Hedef kitlede "Uzman" | M | ⬜ | Madde 6 (D26) |
 | F11.7 | Admin materyal süzgeci | S | ⬜ | Madde 5 |
@@ -110,9 +110,9 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-13
-- **Son tamamlanan adım:** F11.3 (ders kategorisi kaldırıldı). Öncesinde F11.1 (yoklama cihazı, D23), F11.2 (QR okuyucu). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
+- **Son tamamlanan adım:** F11.4 (yoklamayı yalnızca 1–4. yıl asistan verir, D24). Öncesinde F11.1 (yoklama cihazı, D23), F11.2 (QR okuyucu), F11.3 (ders kategorisi). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F11.4 (yoklama verme yetkisi: yalnızca 1–4. yıl asistan, D24). Ardından sırayla F11.5 → F11.8; her adımın kapsamı §5 F11'de.
+- **Sıradaki iş:** F11.5 (materyal etiketleri, D25). Ardından sırayla F11.6 → F11.8; her adımın kapsamı §5 F11'de.
   - Kullanıcı kararları: birden çok etiket; "Uzman" yalnızca `Uzm. Dr.`; kamera izni "QR kodu okut" düğmesiyle, QR okununca hemen gönderim.
   - Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`.
   - Önceki dönemden kalanlar (staging, UAT, KVKK hukuk onayı, karar bekleyenler) için `docs/revision/TRACEABILITY.md` › "Açık kalanlar".
@@ -1634,7 +1634,16 @@ Kullanıcının 7 maddelik isteği. Plan: oturumdaki onaylı plan dosyası; kara
   - Doğrulandı: typecheck, lint, unit 258, functions 103, e2e yoklama + dashboard 22.
 
 #### F11.4 Yoklama verme yetkisi (M) — madde 7
-- `isAttendanceEligible` + `requireAttendee` (`"attendee"` erişim düzeyi), `expectedAttendees` süzgeci, uygun olmayan hedefe mazeret reddi, asistan olmayana kıdem atama reddi, menü/sayfa/dashboard, seed'e `Uzm. Dr.` hesabı.
+- **✅ Uygulanan (D24):**
+  - Tek kural `functions/src/shared/constants.ts › isAttendanceEligible` (`role == user`, `Asistan Dr.`, kıdem 1–4) ve `ATTENDANCE_INELIGIBLE_MESSAGE`.
+  - Sunucu: `guards.ts › requireAttendee` + `callable.ts` yeni erişim düzeyi `"attendee"`; `verifyRealTimeAttendance` bununla korunuyor (admin, uzman, öğretim üyesi `permission-denied`). Yoklamayı başlatma/bitirme/projektör/mazeret zaten yalnızca admin.
+  - `startLectureSession`: `expectedAttendees` yalnızca uygun üyeler → D22 "katılmadı" kayıtları uzmanlara yazılmıyor.
+  - `markAttendanceExcused`: yoklamaya tabi olmayan üyeye mazeret reddediliyor; **istisna:** o derste beklenen ya da kaydı olan üye (ör. sonradan uzman olmuş eski asistanın geçmiş "katılmadı" kaydı düzeltilebilsin).
+  - `updateMemberAccess`: asistan olmayana kıdem yılı atanamıyor (önceden atanabiliyor ve geri `null` yapılamıyordu); üye panelinde "Kıdem yılını değiştir" yalnızca asistanlarda.
+  - İstemci: menü öğelerine `visible` kuralı ("Ders Yoklaması" admin ve uygun asistana); `/attendance` uygun olmayana açıklama kartı; hekim dashboard'unda uygun olmayan için canlı ders adımı ve "Derse katılım" göstergesi yok; hekim karnesi yalnızca uygun etkin üyeleri listeliyor (uzmanın geçmiş kaydı varsa görünür).
+  - Seed: etkin `Uzm. Dr.` hesabı `uzman@pediatrist.test` (`seed-uzman`); seed dersinin beklenen listesi aynı kuralla.
+  - **Testler:** functions +4 (uzman/Doç./eski kıdemli uzman/admin yoklama veremez; beklenen liste ve kapanışta absent yok; mazeret reddi ve istisnası; uzmana kıdem atama reddi). unit +4 (uygunluk tablosu, menü görünürlüğü, üye eylemleri, karne). e2e +1 × 2 (uzman: menüde yok, sayfa açıklaması, dashboard'da gösterge yok).
+  - Doğrulandı: typecheck, lint, unit 262, functions 107, e2e (yoklama, dashboard, panel, gezinme, materyaller, duman) 52 + 2 atlanan.
 
 #### F11.5 Materyal etiketleri (M) — madde 4
 - `shared/materials.ts` normalizasyonu, `labels` alanı, `LabelInput`, hekim süzgecinde etiket, kullanılmayan `category` indeksi silinir.

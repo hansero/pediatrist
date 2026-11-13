@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { collection, getDocs, limit, orderBy, query, Timestamp, where } from "firebase/firestore";
-import { ATTENDANCE_WARN_RATE } from "@shared/constants";
+import { ATTENDANCE_WARN_RATE, isAttendanceEligible } from "@shared/constants";
 import { COLLECTIONS, type AttendanceStatus } from "@shared/types";
 import { toUserMessage, notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
@@ -221,8 +221,10 @@ export function buildDoctorReport(
     if (excluded.has(log.sessionId)) continue;
     byUid.set(log.uid, [...(byUid.get(log.uid) ?? []), log]);
   }
+  // Yoklamaya tabi etkin hekimler (D24: 1.–4. yıl asistan); uzman/öğretim üyesi yalnızca geçmiş kaydı varsa görünür.
+  const subject = doctors.filter((d) => isAttendanceEligible({ ...d, role: "user" }));
   const doctorByUid = new Map(doctors.map((d) => [d.uid, d]));
-  const uids = new Set([...doctors.map((d) => d.uid), ...byUid.keys()]);
+  const uids = new Set([...subject.map((d) => d.uid), ...byUid.keys()]);
 
   const rows = [...uids].map((uid): DoctorReportRow => {
     const items = (byUid.get(uid) ?? []).sort((a, b) => (b.startedAtMs ?? 0) - (a.startedAtMs ?? 0));

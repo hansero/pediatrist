@@ -303,7 +303,9 @@ async function main() {
   const startedAtMs = now - a.daysAgo * 86_400_000;
   const startedAt = Timestamp.fromMillis(startedAtMs);
   const sessionRef = db.collection("attendance_sessions").doc(a.id);
-  const expected = SEED_USERS.filter((u) => u.role === "user" && u.status === "active");
+  // Sunucuyla aynı kural (D24): yalnızca etkin 1.–4. yıl asistanlar beklenir.
+  const { isAttendanceEligible } = await import("../functions/src/shared/constants");
+  const expected = SEED_USERS.filter((u) => u.status === "active" && isAttendanceEligible(u));
   const absent = expected.filter((u) => !a.records.some((r) => r.uid === u.uid));
   const batch = db.batch();
   batch.set(sessionRef, {

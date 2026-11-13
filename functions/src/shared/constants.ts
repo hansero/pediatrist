@@ -29,6 +29,26 @@ export type ResidencyYear = (typeof RESIDENCY_YEARS)[number];
 export const RESIDENT_TITLE: Title = "Asistan Dr.";
 export const isResidentTitle = (title: string): boolean => title === RESIDENT_TITLE;
 
+/**
+ * Yoklama verebilir mi? (D24, F11.4) Yalnızca hekim rolündeki (`user`) 1.–4. yıl asistan. Uzman ve öğretim
+ * üyeleri (Uzm./Doç./Prof.) ile Eğitim Sorumlusu (admin) yoklamaya tabi değildir; dersin beklenen listesine
+ * girmez, kapanışta "katılmadı" yazılmaz. Sunucu (`guards.ts › requireAttendee`), ders başlatma ve istemci
+ * (menü, sayfa, dashboard, raporlar) bu tek kuralı kullanır.
+ */
+export function isAttendanceEligible(member: {
+  role: string;
+  title: string;
+  residencyYear: number | null | undefined;
+}): boolean {
+  return (
+    member.role === "user" &&
+    isResidentTitle(member.title) &&
+    (RESIDENCY_YEARS as readonly number[]).includes(member.residencyYear ?? 0)
+  );
+}
+
+export const ATTENDANCE_INELIGIBLE_MESSAGE = "Ders yoklaması yalnızca 1.–4. yıl asistan hekimler içindir.";
+
 // --- Yoklama ---------------------------------------------------------------
 
 /** Projektör kodunun yenilenme aralığı. Bir önceki pencere ağ gecikmesi toleransı olarak kabul edilir. */

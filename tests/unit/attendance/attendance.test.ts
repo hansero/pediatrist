@@ -124,3 +124,20 @@ describe("katılım geçmişi (F4.4, D22)", () => {
     expect(summarizeHistory([]).rate).toBeNull();
   });
 });
+
+describe("isAttendanceEligible (D24: yoklamayı yalnızca 1.–4. yıl asistan verir)", () => {
+  it("hekim rolünde, asistan ünvanlı ve kıdemi 1–4 olan üye; diğerleri değil", async () => {
+    const { isAttendanceEligible } = await import("@shared/constants");
+    for (const y of [1, 2, 3, 4]) {
+      expect(isAttendanceEligible({ role: "user", title: "Asistan Dr.", residencyYear: y })).toBe(true);
+    }
+    expect(isAttendanceEligible({ role: "admin", title: "Asistan Dr.", residencyYear: 2 })).toBe(false);
+    for (const title of ["Uzm. Dr.", "Doç. Dr.", "Prof. Dr."]) {
+      expect(isAttendanceEligible({ role: "user", title, residencyYear: null })).toBe(false);
+      expect(isAttendanceEligible({ role: "user", title, residencyYear: 2 })).toBe(false);
+    }
+    expect(isAttendanceEligible({ role: "user", title: "Asistan Dr.", residencyYear: null })).toBe(false);
+    expect(isAttendanceEligible({ role: "user", title: "Asistan Dr.", residencyYear: 5 })).toBe(false);
+    expect(isAttendanceEligible({ role: "user", title: "Asistan Dr.", residencyYear: undefined })).toBe(false);
+  });
+});

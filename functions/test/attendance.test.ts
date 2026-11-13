@@ -338,6 +338,44 @@ describe("D22: ders kapanırken 'katılmadı' kayıtları", () => {
   });
 });
 
+describe("D24: yoklamayı yalnızca 1.–4. yıl asistan verir", () => {
+  beforeEach(async () => {
+    await createMember("uzm", "user", "active", { title: "Uzm. Dr.", residencyYear: null });
+    await createMember("doc", "user", "active", { title: "Doç. Dr.", residencyYear: null });
+    // Eski veride uzmana yanlışlıkla yazılmış kıdem: yine de yoklamaya tabi değil.
+    await createMember("uzm2", "user", "active", { title: "Uzm. Dr.", residencyYear: 3 });
+  });
+
+  it("uzman, öğretim üyesi ve admin yoklama veremez; Türkçe açıklama, kayıt yazılmaz", async () => {
+    const { sessionId, code } = await startLive();
+    for (const uid of ["uzm", "doc", "uzm2"]) {
+      const err = await errorOf(verify(sessionId, code, uid));
+      expect(err).toEqual({ code: "permission-denied", message: expect.stringContaining("1.–4. yıl asistan") });
+    }
+    const asAdminErr = await errorOf(verifyRealTimeAttendance.run(callableRequest({ sessionId, code }, asAdmin())));
+    expect(asAdminErr.code).toBe("permission-denied");
+    expect((await sessionDoc(sessionId))?.presentCount).toBe(0);
+    expect(await verify(sessionId, code, "r1")).toEqual({ verified: true, alreadyRecorded: false });
+  });
+
+  it("beklenen listede yalnızca asistanlar; ders kapanınca uzmanlara 'katılmadı' yazılmaz", async () => {
+    const { sessionId } = await startLive();
+    expect(await sessionDoc(sessionId)).toMatchObject({ expectedAttendees: ["r1", "r2"], expectedCount: 2 });
+    await endLectureSession.run(callableRequest({ sessionId }, asAdmin()));
+    const records = await db().collection(`attendance_sessions/${sessionId}/records`).get();
+    expect(records.docs.map((d) => d.id).sort()).toEqual(["r1", "r2"]);
+    expect((await sessionDoc(sessionId))?.absentCount).toBe(2);
+  });
+
+  it("yoklamaya tabi olmayan üyeye mazeret girilemez; o derste beklenen eski asistanın kaydı düzeltilebilir", async () => {
+    const { sessionId } = await startLive();
+    expect((await errorOf(excuse(sessionId, "uzm"))).code).toBe("failed-precondition");
+    // r2 ders sırasında uzman olur; dersin beklenen listesinde olduğu için mazereti yine girilebilir.
+    await db().doc("users/r2").update({ title: "Uzm. Dr.", residencyYear: null });
+    expect((await errorOf(excuse(sessionId, "r2"))).code).toBe("ok");
+  });
+});
+
 describe("iletilen kod işareti (AUDIT S2, F9.2)", () => {
   /** Belirli bir ağdan gelen istek (X-Forwarded-For'un son değeri istemcinin adresidir). */
   const fromNetwork = <T>(request: T, ip: string): T =>

@@ -72,6 +72,16 @@ export const SEED_USERS: SeedUser[] = [
     status: "active",
   },
   {
+    // Uzman hekim (F11.4/F11.6): yoklamaya tabi değil (D24); materyallerde "Uzman" hedef kitlesi (D26).
+    uid: "seed-uzman",
+    email: "uzman@pediatrist.test",
+    title: "Uzm. Dr.",
+    fullName: "Deniz Arıkan",
+    residencyYear: null,
+    role: "user",
+    status: "active",
+  },
+  {
     uid: "seed-bekleyen",
     email: "bekleyen@pediatrist.test",
     title: "Asistan Dr.",

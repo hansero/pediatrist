@@ -48,7 +48,7 @@ function NavLinks({
   return (
     <nav aria-label="Ana menü">
       <ul className="nav-list">
-        {visibleNavItems(session.role).map((item) => {
+        {visibleNavItems(session).map((item) => {
           const active = isActivePath(pathname, item.href);
           return (
             <li key={item.key}>

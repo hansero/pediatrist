@@ -5,7 +5,12 @@ import { auditIn, writeAuditLog } from "./auditLogger";
 import { defineCallable } from "./callable";
 import { enforceRateLimit } from "./rateLimit";
 import { currentContext } from "./requestContext";
-import { ATTENDANCE_CODE_ALPHABET, ATTENDANCE_CODE_LENGTH, ATTENDANCE_SLOT_MS } from "./shared/constants";
+import {
+  ATTENDANCE_CODE_ALPHABET,
+  ATTENDANCE_CODE_LENGTH,
+  ATTENDANCE_SLOT_MS,
+  isAttendanceEligible,
+} from "./shared/constants";
 import { COLLECTIONS, type AttendanceLiveLockDoc, type AttendanceStatus, type MemberDoc } from "./shared/types";
 
 /**
@@ -104,7 +109,8 @@ async function closeLecture(
  * Admin: yeni ders yoklaması başlatır (F4.1).
  * Tek canlı ders kuralı `attendance_meta/live` kilidiyle TRANSACTION içinde uygulanır (eşzamanlı iki
  * başlatma isteğinden yalnızca biri geçer). Kilit süresi dolmuş bir derse aitse o ders aynı işlemde
- * kapatılır (zamanlayıcıyı beklemeden). Beklenen katılımcılar (o andaki etkin hekimler) derse yazılır.
+ * kapatılır (zamanlayıcıyı beklemeden). Beklenen katılımcılar derse yazılır: o andaki etkin 1.–4. yıl asistanlar
+ * (D24; uzman/öğretim üyeleri yoklamaya tabi değil).
  */
 export const startLectureSession = defineCallable("startLectureSession", "admin", async (data, actor) => {
   const db = getFirestore();
@@ -136,7 +142,10 @@ export const startLectureSession = defineCallable("startLectureSession", "admin"
       }
     }
 
-    const expectedAttendees = members.docs.map((d) => d.id).sort();
+    const expectedAttendees = members.docs
+      .filter((d) => isAttendanceEligible(d.data() as MemberDoc<Timestamp>))
+      .map((d) => d.id)
+      .sort();
     tx.set(sessionRef, {
       title: data.title,
       lecturer: data.lecturer,
@@ -223,12 +232,13 @@ type VerifyOutcome = { kind: "recorded"; alreadyRecorded: boolean } | { kind: "n
 
 /**
  * Hekim: projektör kodunu doğrular ve katılım kaydını yazar (F4.1, D23: tek TRANSACTION).
- * - Kimlik MFA'lı oturumdan gelir (`guards.ts`); cihaz imzası istenmez (D23).
+ * - Kimlik MFA'lı oturumdan gelir; yalnızca 1.–4. yıl asistan (`guards.ts › requireAttendee`, D24); cihaz imzası
+ *   istenmez (D23).
  * - Aynı hekimin eşzamanlı iki isteğinden yalnızca biri kayıt yazar (transaction + `present` denetimi).
  * - Durum geçişleri: kayıt yok → katıldı (+1); mazeretli → katıldı (katılan +1, mazeretli −1); zaten katıldı → değişiklik yok.
  * - Reddedilen girişimlerin denetim kaydı transaction dışında yazılır (transaction'daki kayıt geri alınırdı).
  */
-export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance", "member", async (data, actor) => {
+export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance", "attendee", async (data, actor) => {
   await enforceRateLimit(actor, "attendanceVerify");
   const db = getFirestore();
   const { uid, email: actorEmail } = actor;
@@ -353,6 +363,15 @@ export const markAttendanceExcused = defineCallable("markAttendanceExcused", "ad
     }
     const session = sessionSnap.data()!;
     const user = userSnap.data()!;
+    // D24: yalnızca yoklamaya tabi üyeye mazeret girilir. O derste zaten beklenen ya da kaydı olan üye (ör. sonradan
+    // uzman olmuş eski asistanın "katılmadı" kaydı) istisnadır: geçmiş kayıt düzeltilebilmelidir.
+    const expected = Array.isArray(session.expectedAttendees) && session.expectedAttendees.includes(data.targetUid);
+    if (!previous && !expected && !isAttendanceEligible(user as MemberDoc<Timestamp>)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Bu üye ders yoklamasına tabi değil (yalnızca 1.–4. yıl asistanlar)."
+      );
+    }
 
     const record = {
       uid: data.targetUid,

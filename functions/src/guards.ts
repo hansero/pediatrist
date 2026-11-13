@@ -1,6 +1,7 @@
 import { HttpsError, type CallableRequest } from "firebase-functions/v2/https";
 import { getFirestore, type Timestamp } from "firebase-admin/firestore";
 import { ENFORCE_APP_CHECK } from "./config";
+import { ATTENDANCE_INELIGIBLE_MESSAGE, isAttendanceEligible } from "./shared/constants";
 import { parseSecurityConfig, SECURITY_CONFIG, type SecurityConfigDoc } from "./shared/security";
 import { COLLECTIONS, type MemberDoc } from "./shared/types";
 
@@ -96,6 +97,18 @@ export async function requireAdmin(request: CallableRequest<unknown>): Promise<M
   const ctx = await requireActive(request);
   if (ctx.profile.role !== "admin") {
     throw new HttpsError("permission-denied", "Bu işlem yalnızca Eğitim Sorumlusu (Admin) yetkisiyle yapılabilir.");
+  }
+  return ctx;
+}
+
+/**
+ * Yoklama veren üye (D24, F11.4): aktif ve `isAttendanceEligible` (hekim rolünde 1.–4. yıl asistan).
+ * Eğitim Sorumlusu ile uzman/öğretim üyeleri yoklama veremez.
+ */
+export async function requireAttendee(request: CallableRequest<unknown>): Promise<MemberContext> {
+  const ctx = await requireActive(request);
+  if (!isAttendanceEligible(ctx.profile)) {
+    throw new HttpsError("permission-denied", ATTENDANCE_INELIGIBLE_MESSAGE);
   }
   return ctx;
 }

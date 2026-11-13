@@ -58,6 +58,13 @@ describe("üye işlemleri (F7.1)", () => {
     ]);
   });
 
+  it("kıdem yılı değiştirme yalnızca asistanlarda (uzman ve öğretim üyesinde yok; D24)", () => {
+    for (const title of ["Uzm. Dr.", "Doç. Dr.", "Prof. Dr."]) {
+      expect(availableActions(member("u", { title, residencyYear: null }), "me")).not.toContain("changeYear");
+    }
+    expect(availableActions(member("r", { title: "Asistan Dr." }), "me")).toContain("changeYear");
+  });
+
   it("sıralama: önce bekleyenler, sonra ada göre; arama ad ve e-postada, Türkçe harf duyarsız", () => {
     const rows = sortMembers([
       member("z", { fullName: "Zeynep" }),

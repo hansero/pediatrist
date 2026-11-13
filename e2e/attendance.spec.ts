@@ -409,3 +409,24 @@ test("kamera izni verilmezse Türkçe açıklama çıkar ve elle kodla katılım
   await doctorCtx.close();
   await lecture.end();
 });
+
+// --- F11.4: yoklama yalnızca 1.–4. yıl asistanlar içindir (D24) --------------------------------------
+
+test("uzman hesabında ders yoklaması yok: menüde görünmez, sayfa açıklama gösterir, dashboard'da yoklama göstergesi yok (F11.4)", async ({
+  page,
+}) => {
+  await loginAs(page, "uzman@pediatrist.test");
+  await page.goto("/dashboard");
+  await expect(page.getByRole("heading", { name: "Göstergelerim" })).toBeVisible();
+  await expect(page.getByText("Derse katılım")).toHaveCount(0);
+  // Menü (telefonda çekmecede; masaüstünde kenar çubuğunda): yoklama bağlantısı yok, materyaller var.
+  const menu = page.getByRole("navigation", { name: "Ana menü" });
+  if (!(await menu.first().isVisible())) await page.getByRole("button", { name: "Menü", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Eğitim Materyalleri" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ders Yoklaması" })).toHaveCount(0);
+
+  await page.goto("/attendance");
+  await expect(page.getByText("Ders yoklaması yalnızca 1.–4. yıl asistan hekimler içindir.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "QR kodu okut" })).toHaveCount(0);
+  await expect(page.getByLabel("Projektördeki kod")).toHaveCount(0);
+});

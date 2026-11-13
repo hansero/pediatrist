@@ -144,6 +144,30 @@ describe("updateMemberAccess", () => {
   });
 });
 
+describe("kıdem yılı yalnızca asistanlarda (D24)", () => {
+  beforeEach(async () => {
+    await createMember("admin", "admin", "active");
+  });
+
+  it("uzmana kıdem yılı atanamaz; asistanın kıdemi değişir", async () => {
+    await createMember("uzm", "user", "active", { title: "Uzm. Dr.", residencyYear: null });
+    await createMember("asi", "user", "active");
+    const err = await errorOf(
+      updateMemberAccess.run(callableRequest({ targetUid: "uzm", residencyYear: 2 }, asAdmin()))
+    );
+    expect(err).toEqual({
+      code: "failed-precondition",
+      message: "Kıdem yılı yalnızca asistanlar için değiştirilebilir.",
+    });
+    expect((await profile("uzm"))?.residencyYear).toBeNull();
+    await updateMemberAccess.run(callableRequest({ targetUid: "asi", residencyYear: 3 }, asAdmin()));
+    expect((await profile("asi"))?.residencyYear).toBe(3);
+    // Uzmanın diğer işlemleri (ör. askıya alma) etkilenmez.
+    await updateMemberAccess.run(callableRequest({ targetUid: "uzm", status: "suspended" }, asAdmin()));
+    expect((await profile("uzm"))?.status).toBe("suspended");
+  });
+});
+
 describe("son aktif admin koruması", () => {
   /**
    * Sıralı akışta bu koruma erişilemez: isteği yapan da aktif admin olmak zorunda (hedef "son" admin olamaz)

@@ -1,5 +1,12 @@
 import { onCall } from "firebase-functions/v2/https";
-import { requireActive, requireAdmin, requireSignedIn, type MemberContext, type SignedInContext } from "./guards";
+import {
+  requireActive,
+  requireAdmin,
+  requireAttendee,
+  requireSignedIn,
+  type MemberContext,
+  type SignedInContext,
+} from "./guards";
 import { AUDIT_IP_SALT } from "./config";
 import { contextOf, runWithContext } from "./requestContext";
 import { REGION } from "./shared/constants";
@@ -9,9 +16,10 @@ import { parse } from "./validate";
 /**
  * - "admin":    aktif Eğitim Sorumlusu
  * - "member":   aktif üye
+ * - "attendee": yoklama veren üye: aktif, hekim rolünde 1.–4. yıl asistan (D24)
  * - "signedIn": yalnızca oturum (profil şartı yok) — YALNIZCA `completeRegistration` için
  */
-export type Access = "admin" | "member" | "signedIn";
+export type Access = "admin" | "member" | "attendee" | "signedIn";
 type ContextFor<A extends Access> = A extends "signedIn" ? SignedInContext : MemberContext;
 
 /**
@@ -40,7 +48,9 @@ export function defineCallable<N extends CallableName, A extends Access>(
           ? await requireAdmin(request)
           : access === "member"
             ? await requireActive(request)
-            : requireSignedIn(request);
+            : access === "attendee"
+              ? await requireAttendee(request)
+              : requireSignedIn(request);
       const data = parse(contract.request, request.data) as CallableRequestData<N>;
       return handler(data, ctx as ContextFor<A>);
     })

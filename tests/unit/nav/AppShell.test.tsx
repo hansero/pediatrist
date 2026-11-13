@@ -57,8 +57,23 @@ describe("navItems", () => {
   });
 
   it("yönetim öğesi yalnızca admin'e", () => {
-    expect(visibleNavItems("user").map((i) => i.key)).not.toContain("admin");
-    expect(visibleNavItems("admin").map((i) => i.key)).toContain("admin");
+    const resident = { role: "user" as const, title: "Asistan Dr.", residencyYear: 2 };
+    expect(visibleNavItems(resident).map((i) => i.key)).not.toContain("admin");
+    expect(visibleNavItems({ role: "admin", title: "Prof. Dr.", residencyYear: null }).map((i) => i.key)).toContain(
+      "admin"
+    );
+  });
+
+  it("ders yoklaması yalnızca admin'e ve 1.–4. yıl asistana görünür (D24)", () => {
+    const keys = (m: Parameters<typeof visibleNavItems>[0]) => visibleNavItems(m).map((i) => i.key);
+    expect(keys({ role: "user", title: "Asistan Dr.", residencyYear: 1 })).toContain("attendance");
+    expect(keys({ role: "admin", title: "Prof. Dr.", residencyYear: null })).toContain("attendance");
+    for (const title of ["Uzm. Dr.", "Doç. Dr.", "Prof. Dr."]) {
+      expect(keys({ role: "user", title, residencyYear: null })).not.toContain("attendance");
+    }
+    // Uzmana yanlışlıkla kıdem yazılmış eski kayıt da yoklamaya tabi değildir.
+    expect(keys({ role: "user", title: "Uzm. Dr.", residencyYear: 3 })).not.toContain("attendance");
+    expect(keys({ role: "user", title: "Uzm. Dr.", residencyYear: null })).toContain("materials");
   });
 });
 

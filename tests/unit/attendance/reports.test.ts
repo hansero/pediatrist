@@ -145,6 +145,13 @@ describe("buildDoctorReport", () => {
   it("eşik altındakiler önce (en düşük oran başta), sonra ada göre", () => {
     expect(rows.map((r) => r.uid)).toEqual(["b", "a", "c", "gone"]);
   });
+
+  it("yoklamaya tabi olmayan etkin uzman karnede yer almaz; geçmiş kaydı varsa görünür (D24)", () => {
+    const uzman = { uid: "u", fullName: "Uzman", title: "Uzm. Dr.", residencyYear: null };
+    expect(buildDoctorReport([], [doctor("a", "Ayşe"), uzman]).map((r) => r.uid)).toEqual(["a"]);
+    const withHistory = buildDoctorReport([log("u", "s1", "present", 1)], [uzman]);
+    expect(withHistory.map((r) => r.uid)).toEqual(["u"]);
+  });
 });
 
 describe("rapor CSV'leri", () => {

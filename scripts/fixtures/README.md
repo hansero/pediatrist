@@ -27,6 +27,7 @@ Ortak şifre: **`Pediatrist-Test-2026!`** (bütün e-postalar doğrulanmış)
 | `asistan2@pediatrist.test` | user | active | 2 |
 | `asistan3@pediatrist.test` | user | active | 3 |
 | `asistan4@pediatrist.test` | user | active | 4 |
+| `uzman@pediatrist.test` | user (Uzm. Dr.) | active | — (yoklamaya tabi değil, D24) |
 | `bekleyen@pediatrist.test` | user | pending | 1 |
 | `askida@pediatrist.test` | user | suspended | 2 |
 

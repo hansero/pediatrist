@@ -1,6 +1,6 @@
 "use client";
 
-import { ATTENDANCE_WARN_RATE } from "@shared/constants";
+import { ATTENDANCE_WARN_RATE, isAttendanceEligible } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
 import type { ClinicMemberSession } from "@/lib/auth/types";
 import { isLectureOpen, useLiveLecture, useMyRecord } from "@/lib/attendance/live";
@@ -62,8 +62,10 @@ function stepCard(step: DoctorStep) {
 /** Hekim ana sayfası (F7.3): sıradaki tek iş ve kişisel göstergeler. */
 export function DoctorDashboard({ session }: { session: ClinicMemberSession }) {
   const now = useMinuteClock();
+  // D24: yoklama yalnızca 1.–4. yıl asistanlar içindir; uzman/öğretim üyesinde canlı ders adımı ve katılım göstergesi yok.
+  const attends = isAttendanceEligible(session);
   const lecture = useLiveLecture();
-  const openLecture = isLectureOpen(lecture.data, now) ? lecture.data : null;
+  const openLecture = attends && isLectureOpen(lecture.data, now) ? lecture.data : null;
   const myRecord = useMyRecord(openLecture?.id ?? null, session.uid);
   const quiz = usePublishedQuiz();
   const attempts = useMyAttempts(session.uid);
@@ -81,7 +83,10 @@ export function DoctorDashboard({ session }: { session: ClinicMemberSession }) {
       : null,
     [session.uid, mandatoryKey, materials.status]
   );
-  const attendance = useReportQuery(() => fetchMyAttendanceCounts(session.uid), [session.uid]);
+  const attendance = useReportQuery(attends ? () => fetchMyAttendanceCounts(session.uid) : null, [
+    session.uid,
+    attends,
+  ]);
 
   const sources = [lecture, myRecord, quiz, attempts, materials, completed];
   const loading = sources.some((s) => s.status === "loading");
@@ -131,21 +136,23 @@ export function DoctorDashboard({ session }: { session: ClinicMemberSession }) {
             value={mandatory.length ? `${mandatory.length - pendingMaterials.length} / ${mandatory.length}` : "—"}
             foot={mandatory.length ? "tamamlandı" : "Kıdeminize yönelik zorunlu materyal yok."}
           />
-          <Kpi
-            label="Derse katılım"
-            state={attendance}
-            value={percent(att?.rate ?? null)}
-            foot={
-              att && att.present + att.absent > 0
-                ? `${att.present} derse katıldınız · ${att.absent} derse katılmadınız${att.excused ? ` · ${att.excused} mazeretli` : ""}`
-                : "Henüz kapanmış ders kaydınız yok."
-            }
-            warning={
-              att && isBelowThreshold(att.rate)
-                ? `Katılımınız %${Math.round(ATTENDANCE_WARN_RATE * 100)} eşiğinin altında.`
-                : undefined
-            }
-          />
+          {attends && (
+            <Kpi
+              label="Derse katılım"
+              state={attendance}
+              value={percent(att?.rate ?? null)}
+              foot={
+                att && att.present + att.absent > 0
+                  ? `${att.present} derse katıldınız · ${att.absent} derse katılmadınız${att.excused ? ` · ${att.excused} mazeretli` : ""}`
+                  : "Henüz kapanmış ders kaydınız yok."
+              }
+              warning={
+                att && isBelowThreshold(att.rate)
+                  ? `Katılımınız %${Math.round(ATTENDANCE_WARN_RATE * 100)} eşiğinin altında.`
+                  : undefined
+              }
+            />
+          )}
         </dl>
       </section>
     </div>

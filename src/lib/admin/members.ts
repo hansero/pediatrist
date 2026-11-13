@@ -14,7 +14,13 @@ import {
   type QueryDocumentSnapshot,
   type Timestamp,
 } from "firebase/firestore";
-import type { AuditResourceType, AuditSeverity, MemberStatus, Role } from "@shared/constants";
+import {
+  isResidentTitle,
+  type AuditResourceType,
+  type AuditSeverity,
+  type MemberStatus,
+  type Role,
+} from "@shared/constants";
 import { COLLECTIONS } from "@shared/types";
 import { useCapped, useFirestoreSnapshot, type CappedState, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import { notConfiguredError } from "@/lib/errors";
@@ -131,7 +137,8 @@ export function availableActions(m: MemberRow, selfUid: string): MemberAction[] 
     if (m.status === "active") actions.push(m.role === "admin" ? "removeAdmin" : "makeAdmin");
   }
   if (!self) actions.push("resetMfa");
-  if (m.role === "user") actions.push("changeYear");
+  // Kıdem yılı yalnızca asistanlar içindir (sunucu da reddeder; D24 yoklama uygunluğu buna bağlı).
+  if (m.role === "user" && isResidentTitle(m.title)) actions.push("changeYear");
   // KVKK (F9.1): döküm herkes için (kendisi dahil); silme kendi hesabında yok (sunucu da reddeder).
   actions.push("exportData");
   if (!self) actions.push("delete");
