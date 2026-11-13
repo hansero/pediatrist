@@ -93,6 +93,15 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F10.2 | Staging Firebase projesi kurulum kontrol listesi | S | ✅ | Hepsi |
 | F10.3 | Kullanıcı kabul testi (UAT) senaryoları | S | ✅ | Hepsi |
 | F10.4 | Denetim izlenebilirlik kontrolü (her bulgu → kanıt) | S | ✅ | Hepsi |
+| **F11** | **Kullanıcı revizyonları (2026-11-13)** | | | |
+| F11.1 | Yoklama cihazını (passkey) kaldır | L | ✅ | Madde 1 (D23) |
+| F11.2 | Uygulama içi QR okuyucu | M | ⬜ | Madde 2 (D27) |
+| F11.3 | Ders kategorisini kaldır | S | ⬜ | Madde 3 |
+| F11.4 | Yoklama verme yetkisi: yalnızca 1–4. yıl asistan | M | ⬜ | Madde 7 (D24) |
+| F11.5 | Materyal etiketleri | M | ⬜ | Madde 4 (D25) |
+| F11.6 | Hedef kitlede "Uzman" | M | ⬜ | Madde 6 (D26) |
+| F11.7 | Admin materyal süzgeci | S | ⬜ | Madde 5 |
+| F11.8 | Belgeler, izlenebilirlik, tam doğrulama | S | ⬜ | Hepsi |
 
 ---
 
@@ -100,15 +109,13 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
-- **Tarih:** 2026-11-12
-- **Son tamamlanan adım:** F10.4. **Revizyon programı tamamlandı (F0–F10, bütün adımlar ✅).** İzlenebilirlik tablosu yazıldı (81 bulgu: 72 kapandı, 8 kısmen, 1 kapanmadı); sınav ekranı ve karne erişilebilirlik denetimine eklendi. Testler: unit 255, rules 58, functions 118, e2e 113 (+3 bilinçli atlanan).
+- **Tarih:** 2026-11-13
+- **Son tamamlanan adım:** F11.1 (yoklama cihazı kaldırıldı, D23). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
 - **Devam eden adım:** —
-- **Sıradaki iş:** Planlı kod işi kalmadı. Kalanlar kullanıcı tarafında ya da karar bekliyor (`docs/revision/TRACEABILITY.md` › "Açık kalanlar"):
-  1. Staging kurulumu: `docs/revision/STAGING_CHECKLIST.md` + `DEPLOY.md`. Komutlar resmî belgelerle karşılaştırılamadı; ilk kurulumda düzeltme gerekebilir. Kurulumda bir adım yazıldığı gibi çalışmazsa `DEPLOY.md` düzeltilmeli.
-  2. Kullanıcı kabul testi: `docs/revision/UAT_SCENARIOS.md` (önce ⚠ işaretli dokuz senaryo). Bulunan hatalar yeni iş olarak ele alınır.
-  3. KVKK metninin hukuk onayı → `functions/src/shared/consent.ts` içinde `KVKK_NOTICE_APPROVED = true` (metin değişirse `KVKK_NOTICE_VERSION` artırılır).
-  4. Karar bekleyenler: hesaplayıcı formül motoru (D8), yoklamada konum/ikinci etken (S2), sunucuda sayfa görüntüsü (S13), App Check replay ve BigQuery (S10), nonce CSP (C6), otomatik bağımlılık denetimi (S14), görsel açıklaması, sunucu tarafı sayfa koruması, `minInstances`.
-  - Yeni bir oturumda kullanıcı bunlardan birini isterse: yeni adım olarak §1 tablosuna satır ekle (F11.x), aynı ritüelle ilerle.
+- **Sıradaki iş:** F11.2 (uygulama içi QR okuyucu). Ardından sırayla F11.3 → F11.8; her adımın kapsamı §5 F11'de.
+  - Kullanıcı kararları: birden çok etiket; "Uzman" yalnızca `Uzm. Dr.`; kamera izni "QR kodu okut" düğmesiyle, QR okununca hemen gönderim.
+  - Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`.
+  - Önceki dönemden kalanlar (staging, UAT, KVKK hukuk onayı, karar bekleyenler) için `docs/revision/TRACEABILITY.md` › "Açık kalanlar".
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -125,7 +132,7 @@ Bu kararlar bütün adımlar için geçerlidir. Değiştirmek için kullanıcı 
 | D3 | Yetkinin tek kaynağı `users/{uid}` dokümanıdır. Claim'ler önbellektir. Anında iptal `tokensValidAfter` (saniye) ile `request.auth.token.auth_time` karşılaştırılarak yapılır. | AUDIT C5 | Hayır |
 | D4 | Kayıt, istemcide `createUserWithEmailAndPassword` ve ardından `completeRegistration` callable'ı ile yapılır. Profil dokümanını sunucu yazar. İşlem idempotenttir: profil eksikse girişte tekrar çağrılır. İstemcinin `users` koleksiyonuna doğrudan `create` izni kaldırılır. | AUDIT C9, S11. Blocking function Identity Platform gerektirir ve emülatörde daha zordur. | Evet |
 | D5 | MFA, Identity Platform TOTP ile gerçek olarak uygulanır. Zorunluluk ~~`REQUIRE_MFA` parametresiyle~~ **`config/security` dokümanıyla (D20)** yönetilir: staging/prod'da `true`, emülatörde `false`. Bunun sebebi, Auth emülatörünün TOTP'yi desteklememesidir (F3.4'te doğrulandı: kayıt isteği `Missing phoneEnrollmentInfo` ile reddediliyor; emülatör yalnızca SMS faktörünü tanıyor). Sahte TOTP adımı tamamen silinir. | AUDIT C4 | Evet (MFA'sız devam seçilirse ekran ve iddialar tamamen kaldırılır) |
-| D6 | Yoklama cihaz bağlama WebAuthn platform passkey'leri ile yapılır (`@simplewebauthn/server` + `@simplewebauthn/browser`). `localStorage` sırrı kaldırılır. e2e testlerinde Playwright CDP sanal doğrulayıcısı kullanılır. | AUDIT S1, C2 | Evet |
+| D6 | ~~Yoklama cihaz bağlama WebAuthn platform passkey'leri ile yapılır (`@simplewebauthn/server` + `@simplewebauthn/browser`). `localStorage` sırrı kaldırılır. e2e testlerinde Playwright CDP sanal doğrulayıcısı kullanılır.~~ **D23 ile değişti (2026-11-13).** | AUDIT S1, C2 | Evet |
 | D7 | Sınav sonucunun gösterimi her sınav için `revealPolicy` ile belirlenir: `after_close` (varsayılan; sınav kapanana kadar yalnızca puan ve doğru/yanlış görünür) veya `immediate` (anında tam karne). Doğru cevaplar istemci paketine hiçbir koşulda girmez. | AUDIT C7. Plan.MD'deki "anında karne" isteği korunur, varsayılan güvenli seçenektir. | Evet |
 | D8 | Hesaplayıcı formül motoru bu revizyonun kapsamı dışındadır. Sayfa dürüst bir "Yakında" durumu gösterir. Admin protokol notları `calculators_config`'e gerçekten kaydedilir. Formül motoru ayrı bir faz olarak (F11, opsiyonel) eklenebilir. | Klinik risk; doğrulama ve referans değer testleri gerektirir. | Evet |
 | D9 | CSP tek kaynaktan, `next.config.ts` üzerinden verilir. `firebase.json` içindeki `hosting.headers` kaldırılır. | AUDIT C6 | Hayır |
@@ -142,6 +149,11 @@ Bu kararlar bütün adımlar için geçerlidir. Değiştirmek için kullanıcı 
 | D20 | **MFA zorunluluğunun tek kaynağı Firestore `config/security.requireMfa`** (N8; D5'in mekanizmasını değiştirir, kullanıcı onayıyla 2026-11-10). Firestore ve Storage kuralları (`isActive()` → `mfaSatisfied()`), Cloud Functions (`guards.ts`, profil ile aynı `getAll`) ve istemci (oturum bağlamı) aynı dokümanı `parseSecurityConfig` mantığıyla okur. **Doküman yoksa veya değer boolean `false` değilse MFA zorunludur.** Doküman istemciye salt okunur (oturum açmış herkes), yalnızca Admin SDK/konsoldan yazılır. Emülatör seed'i `requireMfa: false` yazar. Kendi profilini okuma MFA istemez. `REQUIRE_MFA` parametresi ve `NEXT_PUBLIC_REQUIRE_MFA` kaldırıldı. Maliyet: kurallı her istekte +1 doküman okuması. | AUDIT C4/C5, N8: şifresi çalınmış hesabın SDK ile doğrudan okuma yapması | Hayır |
 | D21 | **E-posta doğrulama zorunluluğu da `config/security` dokümanında** (`requireEmailVerified`; kullanıcı onayıyla 2026-11-11). D20'deki MFA ile aynı mekanizma ve güvenli varsayılan (doküman yoksa veya değer boolean `false` değilse zorunlu). Firestore ve Storage kuralları (`securitySatisfied()` = MFA ve e-posta), `guards.ts` ve istemci (doğrulama ekranı) aynı dokümanı okur. Kendi profilini okuma e-posta doğrulaması istemez. `REQUIRE_EMAIL_VERIFIED` functions parametresi kaldırıldı. Emülatör seed'i `false` yazar. | Tek kaynak; kurallarda da zorunluluk | Hayır |
 | D22 | **Ders kapanırken "katılmadı" kaydı yazılır** (kullanıcı kararı, 2026-11-11, seçenek A). Kapanışın her yolunda (admin bitirir, süre dolar, süresi dolmuş kilit yeni başlatmada temizlenir) dersin başındaki `expectedAttendees`'ten kaydı olmayanlara `records/{uid}` ve `attendance_logs/{ders}_{uid}`: `status: "absent"`, `method: "system_absent"`, `verifiedAt: null`, `markedAt`. Derse `absentCount` yazılır. Sonradan mazeret girilirse katılmadı → mazeretli (`absentCount` −1). Katılım oranı = katıldı / (katıldı + katılmadı); mazeretliler paydaya girmez. Ders başladıktan sonra üye olan hekim o ders için beklenmez. | Hekim kendi devamsızlığını görebilsin; raporlar tek kaynaktan | Evet |
+| D23 | **Yoklamada cihaz bağlama yoktur** (D6'nın yerine; kullanıcı kararı 2026-11-13). Yetkinin kaynağı MFA'lı oturum (`guards.ts`), yoklama uygunluğu (D24) ve projektör kodudur. WebAuthn (sunucu, istemci, bağımlılıklar, `/account/device`, admin "cihaz sıfırla") tamamen kaldırıldı. Yeni kayıtların yöntemi `code`; `qr+webauthn` yalnızca eski kayıtlarda. Özellik açıkken kurulmuş projede kalan veri `scripts/remove-attendance-device-data.ts` ile silinir. | Hesap zaten MFA'lı; kodun iletilmesi riski (S2) passkey ile de vardı | Evet |
+| D24 | **Yoklamayı yalnızca admin yönetir; yalnızca 1–4. yıl asistan verir** (kullanıcı kararı 2026-11-13). Başlatma, bitirme, projektör ve mazeret admin'e özel. Yoklama veren üye: `role == "user"`, ünvan `Asistan Dr.`, `residencyYear ∈ 1–4`. `expectedAttendees` ve D22 "katılmadı" kayıtları yalnızca bu üyeler içindir. Tek kaynak `isAttendanceEligible` (shared), sunucuda `guards.ts › requireAttendee`. | Uzman/öğretim üyeleri yoklamaya tabi değil | Evet |
+| D25 | **Materyal sınıflaması serbest etikettir** (kullanıcı kararı 2026-11-13: birden çok etiket). 0–8 etiket, her biri ≤ 40 karakter; kırpılır, iç boşluklar teke iner, `tr` küçük harfe göre tekrarsız. `MATERIAL_CATEGORIES` kaldırılır; eski `category` alanı okunurken tek etiket sayılır. Öneriler mevcut materyallerden türetilir (ayrı koleksiyon yok). | Sabit liste klinik ihtiyaca uymuyor | Evet |
+| D26 | **Materyal hedef kitlesi = `targetYears` (1–4) + `targetSpecialists`** (kullanıcı kararı 2026-11-13). En az biri dolu. "Uzman" yalnızca ünvanı `Uzm. Dr.` olan üyedir; Doç./Prof. hedef kitle dışında kalır, varsayılan süzgeçleri "Bütün kıdemler". Görünürlük kurallarda kısıtlanmaz (süzgeç ve rapor içindir). | Uzmanlara özel içerik | Evet |
+| D27 | **QR okuma cihazda, `jsqr` ile** (kullanıcı kararı 2026-11-13: kamera izni "QR kodu okut" düğmesiyle istenir). Kamera görüntüsü kaydedilmez, gönderilmez; çözümleme ana iş parçacığında (CSP değişmez). `BarcodeDetector` kullanılmaz: tek kod yolu, e2e'de sınanan yolla aynı. | Uygulama içinden yoklama; KVKK | Evet |
 
 ---
 
@@ -1583,6 +1595,44 @@ Bir adım ✅ olmadan önce şunlar sağlanmalı:
     - "Açık kalanlar" bölümü üç başlıkta: yalnızca gerçek ortamda yapılabilenler (4), bilinçli olarak yapılmayanlar (10; neden ve risk sütunlarıyla), otomatik testle kanıtlanamayanlar (görsel/metin bulguları).
   - **Bulunan boşluk ve kapatılması:** erişilebilirlik denetimi sınav ekranının kendisini (sınav sürerken) ve karneyi kapsamıyordu. `e2e/quiz-exam.spec.ts`'e üç axe denetimi eklendi (sınav ekranı, cevapları kapalı karne, cevapları açık karne); hepsi temiz geçti.
   - Otomatik bağımlılık denetimi (Dependabot / CI'da `npm audit`) eklenmedi: depoda kendiliğinden PR/uyarı açacağı için kullanıcıya bırakıldı (TRACEABILITY "açık kalanlar").
+
+---
+
+### F11 — Kullanıcı revizyonları (2026-11-13)
+
+Kullanıcının 7 maddelik isteği. Plan: oturumdaki onaylı plan dosyası; kararlar D23–D27.
+
+#### F11.1 Yoklama cihazını (passkey) kaldır (L) — madde 1
+- **✅ Uygulanan:**
+  - **Sunucu:** `functions/src/webauthn.ts` silindi (3 callable). `verifyRealTimeAttendance` sözleşmesi `{sessionId, code}`; imza bloğu ve `no-device` / `challenge-expired` / `assertion-invalid` sonuçları kalktı; yöntem `code`. Kod denetimi, `alreadyRecorded`, IP işareti ve sayaçlar aynen.
+  - `updateMemberAccess`'ten cihaz sıfırlama (`resetBoundDevice`, `MEMBER_DEVICE_RESET`), kayıttan `webauthn: null`, KVKK dökümünden `attendanceDeviceRegisteredAt`, üye silmeden challenge silme, `attendanceChallenge` hız kovası, `WEBAUTHN_RP_ID` / `WEBAUTHN_ORIGINS` parametreleri kaldırıldı. `@simplewebauthn/server` ve `/browser` bağımlılıkları silindi.
+  - **İstemci:** `src/lib/webauthn.ts`, `/account/device` sayfası, kenar çubuğu bağlantısı, oturumdaki `hasBoundDevice`, üye panelindeki "Yoklama cihazını sıfırla" ve "Yoklama cihazı" sütunları, canlı listedeki cihaz sütunu, WebAuthn hata eşlemesi silindi. Eski denetim kaydı etiketleri (`ATTENDANCE_DEVICE_*`, `MEMBER_DEVICE_RESET`) okunur kalsın diye duruyor.
+  - `Permissions-Policy`: `publickey-credentials-create=()`, `publickey-credentials-get=()`; `camera=(self)` QR için kaldı.
+  - **KVKK:** "Cihaz bilgisi" maddesi çıktı, kamera maddesi eklendi ("yalnızca cihazınızda işlenir; kaydedilmez, gönderilmez"). `KVKK_NOTICE_VERSION` **1.1**: her üyeden yeniden onay istenir. `KVKK_NOTICE_APPROVED` hâlâ `false`.
+  - **Operasyon:** `scripts/verify-staging.mjs` B7 artık WebAuthn parametresi istemiyor (kalmışsa uyarı); Storage CORS kökenleri `--origin` ile ya da varsayılan Hosting alan adlarından. Yeni `scripts/remove-attendance-device-data.ts`: kuru çalışma varsayılan, `--yes` ile `users/*.webauthn` ve `webauthn_challenges/*` silinir; `demo-` projeyi reddeder.
+  - **Testler:** `webauthn.test.ts`, yazılım doğrulayıcı, `device.spec.ts`, sanal doğrulayıcı yardımcıları ve cihaz e2e'si silindi. functions: eski istemcinin `assertion`/`deviceId` alanları yok sayılır; MFA zorunluyken ikinci faktörsüz oturum yoklama veremez; aynı hekimden eşzamanlı iki istek → biri `alreadyRecorded`; hız sınırı `attendanceVerify` ile. unit: sözleşme alanları atılır, Permissions-Policy değerleri. rules: eski `webauthn_challenges` kapalı kalır.
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 254, rules 58, functions 103, e2e (yoklama, a11y, panel, KVKK, gezinme, CSP, oturum) 46 + 2 atlanan.
+
+#### F11.2 Uygulama içi QR okuyucu (M) — madde 2
+- `src/lib/attendance/checkInLink.ts` (`checkInUrl` + `parseCheckInLink`), `QrScanner.tsx` (`jsqr` 1.4.0, düğmeyle kamera izni, okununca hemen gönderim), kamera hata eşlemesi, e2e (canvas akışıyla okuma, izin reddi, yabancı QR).
+
+#### F11.3 Ders kategorisini kaldır (S) — madde 3
+- `LECTURE_CATEGORIES`, istek alanı, başlatma formundaki seçim, açıklamalar ve CSV "Kategori" sütunları kalkar.
+
+#### F11.4 Yoklama verme yetkisi (M) — madde 7
+- `isAttendanceEligible` + `requireAttendee` (`"attendee"` erişim düzeyi), `expectedAttendees` süzgeci, uygun olmayan hedefe mazeret reddi, asistan olmayana kıdem atama reddi, menü/sayfa/dashboard, seed'e `Uzm. Dr.` hesabı.
+
+#### F11.5 Materyal etiketleri (M) — madde 4
+- `shared/materials.ts` normalizasyonu, `labels` alanı, `LabelInput`, hekim süzgecinde etiket, kullanılmayan `category` indeksi silinir.
+
+#### F11.6 Hedef kitlede "Uzman" (M) — madde 6
+- `targetSpecialists`, `materialAudienceOf`, okunma raporu ve zorunlu materyal hesabı, hekim süzgecinde "Uzman".
+
+#### F11.7 Admin materyal süzgeci (S) — madde 5
+- `filterAdminMaterials` (arama | etiket | hedef kıdem) + liste üstünde süzgeç satırı.
+
+#### F11.8 Belgeler, izlenebilirlik, tam doğrulama (S)
+- TRACEABILITY (S1, S2, C2), UAT, STAGING, README, DEPLOY, `Plan.MD`; bütün test paketleri.
 
 ---
 

@@ -30,15 +30,7 @@ test("herkese açık sayfalar", async ({ page }) => {
 test("hekim sayfaları", async ({ page }) => {
   test.setTimeout(120_000);
   await loginAs(page, ACCOUNTS.asistan2);
-  for (const path of [
-    "/dashboard",
-    "/attendance",
-    "/quizzes",
-    "/materials",
-    "/calculators",
-    "/account/security",
-    "/account/device",
-  ]) {
+  for (const path of ["/dashboard", "/attendance", "/quizzes", "/materials", "/calculators", "/account/security"]) {
     await page.goto(path);
     await check(page, `hekim ${path}`);
   }

@@ -187,7 +187,6 @@ export interface MemberSummary {
   fullName: string;
   title: string;
   residencyYear: number | null;
-  hasDevice: boolean;
 }
 
 /** Admin: etkin hekimler (yoklama listesi için). */
@@ -207,7 +206,6 @@ export function useActiveDoctors(): LiveState<MemberSummary[]> {
               fullName: String(u.fullName ?? ""),
               title: String(u.title ?? ""),
               residencyYear: typeof u.residencyYear === "number" ? u.residencyYear : null,
-              hasDevice: Boolean(u.webauthn?.credentialId),
             };
           })
         ),

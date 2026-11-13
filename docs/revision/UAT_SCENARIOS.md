@@ -113,14 +113,17 @@ Sonuç: ☐ G ☐ K ☐ A — Not:
 
 ## B. Ders yoklaması
 
-### B1. ⚠ Yoklama cihazı kaydı — hekim (iPhone Safari **ve** Android Chrome ayrı ayrı)
+### B1. ⚠ Uygulama içinden QR okutma ve kamera izni — hekim (iPhone Safari **ve** Android Chrome ayrı ayrı)
 
-1. Telefonun tarayıcısında giriş yapın; menü › Yoklama cihazı › "Bu cihazı kaydet".
-2. Telefonun yüz / parmak izi / ekran kilidi onayını verin.
-3. Onayı bir kez de bilerek iptal edin.
+Açık bir ders yokken eğitim sorumlusundan ders başlatmasını isteyin (B2).
 
-**Beklenen:** Onaydan sonra durum "Kayıtlı". İptal edince Türkçe ve anlaşılır bir hata; kayıt oluşmuyor.
-Telefonda ekran kilidi yoksa bunu söyleyen bir mesaj çıkıyor.
+1. Telefonun tarayıcısında giriş yapın; Ders Yoklaması › "QR kodu okut". Tarayıcının kamera iznini **reddedin**.
+2. Tarayıcı ayarlarından kamera iznini açın; tekrar "QR kodu okut" › izin verin › projektördeki QR'ı okutun.
+3. Kamerayı projektör dışındaki bir QR koduna (ör. bir ürün etiketi) tutun.
+
+**Beklenen:** 1. adımda Türkçe ve anlaşılır bir mesaj ("Kamera izni verilmedi …"); elle kod girme alanı çalışıyor.
+2. adımda arka kamera açılıyor; QR okununca kamera kapanıyor ve "Yoklamanız alındı" görünüyor (ayrıca düğmeye
+basmak gerekmiyor). 3. adımda "Bu bir Pediatrist yoklama kodu değil." yazıyor ve kamera açık kalıyor.
 
 Telefon modeli / tarayıcı: ……………………… Sonuç: ☐ G ☐ K ☐ A — Not:
 
@@ -136,9 +139,9 @@ değişiyor. Projektör bilgisayarı uykuya geçmiyor ve oturum hareketsizlikten
 
 Salon / mesafe: ……………………… Sonuç: ☐ G ☐ K ☐ A — Not:
 
-### B3. ⚠ Yoklamaya katılım — hekim (kayıtlı telefonla)
+### B3. ⚠ Yoklamaya katılım — hekim
 
-1. Projektördeki QR kodu telefonun kamerasıyla okutun; açılan sayfada "Yoklamaya katıl" › yüz / parmak izi onayı.
+1. Projektördeki QR kodu telefonun **kendi kamera uygulamasıyla** okutun; açılan sayfada kod dolu gelir › "Yoklamaya katıl".
 2. Başka bir hekim QR yerine sayfayı elle açıp projektördeki kodu yazarak katılsın.
 3. Aynı hekim sayfayı kapatıp yeniden açsın.
 
@@ -150,15 +153,14 @@ Sonuç: ☐ G ☐ K ☐ A — Not:
 
 ### B4. ⚠ Yoklamada hile ve hata durumları — iki hekim
 
-1. Hekim A projektördeki kodu salonda olmayan hekim B'ye mesajla göndersin; B kendi kayıtlı telefonuyla
+1. Hekim A projektördeki kodu salonda olmayan hekim B'ye mesajla göndersin; B kendi hesabıyla
    denesin (20 saniye içinde ve 1 dakika sonra).
-2. Hekim A, hekim B'nin hesabına **kendi** telefonuyla girip katılmayı denesin.
-3. Yoklama cihazı kayıtlı olmayan bir hekim katılmayı denesin.
+2. Hekim A, hekim B'nin hesabına **kendi** telefonundan girmeyi denesin (B'nin şifresini bilse bile).
 
 **Beklenen:** 1 dakika sonraki deneme "Kod geçersiz veya süresi doldu" ile reddediliyor. (20 saniye içindeki
 deneme teknik olarak kabul edilebilir; bu durumda eğitim sorumlusu Denetim kayıtlarında katılımın projektörle
-**farklı ağdan** geldiğini görebilmelidir.) 2. adımda cihaz doğrulaması başarısız. 3. adımda önce cihaz
-kaydetmesi gerektiği söyleniyor ve kayıt sayfasına bağlantı veriliyor.
+**farklı ağdan** geldiğini görebilmelidir.) 2. adımda giriş, B'nin Authenticator kodu olmadan tamamlanmıyor
+(iki aşamalı doğrulama). Yoklamada ayrıca cihaz kaydı yoktur (D23).
 
 Sonuç: ☐ G ☐ K ☐ A — Not:
 
@@ -174,13 +176,12 @@ işaretli.
 
 Sonuç: ☐ G ☐ K ☐ A — Not:
 
-### B6. Telefon değişimi — hekim + eğitim sorumlusu
+### B6. Yeni telefon — hekim
 
-1. Eğitim sorumlusu: Üyeler › İşlemler › "Yoklama cihazını sıfırla".
-2. Hekim: yeniden girip yeni telefonunu kaydetsin; eski telefonla katılmayı denesin.
+1. Hekim yeni bir telefonda giriş yapsın (Authenticator kodu ile) ve açık derse katılsın.
 
-**Beklenen:** Sıfırlamadan sonra hekimin oturumu kapanıyor; yeni telefon kaydediliyor; eski telefonla katılım
-reddediliyor.
+**Beklenen:** Ek bir cihaz kaydı istenmiyor; giriş yapan hekim yoklamaya katılabiliyor. Authenticator uygulaması
+da yeni telefondaysa ve eskisi kaybolduysa iki aşamalı doğrulama sıfırlaması A bölümündeki gibi yapılır.
 
 Sonuç: ☐ G ☐ K ☐ A — Not:
 

@@ -108,16 +108,14 @@ describe("updateMemberAccess", () => {
     expect(await auditActions()).toContain("MEMBER_ACCESS_UPDATED");
   });
 
-  it("cihaz sıfırlama: cihaz bağı silinir ve oturum iptal edilir", async () => {
-    await createMember("hedef", "user", "active", {
-      webauthn: { credentialId: "abc", publicKey: "def", counter: 3, transports: [], backedUp: false },
-    });
-    await updateMemberAccess.run(callableRequest({ targetUid: "hedef", resetBoundDevice: true }, asAdmin()));
-    const p = await profile("hedef");
-    expect(p).toMatchObject({ status: "active" });
-    expect(p).not.toHaveProperty("webauthn");
-    expect(p?.tokensValidAfter).toBeGreaterThan(0);
-    expect(await auditActions()).toContain("MEMBER_DEVICE_RESET");
+  it("cihaz sıfırlama artık yok: tek başına 'resetBoundDevice' isteği reddedilir, oturum iptal edilmez (D23)", async () => {
+    await createMember("hedef", "user", "active");
+    const err = await errorOf(
+      updateMemberAccess.run(callableRequest({ targetUid: "hedef", resetBoundDevice: true }, asAdmin()))
+    );
+    expect(err.code).toBe("invalid-argument");
+    expect((await profile("hedef"))?.tokensValidAfter).toBeUndefined();
+    expect(await auditActions()).not.toContain("MEMBER_DEVICE_RESET");
   });
 
   it("admin kendi rolünü veya durumunu değiştiremez", async () => {
@@ -193,7 +191,6 @@ describe("completeRegistration", () => {
       role: "user",
       status: "pending",
       inviteCode: null,
-      webauthn: null,
       consent: { version: KVKK_NOTICE_VERSION },
     });
     expect((await profile("yeni"))?.consent?.acceptedAt).toBeTruthy();

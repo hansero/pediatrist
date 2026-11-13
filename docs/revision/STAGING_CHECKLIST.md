@@ -36,7 +36,7 @@ Kurulumu yapan: ……………………… Tarih: ……………… Proje kiml
 | B4  | Secret: `AUDIT_IP_SALT` (en az 16 rastgele karakter) (2)                                                             | Denetim kayıtları › Ayrıntı'da "ağ kimliği" görünür                 | ☐   |        |
 | B5  | Parametre: `AUDIT_RETENTION_DAYS` kurum politikasına göre (varsayılan 730) (2)                                       | Yeni bir denetim kaydının `expireAt` alanı beklenen tarihte         | ☐   |        |
 | B6  | Parametre: `ENFORCE_APP_CHECK=true`                                                                                  | Tarayıcı dışından (ör. curl) yapılan callable isteği reddedilir     | ☐   |        |
-| B7  | Parametreler: `WEBAUTHN_RP_ID` (alan adı), `WEBAUTHN_ORIGINS` (`https://…`)                                          | UAT B1 (cihaz kaydı) geçer                                          | ☐   |        |
+| B7  | Yoklama cihazı (passkey) kaldırıldı (D23). Özellik açıkken kurulmuş projede `npx tsx scripts/remove-attendance-device-data.ts --project <id> --yes`; `functions/.env.<id>` içindeki `WEBAUTHN_*` satırları silinir | Kuru çalışma 0 / 0 gösterir; `npm run verify:staging` B7 uyarısı vermez | ☐   |        |
 | B8  | `config/security` dokümanı **oluşturulmadı** (ya da iki alan da `true`)                                              | Firestore'da doküman yok; ikinci faktörsüz oturum veri okuyamaz     | ☐   |        |
 
 ## C. Dağıtım (1.3)

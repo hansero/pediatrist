@@ -82,15 +82,6 @@ const ACTIONS: Record<Exclude<MemberAction, TypedAction | "changeYear">, ActionS
     run: (m) => updateMemberAccess({ targetUid: m.uid, role: "user" }),
     done: (n) => `${n} artık hekim rolünde.`,
   },
-  resetDevice: {
-    label: "Yoklama cihazını sıfırla",
-    describe: (n) =>
-      `${n} adlı üyenin kayıtlı telefonu (passkey) silinir ve oturumları kapatılır. Yoklama için yeni telefonunu kaydetmesi gerekir.`,
-    confirmLabel: "Cihazı sıfırla",
-    tone: "danger",
-    run: (m) => updateMemberAccess({ targetUid: m.uid, resetBoundDevice: true }),
-    done: (n) => `${n} adlı üyenin yoklama cihazı sıfırlandı.`,
-  },
   resetMfa: {
     label: "İki aşamalı doğrulamayı sıfırla",
     describe: (n) =>
@@ -158,7 +149,6 @@ export function MemberList({ selfUid }: { selfUid: string }) {
         </StatusChip>
       ),
     },
-    { key: "device", header: "Yoklama cihazı", cell: (m) => (m.hasDevice ? "Kayıtlı" : "—") },
     {
       key: "actions",
       header: <span className="sr-only">İşlemler</span>,

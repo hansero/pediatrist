@@ -250,7 +250,6 @@ interface RosterRow {
   uid: string;
   name: string;
   residencyYear: number | null;
-  hasDevice: boolean | null;
   record: AttendanceRecordView | null;
   expected: boolean;
 }
@@ -277,7 +276,6 @@ export function buildRoster(
             ? `${record.title} ${record.fullName}`.trim()
             : "Bilinmeyen üye",
         residencyYear: d?.residencyYear ?? null,
-        hasDevice: d ? d.hasDevice : null,
         record,
         expected: lecture.expectedAttendees.includes(uid),
       };
@@ -312,11 +310,6 @@ function LiveRoster({ lecture }: { lecture: Lecture }) {
         ) : (
           <StatusChip>Bekleniyor</StatusChip>
         ),
-    },
-    {
-      key: "device",
-      header: "Yoklama cihazı",
-      cell: (r) => (r.hasDevice === null ? "—" : r.hasDevice ? "Kayıtlı" : "Kayıtlı değil"),
     },
     {
       key: "action",

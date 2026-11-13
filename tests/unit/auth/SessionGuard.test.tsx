@@ -24,7 +24,6 @@ const session = (status: "active" | "pending"): ClinicMemberSession => ({
   emailVerified: true,
   mfaRequired: true,
   emailVerificationRequired: false,
-  hasBoundDevice: false,
   consentVersion: KVKK_NOTICE_VERSION,
 });
 

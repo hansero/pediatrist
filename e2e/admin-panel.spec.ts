@@ -127,7 +127,7 @@ test("kendi satırında yalnızca kendi veri dökümü var; rol, durum, MFA ve s
   const row = await memberRow(page, ACCOUNTS.admin);
   await expect(row).toContainText("(siz)");
   const menu = await openMemberMenu(page, ACCOUNTS.admin);
-  // Seed admin'in kayıtlı cihazı yok ve kıdemi değiştirilemez (admin) → tek işlem veri dökümü (F9.1).
+  // Kendi satırı ve kıdemi değiştirilemez (admin) → tek işlem veri dökümü (F9.1).
   await expect(menu.locator(".action-list").getByRole("button")).toHaveText(["Veri dökümünü indir"]);
   await expect(menu).toContainText("hesabınızı silemezsiniz");
 });

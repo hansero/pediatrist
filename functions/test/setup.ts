@@ -26,9 +26,5 @@ process.env.ENFORCE_APP_CHECK = "false";
 // Denetim kaydı IP özeti (F9.2): yalnızca test tuzu (gerçek tuz Secret Manager'da).
 process.env.AUDIT_IP_SALT = "yalnizca-test-icin-tuz-0123456789";
 
-// WebAuthn RP (F4.2): emülatör .env'iyle aynı değerler; yazılım doğrulayıcı bu kökeni kullanır.
-process.env.WEBAUTHN_RP_ID = "localhost";
-process.env.WEBAUTHN_ORIGINS = "http://localhost:3100,http://localhost:3000";
-
 // Varsayılan bucket: emülatör çalışma ortamındaki FIREBASE_CONFIG ile aynı (sınav görseli varlık kontrolü, F5.1).
 if (getApps().length === 0) initializeApp({ projectId: PROJECT_ID, storageBucket: `${PROJECT_ID}.appspot.com` });

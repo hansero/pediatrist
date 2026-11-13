@@ -53,7 +53,6 @@ function session(overrides: Partial<ClinicMemberSession> = {}): ClinicMemberSess
     emailVerified: true,
     mfaRequired: true,
     emailVerificationRequired: false,
-    hasBoundDevice: false,
     consentVersion: KVKK_NOTICE_VERSION,
     ...overrides,
   };

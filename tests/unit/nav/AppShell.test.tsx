@@ -40,7 +40,6 @@ function session(role: "admin" | "user"): ClinicMemberSession {
     emailVerified: true,
     mfaRequired: true,
     emailVerificationRequired: false,
-    hasBoundDevice: false,
     consentVersion: KVKK_NOTICE_VERSION,
   };
 }

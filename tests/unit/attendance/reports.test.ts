@@ -56,7 +56,6 @@ const doctor = (uid: string, fullName: string): MemberSummary => ({
   fullName,
   title: "Asistan Dr.",
   residencyYear: 3,
-  hasDevice: true,
 });
 
 describe("rapor tarih aralığı", () => {

@@ -31,7 +31,6 @@ test("onay → canlı aktifleşme; iki aşamalı doğrulama sıfırlama → otur
   await expect(user).toHaveURL(/\/dashboard$/);
 
   // 3) Admin iki aşamalı doğrulamayı sıfırlar (F7.1) → oturum iptal zamanı yazılır → asistanın oturumu kapanır.
-  //    (Cihaz sıfırlama aynı iptali yapar; device.spec kayıtlı passkey ile sınar.)
   await runMemberAction(
     admin,
     email,

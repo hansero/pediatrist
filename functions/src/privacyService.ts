@@ -113,9 +113,6 @@ export const deleteMember = defineCallable("deleteMember", "admin", async (data,
   for (const i of usedInvites.docs) void writer.update(i.ref, { email: DELETED_MEMBER_NAME });
   const unusedInvites = (emailInvites?.docs ?? []).filter((i) => !(i.data() as InvitationDoc<Timestamp>).used);
   for (const i of unusedInvites) void writer.delete(i.ref);
-  for (const purpose of ["register", "attendance"]) {
-    void writer.delete(db.collection(COLLECTIONS.webauthnChallenges).doc(`${uid}_${purpose}`));
-  }
   await writer.close();
 
   // 2) Giriş hesabı (yoksa sorun değil: önceki yarım denemede silinmiş olabilir).
@@ -212,7 +209,6 @@ export const exportMemberData = defineCallable("exportMemberData", "member", asy
       consent: profile.consent
         ? { version: String(profile.consent.version), acceptedAt: iso(profile.consent.acceptedAt) }
         : null,
-      attendanceDeviceRegisteredAt: profile.webauthn ? iso(profile.webauthn.createdAt) : null,
     },
     quizAttempts: attempts.docs
       .slice(0, EXPORT_LIMIT)

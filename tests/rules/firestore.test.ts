@@ -330,7 +330,7 @@ describe("değiştirilemez kayıtlar, davetler, yapılandırma", () => {
     await assertFails(as(admin, SECOND_FACTOR).collection("rate_limits").doc(id).get());
   });
 
-  it("WebAuthn challenge'ları kendi sahibine dahil istemciye kapalıdır (F4.2)", async () => {
+  it("eski WebAuthn challenge'ları (F4.2; özellik D23 ile kaldırıldı) istemciye kapalı kalır", async () => {
     await assertFails(
       as(resident, SECOND_FACTOR).collection("webauthn_challenges").doc(`${resident.uid}_attendance`).get()
     );

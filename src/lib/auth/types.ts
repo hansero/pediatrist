@@ -23,8 +23,6 @@ export interface ClinicMemberSession {
   mfaRequired: boolean;
   /** Ortamda e-posta doğrulaması zorunlu mu? (`config/security`, D21) */
   emailVerificationRequired: boolean;
-  /** Hesaba yoklama cihazı (passkey, F4.2) kayıtlı mı? Credential ayrıntısı UI'a taşınmaz. */
-  hasBoundDevice: boolean;
   /** Onayladığı KVKK aydınlatma metni sürümü; hiç onaylamadıysa `null` (F9.1: güncel değilse onay istenir). */
   consentVersion: string | null;
 }

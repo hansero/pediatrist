@@ -14,7 +14,6 @@ const doctor = (uid: string, residencyYear: number | null, fullName = uid) => ({
   fullName,
   title: "Asistan Dr.",
   residencyYear,
-  hasDevice: false,
 });
 const progress = (uid: string, completed: boolean, secondsSpent = 120): ProgressView => ({
   uid,

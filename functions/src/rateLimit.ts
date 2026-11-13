@@ -10,8 +10,7 @@ import { COLLECTIONS } from "./shared/types";
  * pencere başına BİR denetim kaydı düşer (kayıt seli olmaz).
  */
 export const RATE_LIMITS = {
-  /** Yoklama: imza isteme ve kod gönderme. Dürüst kullanımda birkaç deneme yeter. */
-  attendanceChallenge: { limit: 10, windowMs: 60_000 },
+  /** Yoklama: kod gönderme. Dürüst kullanımda birkaç deneme yeter. */
   attendanceVerify: { limit: 10, windowMs: 60_000 },
   /** Kayıt tamamlama: davet kodu tahminini keser. */
   registration: { limit: 5, windowMs: 60_000 },

@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
 import { ATTENDANCE_CODE_LENGTH } from "@shared/constants";
-import { DEVICE_PAGE } from "@/components/nav/navItems";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -14,7 +12,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { isLectureOpen, useLiveLecture, useMyRecord } from "@/lib/attendance/live";
 import type { ClinicMemberSession } from "@/lib/auth/types";
-import { checkInWithPasskey } from "@/lib/webauthn";
+import { verifyRealTimeAttendance } from "@/lib/firebase/callables";
 
 const timeFormat = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
@@ -27,8 +25,8 @@ function codeFromLink(sessionId: string): string {
 
 /**
  * Hekim yoklaması (F4.3 çekirdeği; kişisel geçmiş ve son dokunuşlar F4.4).
- * Canlı ders Firestore'dan dinlenir; katılım kod + kayıtlı telefonun passkey onayıyla SUNUCUDA doğrulanır
- * ve ekrandaki "katıldınız" bilgisi kendi kaydı dinlenerek gösterilir (iyimser başarı yok).
+ * Canlı ders Firestore'dan dinlenir; kod MFA'lı oturumla SUNUCUDA doğrulanır (cihaz bağlama yok, D23) ve
+ * ekrandaki "katıldınız" bilgisi kendi kaydı dinlenerek gösterilir (iyimser başarı yok).
  */
 export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
   const live = useLiveLecture();
@@ -36,7 +34,9 @@ export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
   const record = useMyRecord(lecture?.id ?? null, session.uid);
   const [code, setCode] = useState("");
   const codeRef = useRef<HTMLInputElement>(null);
-  const checkIn = useAsyncAction((sessionId: string, value: string) => checkInWithPasskey(sessionId, value.trim()));
+  const checkIn = useAsyncAction((sessionId: string, value: string) =>
+    verifyRealTimeAttendance({ sessionId, code: value.trim() })
+  );
 
   useEffect(() => {
     if (!lecture) return;
@@ -84,12 +84,6 @@ export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
           {mine?.status === "excused" && (
             <StatusChip tone="warning">Bu derste mazeretli olarak işaretlisiniz; katılırsanız güncellenir.</StatusChip>
           )}
-          {!session.hasBoundDevice && (
-            <Alert tone="warning" title="Önce telefonunuzu kaydedin">
-              Yoklama, hesabınıza kayıtlı telefonun yüz/parmak izi onayıyla verilir.{" "}
-              <Link href={DEVICE_PAGE}>Yoklama cihazını kaydet</Link>
-            </Alert>
-          )}
           {checkIn.error && <Alert tone="critical">{checkIn.error}</Alert>}
           <Field label="Projektördeki kod" hint="Kod 15 saniyede bir yenilenir; ekrandaki güncel kodu girin." required>
             {(p) => (
@@ -107,12 +101,7 @@ export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
             )}
           </Field>
           <div className="ui-actions">
-            <Button
-              type="submit"
-              loading={checkIn.pending}
-              loadingText="Onay bekleniyor…"
-              disabled={!session.hasBoundDevice}
-            >
+            <Button type="submit" loading={checkIn.pending} loadingText="Gönderiliyor…">
               Yoklamaya katıl
             </Button>
           </div>

@@ -13,7 +13,10 @@
  *
  * Kullanım:
  *   npm run verify:staging
- *   node scripts/verify-staging.mjs [--project <proje-kimliği>] [--local-only]
+ *   node scripts/verify-staging.mjs [--project <proje-kimliği>] [--origin https://alan.adi]... [--local-only]
+ *
+ * `--origin` (birden çok verilebilir): uygulamanın yayınlandığı adres(ler); Storage CORS bunlar için denetlenir.
+ * Verilmezse Firebase Hosting'in varsayılan alan adları (`<proje>.web.app`, `<proje>.firebaseapp.com`) kullanılır.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -110,18 +113,13 @@ export function verifyLocalEnv({ webEnv, fnEnv, projectId, autoFixedAppCheck = f
       pass("B6", "`ENFORCE_APP_CHECK` açık (`true`).");
     }
 
-    const rpId = fnEnv.WEBAUTHN_RP_ID?.trim() ?? "";
-    const origins = (fnEnv.WEBAUTHN_ORIGINS ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (!rpId || rpId.includes("://") || rpId.includes("/")) {
-      fail("B7", "`WEBAUTHN_RP_ID` şemasız alan adı olmalı (ör. `pediatrist.web.app`).");
-    } else if (origins.length === 0 || origins.some((o) => !o.startsWith("https://"))) {
-      fail("B7", "`WEBAUTHN_ORIGINS` virgülle ayrılmış `https://` adresleri içermeli.");
-    } else {
-      pass("B7", `WebAuthn parametreleri geçerli (RP_ID=${rpId}, ORIGINS=${origins.join(", ")}).`);
+    // Yoklama cihazı (passkey) kaldırıldı (D23): eski parametreler artık okunmuyor.
+    const stale = ["WEBAUTHN_RP_ID", "WEBAUTHN_ORIGINS"].filter((k) => fnEnv[k] !== undefined);
+    if (stale.length > 0) {
+      warn(
+        "B7",
+        `\`functions/.env.${projectId}\` içinde artık kullanılmayan parametreler var: ${stale.join(", ")}. Silebilirsiniz.`
+      );
     }
 
     if (fnEnv.AUDIT_RETENTION_DAYS !== undefined) {
@@ -218,10 +216,7 @@ export async function verifyRemoteServices(options) {
   }
 
   if (!token) {
-    warn(
-      "API",
-      "Firebase CLI oturumu bulunamadı (`node scripts/firebase.mjs login`). Uzak API denetimleri atlandı."
-    );
+    warn("API", "Firebase CLI oturumu bulunamadı (`node scripts/firebase.mjs login`). Uzak API denetimleri atlandı.");
     return results;
   }
 
@@ -264,9 +259,7 @@ export async function verifyRemoteServices(options) {
         fail("A4", "Authentication E-posta/Şifre sağlayıcısı etkin değil.");
       }
 
-      const totpEnabled = (body.mfa?.providerConfigs ?? []).some(
-        (p) => p.state === "ENABLED" && p.totpProviderConfig
-      );
+      const totpEnabled = (body.mfa?.providerConfigs ?? []).some((p) => p.state === "ENABLED" && p.totpProviderConfig);
       if (totpEnabled) {
         pass("A6", "Identity Platform TOTP (Authenticator) ikinci faktörü etkin.");
       } else {
@@ -380,6 +373,12 @@ export async function verifyRemoteServices(options) {
   return results;
 }
 
+/** Uygulama kökenleri: `--origin` argümanları, yoksa Firebase Hosting varsayılan alan adları. */
+export function appOrigins(args, projectId) {
+  const given = args.flatMap((a, i) => (a === "--origin" && args[i + 1] ? [args[i + 1].replace(/\/+$/, "")] : []));
+  return given.length > 0 ? given : [`https://${projectId}.web.app`, `https://${projectId}.firebaseapp.com`];
+}
+
 function resolveProjectId(args, webEnv) {
   const idx = args.indexOf("--project");
   if (idx !== -1 && args[idx + 1]) return args[idx + 1];
@@ -427,10 +426,7 @@ async function main() {
 
   if (!localOnly && projectId && !projectId.startsWith("demo-")) {
     const token = await resolveAccessToken();
-    const expectedOrigins = (fnEnv?.WEBAUTHN_ORIGINS ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const expectedOrigins = appOrigins(args, projectId);
 
     const remoteResults = await verifyRemoteServices({
       projectId,

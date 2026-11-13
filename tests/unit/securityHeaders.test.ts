@@ -104,6 +104,17 @@ describe("yardımcılar", () => {
       ])
     );
   });
+
+  it("Permissions-Policy: kamera yalnızca kendi kökene (QR okutma); passkey izinleri kapalı (D23)", () => {
+    const policy = buildSecurityHeaders({ isDev: false, useEmulators: false }).find(
+      (h) => h.key === "Permissions-Policy"
+    )!.value;
+    const entries = policy.split(", ");
+    expect(entries).toContain("camera=(self)");
+    expect(entries).toContain("microphone=()");
+    expect(entries).toContain("publickey-credentials-create=()");
+    expect(entries).toContain("publickey-credentials-get=()");
+  });
 });
 
 describe("firebase.json ↔ tek kaynak", () => {

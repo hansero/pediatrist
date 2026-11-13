@@ -335,7 +335,7 @@ async function main() {
       residencyYear: u.residencyYear,
       verifiedAt: Timestamp.fromMillis(startedAtMs + r.minuteOffset * 60_000),
       ...(r.status === "present"
-        ? { method: "qr+webauthn", status: "present" }
+        ? { method: "code", status: "present" }
         : { method: "admin_excused", status: "excused", excuseNote: r.excuseNote ?? "", markedBy: admin.uid }),
     };
     batch.set(sessionRef.collection("records").doc(u.uid), record);

@@ -15,15 +15,6 @@ const { AppError } = await import("@/lib/errors");
 const { CALLABLES } = await import("@shared/schemas");
 const { KVKK_NOTICE_VERSION } = await import("@shared/consent");
 
-/** Biçimce geçerli bir passkey yanıtı (kriptografik doğrulama sunucuda; burada yalnızca sözleşme). */
-const ASSERTION = {
-  id: "Y3JlZA",
-  rawId: "Y3JlZA",
-  type: "public-key" as const,
-  clientExtensionResults: {},
-  response: { clientDataJSON: "e30", authenticatorData: "AAAA", signature: "MEUC" },
-};
-
 beforeEach(() => {
   serverImpl.mockReset();
   httpsCallable.mockClear();
@@ -41,13 +32,9 @@ describe("callFunction", () => {
 
   it("normalize edilmiş isteği gönderir ve doğrulanmış yanıtı döndürür", async () => {
     serverImpl.mockResolvedValue({ data: { verified: true, alreadyRecorded: false } });
-    const res = await verifyRealTimeAttendance({ sessionId: " s1 ", code: " k9p4x2 ", assertion: ASSERTION });
+    const res = await verifyRealTimeAttendance({ sessionId: " s1 ", code: " k9p4x2 " });
     expect(res).toEqual({ verified: true, alreadyRecorded: false });
-    expect(serverImpl).toHaveBeenCalledWith("verifyRealTimeAttendance", {
-      sessionId: "s1",
-      code: "K9P4X2",
-      assertion: ASSERTION,
-    });
+    expect(serverImpl).toHaveBeenCalledWith("verifyRealTimeAttendance", { sessionId: "s1", code: "K9P4X2" });
   });
 
   it("şemanın ürettiği undefined alanları göndermez (SDK onları null'a çevirir ve sunucu reddeder)", async () => {
@@ -60,7 +47,12 @@ describe("callFunction", () => {
       consentVersion: KVKK_NOTICE_VERSION,
     });
     const sent = serverImpl.mock.calls[0][1] as Record<string, unknown>;
-    expect(sent).toEqual({ title: "Asistan Dr.", fullName: "Ali Veli", residencyYear: 2, consentVersion: "1.0" });
+    expect(sent).toEqual({
+      title: "Asistan Dr.",
+      fullName: "Ali Veli",
+      residencyYear: 2,
+      consentVersion: KVKK_NOTICE_VERSION,
+    });
     expect(Object.keys(sent)).not.toContain("inviteCode");
   });
 

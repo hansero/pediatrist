@@ -109,7 +109,8 @@ export function buildSecurityHeaders(options: SecurityHeaderOptions): HeaderEntr
     { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
     {
       key: "Permissions-Policy",
-      // camera: F4.4 QR tarama; wake lock + fullscreen: F4.3 projektör; publickey-credentials: F4.2 passkey.
+      // camera: yoklamada QR okutma (F11.2); wake lock + fullscreen: F4.3 projektör.
+      // publickey-credentials kapalı: yoklama cihazı (passkey) kaldırıldı (D23), TOTP MFA WebAuthn kullanmaz.
       value: [
         "camera=(self)",
         "microphone=()",
@@ -118,8 +119,8 @@ export function buildSecurityHeaders(options: SecurityHeaderOptions): HeaderEntr
         "usb=()",
         "screen-wake-lock=(self)",
         "fullscreen=(self)",
-        "publickey-credentials-create=(self)",
-        "publickey-credentials-get=(self)",
+        "publickey-credentials-create=()",
+        "publickey-credentials-get=()",
       ].join(", "),
     },
   ];

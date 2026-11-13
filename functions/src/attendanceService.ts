@@ -6,9 +6,7 @@ import { defineCallable } from "./callable";
 import { enforceRateLimit } from "./rateLimit";
 import { currentContext } from "./requestContext";
 import { ATTENDANCE_CODE_ALPHABET, ATTENDANCE_CODE_LENGTH, ATTENDANCE_SLOT_MS } from "./shared/constants";
-import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { COLLECTIONS, type AttendanceLiveLockDoc, type AttendanceStatus, type MemberDoc } from "./shared/types";
-import { consumeChallenge, verifyAttendanceAssertion } from "./webauthn";
 
 /**
  * MODÜL 3 — DERS KATILIM KONTROLÜ (Sunucu Tarafı)
@@ -18,8 +16,8 @@ import { consumeChallenge, verifyAttendanceAssertion } from "./webauthn";
  *     yalnızca sunucuda (`attendance_secrets`, istemciye kapalı) üretilir.
  *  2. Projektör ekranı (yalnızca Admin) `getProjectorCode` ile 15 sn'lik güncel kodu alır.
  *     Kod / anahtar hiçbir zaman hekim istemcisine gönderilmez.
- *  3. Hekim `beginAttendanceAssertion` ile challenge alır, telefonunun passkey'iyle (Face ID / parmak izi) imzalar
- *     ve `verifyRealTimeAttendance` ile kod + imzayı gönderir (F4.2).
+ *  3. Hekim, MFA ile açtığı oturumda kodu (QR okutarak ya da elle) `verifyRealTimeAttendance` ile gönderir.
+ *     Cihaz bağlama yoktur (D23): yetkinin kaynağı oturum (`guards.ts`) ve projektör kodudur.
  *  4. Admin `endLectureSession` ile yoklamayı kapatır; süre dolunca zamanlayıcı (`closeExpiredLectures`)
  *     veya bir sonraki ders başlatma isteği kapatır.
  *  Her kayıt `attendance_logs` koleksiyonuna da yazılır → ders ve katılımcı bazlı dashboard.
@@ -223,18 +221,12 @@ export const getProjectorCode = defineCallable("getProjectorCode", "admin", asyn
   };
 });
 
-type VerifyOutcome =
-  | { kind: "recorded"; alreadyRecorded: boolean }
-  | { kind: "no-session" }
-  | { kind: "no-device" }
-  | { kind: "challenge-expired" }
-  | { kind: "assertion-invalid" }
-  | { kind: "invalid-code" };
+type VerifyOutcome = { kind: "recorded"; alreadyRecorded: boolean } | { kind: "no-session" } | { kind: "invalid-code" };
 
 /**
- * Hekim: projektör kodunu ve bu cihazın passkey imzasını doğrular, katılım kaydını yazar (F4.1 + F4.2: tek TRANSACTION).
- * - İmza (WebAuthn, kullanıcı doğrulamalı) sunucuda doğrulanır; challenge tek kullanımlıktır ve bu derse bağlıdır.
- *   Aynı imzayla ikinci istek reddedilir (tekrar oynatma). Doğrulayıcı sayacı geri giderse (kopyalanmış anahtar) reddedilir.
+ * Hekim: projektör kodunu doğrular ve katılım kaydını yazar (F4.1, D23: tek TRANSACTION).
+ * - Kimlik MFA'lı oturumdan gelir (`guards.ts`); cihaz imzası istenmez (D23).
+ * - Aynı hekimin eşzamanlı iki isteğinden yalnızca biri kayıt yazar (transaction + `present` denetimi).
  * - Durum geçişleri: kayıt yok → katıldı (+1); mazeretli → katıldı (katılan +1, mazeretli −1); zaten katıldı → değişiklik yok.
  * - Reddedilen girişimlerin denetim kaydı transaction dışında yazılır (transaction'daki kayıt geri alınırdı).
  */
@@ -263,21 +255,9 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
       return { kind: "no-session" };
     }
 
-    // 1) Cihaz imzası (tek kullanımlık challenge burada tüketilir).
     const profile = (userSnap.data() ?? {}) as Partial<MemberDoc<Timestamp>>;
-    const credential = profile.webauthn;
-    const expectedChallenge = await consumeChallenge(tx, uid, "attendance", data.sessionId);
-    if (!credential) return { kind: "no-device" };
-    if (!expectedChallenge) return { kind: "challenge-expired" };
-    const newCounter = await verifyAttendanceAssertion(
-      data.assertion as unknown as AuthenticationResponseJSON,
-      expectedChallenge,
-      credential
-    );
-    if (newCounter === null) return { kind: "assertion-invalid" };
-    tx.update(userRef, { "webauthn.counter": newCounter });
 
-    // 2) Projektör kodu (bir önceki pencere ağ gecikmesi toleransı olarak kabul edilir).
+    // Projektör kodu (bir önceki pencere ağ gecikmesi toleransı olarak kabul edilir).
     const secret = String(secretSnap.data()!.hmacSecret);
     const slot = Math.floor(Date.now() / ATTENDANCE_SLOT_MS);
     const given = Buffer.from(data.code);
@@ -295,8 +275,9 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
       title: profile.title ?? "",
       residencyYear: profile.residencyYear ?? null,
       verifiedAt: FieldValue.serverTimestamp(),
-      // Yöntem yalnızca sunucunun doğruladığı şeyi yansıtır: kod + kullanıcı doğrulamalı passkey imzası.
-      method: "qr+webauthn",
+      // Yöntem yalnızca sunucunun doğruladığı şeyi yansıtır: MFA'lı oturum + projektör kodu (D23).
+      // Kodun QR'dan mı elle mi geldiğini sunucu bilemez; bu yüzden ayrı bir değer yazılmaz.
+      method: "code",
       status: "present",
     };
     tx.set(recordRef, record);
@@ -330,14 +311,14 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
     return { kind: "recorded", alreadyRecorded: false };
   });
 
-  const rejected = async (action: string, severity: "WARN" | "CRITICAL" = "WARN") =>
+  const rejected = async (action: string) =>
     writeAuditLog({
       actorUid: uid,
       actorEmail,
       action,
       resourceType: "attendance",
       resourceId: data.sessionId,
-      severity,
+      severity: "WARN",
     });
 
   switch (outcome.kind) {
@@ -345,20 +326,6 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
       return { verified: true as const, alreadyRecorded: outcome.alreadyRecorded };
     case "no-session":
       throw new HttpsError("failed-precondition", NO_LIVE_SESSION);
-    case "no-device":
-      throw new HttpsError(
-        "failed-precondition",
-        "Yoklama vermek için önce bu telefonu yoklama cihazı olarak kaydedin (Hesap › Yoklama cihazı)."
-      );
-    case "challenge-expired":
-      await rejected("ATTENDANCE_DEVICE_CHALLENGE_EXPIRED_OR_REUSED");
-      throw new HttpsError("deadline-exceeded", "Cihaz doğrulamasının süresi doldu. Lütfen tekrar deneyin.");
-    case "assertion-invalid":
-      await rejected("ATTENDANCE_DEVICE_ASSERTION_REJECTED", "CRITICAL");
-      throw new HttpsError(
-        "permission-denied",
-        "Cihaz doğrulaması başarısız. Hesabınıza kayıtlı telefonla tekrar deneyin; cihaz değiştiyse eğitim sorumlusuna başvurun."
-      );
     case "invalid-code":
       await rejected("ATTENDANCE_EXPIRED_OR_INVALID_CODE");
       throw new HttpsError("deadline-exceeded", "Kod geçersiz veya süresi doldu. Projektördeki güncel kodu girin.");

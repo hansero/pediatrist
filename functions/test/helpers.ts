@@ -3,8 +3,6 @@ import { getFirestore } from "firebase-admin/firestore";
 import type { CallableRequest } from "firebase-functions/v2/https";
 import { afterEach } from "vitest";
 import type { MemberStatus, Role } from "../src/shared/constants";
-import { SoftAuthenticator } from "./softAuthenticator";
-import { beginAttendanceAssertion, beginDeviceRegistration, finishDeviceRegistration } from "../src/webauthn";
 
 const PROJECT_ID = "demo-pediatrist";
 
@@ -113,24 +111,4 @@ afterEach(() => {
 export async function auditActions(): Promise<string[]> {
   const snap = await getFirestore().collection("audit_logs").get();
   return snap.docs.map((d) => String(d.data().action));
-}
-
-// --- WebAuthn (F4.2) -------------------------------------------------------------------------
-
-/** Üyenin bu (yazılım) cihazını gerçek kayıt töreniyle yoklama cihazı olarak kaydeder. */
-export async function registerDevice(uid: string, authenticator = new SoftAuthenticator()) {
-  const { options } = await beginDeviceRegistration.run(callableRequest({}, asMember(uid)));
-  await finishDeviceRegistration.run(callableRequest({ response: authenticator.register(options) }, asMember(uid)));
-  return authenticator;
-}
-
-/** Yoklama için challenge alır ve cihazla imzalar (assertion). */
-export async function attendanceAssertion(
-  uid: string,
-  sessionId: string,
-  authenticator: SoftAuthenticator,
-  overrides: Parameters<SoftAuthenticator["assert"]>[1] = {}
-) {
-  const { options } = await beginAttendanceAssertion.run(callableRequest({ sessionId }, asMember(uid)));
-  return authenticator.assert(options, overrides);
 }

@@ -12,7 +12,6 @@ import { KVKK_NOTICE_VERSION } from "../src/shared/consent";
 import { DELETED_MEMBER_NAME } from "../src/shared/constants";
 import { parseNineFieldQuizCsv } from "../src/shared/quizCsv";
 import { CALLABLES } from "../src/shared/schemas";
-import { registerDevice } from "./helpers";
 import { asAdmin, asMember, auditActions, callableRequest, createMember, errorOf, resetEmulators } from "./helpers";
 
 const db = () => getFirestore();
@@ -67,7 +66,6 @@ async function populate(uid = "r1") {
   await db()
     .doc("invitations/unused")
     .set({ code: "NEW1", email: `${uid}@example.test`, used: false, intendedRole: "user" });
-  await registerDevice(uid);
   return { quizId, sessionId };
 }
 
@@ -179,7 +177,7 @@ describe("exportMemberData (F9.1)", () => {
     );
     expect(res.profile).toMatchObject({ uid: "r1", fullName: "Test r1", email: "r1@example.test", role: "user" });
     expect(res.profile.consent?.version).toBe(KVKK_NOTICE_VERSION);
-    expect(res.profile.attendanceDeviceRegisteredAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(res.profile).not.toHaveProperty("attendanceDeviceRegisteredAt");
     expect(res.quizAttempts).toHaveLength(1);
     expect(res.quizAttempts[0]).toMatchObject({ quizTitle: "Örnek Sınav", status: "submitted", score: 100 });
     expect(res.quizAttempts[0].answers).toHaveLength(questions.length);

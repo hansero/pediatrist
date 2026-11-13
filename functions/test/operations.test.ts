@@ -1,14 +1,13 @@
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { logger } from "firebase-functions";
-import { getProjectorCode, startLectureSession } from "../src/attendanceService";
+import { getProjectorCode, startLectureSession, verifyRealTimeAttendance } from "../src/attendanceService";
 import { auditRetentionDays } from "../src/auditLogger";
 import { deleteMember, exportMemberData } from "../src/privacyService";
 import { enforceRateLimit, RATE_LIMITS, rateClock } from "../src/rateLimit";
 import { clientIp, hashIp } from "../src/requestContext";
-import { beginAttendanceAssertion } from "../src/webauthn";
 import type { CallableRequest } from "firebase-functions/v2/https";
-import { asAdmin, asMember, callableRequest, createMember, errorOf, registerDevice, resetEmulators } from "./helpers";
+import { asAdmin, asMember, callableRequest, createMember, errorOf, resetEmulators } from "./helpers";
 
 const db = () => getFirestore();
 const DAY = 86_400_000;
@@ -129,7 +128,7 @@ describe("hız sınırı (F9.2)", () => {
     expect(counter?.expireAt).toBeInstanceOf(Timestamp);
   });
 
-  it("callable'larda uygulanır: sınırı aşan veri dökümü ve yoklama imza isteği işlenmeden reddedilir", async () => {
+  it("callable'larda uygulanır: sınırı aşan veri dökümü ve yoklama kodu denemesi işlenmeden reddedilir", async () => {
     for (let i = 0; i < RATE_LIMITS.dataExport.limit; i++) {
       await exportMemberData.run(callableRequest({ targetUid: "r1" }, asMember("r1")));
     }
@@ -137,16 +136,16 @@ describe("hız sınırı (F9.2)", () => {
     expect(denied.code).toBe("resource-exhausted");
     expect(await audits("MEMBER_DATA_EXPORTED")).toHaveLength(RATE_LIMITS.dataExport.limit);
 
-    await registerDevice("r1");
     const { sessionId } = await startLectureSession.run(
       callableRequest({ title: "Ders", lecturer: "Dr. X", durationMinutes: 15 }, asAdmin())
     );
-    for (let i = 0; i < RATE_LIMITS.attendanceChallenge.limit; i++) {
-      await beginAttendanceAssertion.run(callableRequest({ sessionId }, asMember("r1")));
+    // Yanlış kod tahmini: sınıra kadar "geçersiz kod", sonrası işlenmeden red (doğru kod da olsa).
+    const guess = () =>
+      errorOf(verifyRealTimeAttendance.run(callableRequest({ sessionId, code: "AAAAAA" }, asMember("r1"))));
+    for (let i = 0; i < RATE_LIMITS.attendanceVerify.limit; i++) {
+      expect(["deadline-exceeded", "ok"]).toContain((await guess()).code);
     }
-    expect((await errorOf(beginAttendanceAssertion.run(callableRequest({ sessionId }, asMember("r1"))))).code).toBe(
-      "resource-exhausted"
-    );
+    expect((await guess()).code).toBe("resource-exhausted");
   });
 });
 

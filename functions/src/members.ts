@@ -136,7 +136,6 @@ export const updateMemberAccess = defineCallable("updateMemberAccess", "admin", 
     const role = data.role ?? normalizeRole(existing.role);
     const status = data.status ?? normalizeStatus(existing.status);
     const residencyYear = data.residencyYear ?? existing.residencyYear ?? null;
-    const resetDevice = Boolean(data.resetBoundDevice);
 
     // Son aktif admin korunur (sistem yönetilemez hale gelmesin).
     const wasActiveAdmin = existing.role === "admin" && existing.status === "active";
@@ -152,7 +151,7 @@ export const updateMemberAccess = defineCallable("updateMemberAccess", "admin", 
     }
 
     const downgrade = isDowngrade(existing, { role, status });
-    const revoke = downgrade || resetDevice;
+    const revoke = downgrade;
     const payload: Record<string, unknown> = {
       role,
       status,
@@ -161,15 +160,13 @@ export const updateMemberAccess = defineCallable("updateMemberAccess", "admin", 
       updatedBy: actor.uid,
     };
     if (status === "active" && existing.status !== "active") payload.approvedBy = actor.uid;
-    // Yoklama cihazı (passkey) bağı silinir; üye yeni telefonunu kaydedebilir (F4.2).
-    if (resetDevice) payload.webauthn = FieldValue.delete();
     if (revoke) payload.tokensValidAfter = nowSeconds();
 
     tx.set(userRef, payload, { merge: true });
     auditIn(tx, {
       actorUid: actor.uid,
       actorEmail: actor.email,
-      action: resetDevice ? "MEMBER_DEVICE_RESET" : "MEMBER_ACCESS_UPDATED",
+      action: "MEMBER_ACCESS_UPDATED",
       resourceType: "admin",
       resourceId: data.targetUid,
       severity: revoke ? "WARN" : "INFO",
@@ -178,7 +175,6 @@ export const updateMemberAccess = defineCallable("updateMemberAccess", "admin", 
         role,
         status,
         residencyYear,
-        resetBoundDevice: resetDevice,
         sessionsRevoked: revoke,
       },
     });
@@ -277,7 +273,6 @@ export const completeRegistration = defineCallable("completeRegistration", "sign
       status,
       inviteCode: data.inviteCode ?? null,
       consent: { version: data.consentVersion, acceptedAt: FieldValue.serverTimestamp() },
-      webauthn: null,
       createdAt: FieldValue.serverTimestamp(),
       ...(invite ? { approvedBy: invite.data.invitedBy } : {}),
     });

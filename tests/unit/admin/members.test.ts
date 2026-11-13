@@ -19,7 +19,6 @@ const member = (uid: string, extra: Partial<MemberRow> = {}): MemberRow => ({
   role: "user",
   status: "active",
   createdAtMs: 1,
-  hasDevice: false,
   ...extra,
 });
 
@@ -40,20 +39,16 @@ describe("üye işlemleri (F7.1)", () => {
       "exportData",
       "delete",
     ]);
-    expect(availableActions(member("a", { hasDevice: true }), "me")).toEqual([
+    expect(availableActions(member("a"), "me")).toEqual([
       "suspend",
       "makeAdmin",
-      "resetDevice",
       "resetMfa",
       "changeYear",
       "exportData",
       "delete",
     ]);
-    // Kendi satırı: yalnızca cihaz sıfırlama ve kendi veri dökümü; silme yok (F9.1).
-    expect(availableActions(member("me", { role: "admin", hasDevice: true }), "me")).toEqual([
-      "resetDevice",
-      "exportData",
-    ]);
+    // Kendi satırı: yalnızca kendi veri dökümü; silme yok (F9.1). Yoklama cihazı sıfırlama yok (D23).
+    expect(availableActions(member("me", { role: "admin" }), "me")).toEqual(["exportData"]);
     expect(availableActions(member("b", { role: "admin" }), "me")).toEqual([
       "suspend",
       "removeAdmin",

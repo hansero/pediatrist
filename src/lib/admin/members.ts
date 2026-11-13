@@ -46,7 +46,6 @@ export interface MemberRow {
   role: Role;
   status: MemberStatus;
   createdAtMs: number | null;
-  hasDevice: boolean;
 }
 
 export const memberName = (m: Pick<MemberRow, "title" | "fullName">) => `${m.title} ${m.fullName}`.trim();
@@ -61,7 +60,6 @@ export function toMemberRow(uid: string, d: DocumentData): MemberRow {
     role: d.role === "admin" ? "admin" : "user",
     status: d.status === "active" || d.status === "suspended" ? d.status : "pending",
     createdAtMs: ms(d.createdAt),
-    hasDevice: Boolean(d.webauthn?.credentialId),
   };
 }
 
@@ -114,7 +112,6 @@ export type MemberAction =
   | "suspend"
   | "makeAdmin"
   | "removeAdmin"
-  | "resetDevice"
   | "resetMfa"
   | "changeYear"
   | "exportData"
@@ -133,7 +130,6 @@ export function availableActions(m: MemberRow, selfUid: string): MemberAction[] 
     if (m.status !== "suspended") actions.push("suspend");
     if (m.status === "active") actions.push(m.role === "admin" ? "removeAdmin" : "makeAdmin");
   }
-  if (m.hasDevice) actions.push("resetDevice");
   if (!self) actions.push("resetMfa");
   if (m.role === "user") actions.push("changeYear");
   // KVKK (F9.1): döküm herkes için (kendisi dahil); silme kendi hesabında yok (sunucu da reddeder).
@@ -257,6 +253,7 @@ export async function fetchAuditPage(
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
   MEMBER_REGISTERED: "Üye kaydı",
   MEMBER_ACCESS_UPDATED: "Üye yetkisi/durumu değişti",
+  // Eski kayıtlar (yoklama cihazı F11.1/D23 ile kaldırıldı; geçmiş denetim kayıtları okunur kalsın).
   MEMBER_DEVICE_RESET: "Yoklama cihazı sıfırlandı",
   MEMBER_MFA_RESET: "İki aşamalı doğrulama sıfırlandı",
   MEMBER_DELETED: "Üye silindi",

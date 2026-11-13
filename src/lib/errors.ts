@@ -156,67 +156,6 @@ function fromAuthError(code: string): AppError {
   return known ? new AppError(known[0], known[1]) : new AppError("internal", DEFAULT_ERROR_MESSAGES.internal);
 }
 
-/**
- * Tarayıcı WebAuthn (passkey) hataları → Türkçe (F4.2). `@simplewebauthn/browser` `WebAuthnError` (code) ya da
- * tarayıcının `DOMException` adını (name) üretir.
- */
-const WEBAUTHN_ERRORS: Record<string, [AppErrorCode, string]> = {
-  ERROR_CEREMONY_ABORTED: ["failed-precondition", "Cihaz doğrulaması iptal edildi. Tekrar deneyin."],
-  NotAllowedError: [
-    "failed-precondition",
-    "Cihaz doğrulaması iptal edildi veya süresi doldu. Tekrar deneyin; yüz/parmak izi onayını tamamlayın.",
-  ],
-  AbortError: ["failed-precondition", "Cihaz doğrulaması iptal edildi. Tekrar deneyin."],
-  ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED: [
-    "already-exists",
-    "Bu cihaz bu hesap için zaten kayıtlı; yoklamaya bu cihazla katılabilirsiniz.",
-  ],
-  InvalidStateError: ["already-exists", "Bu cihaz bu hesap için zaten kayıtlı; yoklamaya bu cihazla katılabilirsiniz."],
-  ERROR_AUTHENTICATOR_MISSING_USER_VERIFICATION_SUPPORT: [
-    "failed-precondition",
-    "Bu cihazda ekran kilidi (yüz tanıma, parmak izi veya PIN) etkin değil. Etkinleştirip tekrar deneyin.",
-  ],
-  NotSupportedError: [
-    "failed-precondition",
-    "Bu tarayıcı cihaz doğrulamasını (passkey) desteklemiyor. Telefonunuzun güncel tarayıcısını kullanın.",
-  ],
-  ERROR_INVALID_DOMAIN: [
-    "failed-precondition",
-    "Cihaz doğrulaması yalnızca güvenli (https) bağlantıda çalışır. Platformu https:// adresinden açın.",
-  ],
-  ERROR_INVALID_RP_ID: [
-    "failed-precondition",
-    "Cihaz doğrulaması bu adreste yapılandırılmamış. Platformu resmî adresinden açın.",
-  ],
-  SecurityError: [
-    "failed-precondition",
-    "Cihaz doğrulaması yalnızca güvenli (https) bağlantıda çalışır. Platformu https:// adresinden açın.",
-  ],
-};
-
-/** WebAuthn DOM hata adları (yalnızca DOMException ya da kütüphane hatası olarak gelirse eşlenir). */
-const WEBAUTHN_DOM_NAMES = new Set([
-  "NotAllowedError",
-  "AbortError",
-  "InvalidStateError",
-  "NotSupportedError",
-  "SecurityError",
-]);
-
-function fromWebAuthnError(err: unknown): AppError | null {
-  const e = err as { name?: unknown; code?: unknown };
-  // `@simplewebauthn/browser` → `code: "ERROR_..."`; ham tarayıcı hatası → DOMException.
-  const libraryCode = typeof e?.code === "string" && e.code.startsWith("ERROR_") ? e.code : null;
-  const domName =
-    typeof e?.name === "string" &&
-    WEBAUTHN_DOM_NAMES.has(e.name) &&
-    (libraryCode !== null || (typeof DOMException !== "undefined" && err instanceof DOMException))
-      ? e.name
-      : null;
-  const known = (libraryCode && WEBAUTHN_ERRORS[libraryCode]) || (domName && WEBAUTHN_ERRORS[domName]);
-  return known ? new AppError(known[0], known[1]) : null;
-}
-
 /** Storage hataları → Türkçe (F5.2: sınav görseli yükleme). */
 const STORAGE_ERRORS: Record<string, [AppErrorCode, string]> = {
   "storage/unauthorized": ["permission-denied", "Bu dosya için yetkiniz yok ya da dosya türü/boyutu kabul edilmiyor."],
@@ -264,8 +203,6 @@ export function toAppError(err: unknown): AppError {
   if (typeof e?.code === "string" && FIRESTORE_CODES.has(e.code as AppErrorCode) && e.name === "FirebaseError") {
     return new AppError(e.code as AppErrorCode, DEFAULT_ERROR_MESSAGES[e.code as AppErrorCode]);
   }
-  const webAuthn = fromWebAuthnError(err);
-  if (webAuthn) return webAuthn;
   // fetch / ağ hataları (çevrimdışı, CORS, DNS)
   if (err instanceof TypeError || e?.name === "NetworkError") {
     return new AppError("unavailable", DEFAULT_ERROR_MESSAGES.unavailable);

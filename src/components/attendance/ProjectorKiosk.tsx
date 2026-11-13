@@ -199,10 +199,7 @@ export function ProjectorKiosk({ sessionId }: { sessionId: string }) {
               alt="Yoklama için telefonla taranacak QR kod"
             />
           )}
-          <p className="projector-help">
-            Telefonunuzla QR kodu tarayın veya Pediatrist › Ders Yoklaması ekranına kodu girin; yüz/parmak izi onayı
-            istenir.
-          </p>
+          <p className="projector-help">Pediatrist › Ders Yoklaması ekranında QR kodu okutun ya da kodu girin.</p>
         </div>
       )}
       {error && <Alert tone="warning">{error}</Alert>}

@@ -43,9 +43,6 @@ export const ATTENDANCE_CODE_LENGTH = 6;
  */
 export const ATTENDANCE_WARN_RATE = 0.7;
 
-/** WebAuthn tören (kayıt/yoklama) challenge'ının geçerlilik süresi (F4.2). */
-export const WEBAUTHN_CHALLENGE_TTL_MS = 2 * 60_000;
-
 export const LECTURE_CATEGORIES = [
   "Sabah Vaka & Makale Saati",
   "Çekirdek Eğitim Semineri",
@@ -159,7 +156,5 @@ export const LIMITS = {
   descriptionLength: 2000,
   protocolNoteLength: 2000,
   idLength: 128,
-  /** WebAuthn yanıtındaki base64url alanlar (imza, authenticatorData, attestation) için üst sınır. */
-  webAuthnFieldLength: 16_384,
   tabSwitchCountMax: 999,
 } as const;

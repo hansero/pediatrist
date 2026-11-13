@@ -3,19 +3,18 @@ import { buildRoster } from "@/components/attendance/admin/AdminAttendance";
 import { checkInUrl } from "@/components/attendance/ProjectorKiosk";
 import { isLectureOpen, type Lecture } from "@/lib/attendance/live";
 
-const doctor = (uid: string, fullName: string, residencyYear: number | null = 2, hasDevice = true) => ({
+const doctor = (uid: string, fullName: string, residencyYear: number | null = 2) => ({
   uid,
   fullName,
   title: "Dr.",
   residencyYear,
-  hasDevice,
 });
 
 describe("buildRoster (canlı katılım listesi)", () => {
   it("beklenenler + sonradan katılanlar; bekleyenler üstte, sonra mazeretli, sonra katılanlar; ada göre", () => {
     const rows = buildRoster(
       { expectedAttendees: ["a", "b", "c"] },
-      [doctor("a", "Zeynep"), doctor("b", "Ali"), doctor("c", "Çağla", null, false), doctor("d", "Deniz")],
+      [doctor("a", "Zeynep"), doctor("b", "Ali"), doctor("c", "Çağla", null), doctor("d", "Deniz")],
       [
         { uid: "a", fullName: "Zeynep", title: "Dr.", residencyYear: 2, status: "present", verifiedAtMs: 1 },
         { uid: "d", fullName: "Deniz", title: "Dr.", residencyYear: 2, status: "present", verifiedAtMs: 2 },
@@ -36,7 +35,7 @@ describe("buildRoster (canlı katılım listesi)", () => {
       ["d", "present", false],
       ["a", "present", true],
     ]);
-    expect(rows.find((r) => r.uid === "c")).toMatchObject({ residencyYear: null, hasDevice: false });
+    expect(rows.find((r) => r.uid === "c")).toMatchObject({ residencyYear: null });
   });
 
   it("artık etkin olmayan ama kaydı olan üye kayıttaki adla gösterilir", () => {
@@ -45,7 +44,7 @@ describe("buildRoster (canlı katılım listesi)", () => {
       [],
       [{ uid: "x", fullName: "Eski Üye", title: "Dr.", residencyYear: 2, status: "present", verifiedAtMs: 1 }]
     );
-    expect(rows[0]).toMatchObject({ name: "Dr. Eski Üye", hasDevice: null });
+    expect(rows[0]).toMatchObject({ name: "Dr. Eski Üye" });
   });
 });
 
@@ -90,19 +89,5 @@ describe("katılım geçmişi (F4.4, D22)", () => {
     });
     expect(summarizeHistory([s("excused")]).rate).toBeNull();
     expect(summarizeHistory([]).rate).toBeNull();
-  });
-});
-
-describe("yoklamada passkey hatası (F4.6)", () => {
-  it("NotAllowedError (anahtar yok / iptal) yoklamaya özgü, çözüm gösteren mesaja çevrilir; diğerleri aynen geçer", async () => {
-    const { attendancePasskeyError, ATTENDANCE_PASSKEY_MISSING } = await import("@/lib/webauthn");
-    const { toUserMessage } = await import("@/lib/errors");
-    const notAllowed = Object.assign(new Error("The operation either timed out or was not allowed."), {
-      name: "NotAllowedError",
-    });
-    expect(toUserMessage(attendancePasskeyError(notAllowed))).toBe(ATTENDANCE_PASSKEY_MISSING);
-    expect(ATTENDANCE_PASSKEY_MISSING).toContain("cihaz sıfırlaması");
-    const other = new Error("x");
-    expect(attendancePasskeyError(other)).toBe(other);
   });
 });

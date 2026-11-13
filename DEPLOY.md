@@ -121,7 +121,7 @@ Manuel duman testi (smoke test):
 - Giriş › iki aşamalı doğrulama kodu › Genel bakış açılıyor.
 - Yönetim paneli › Denetim kayıtları listeleniyor; Ayrıntı'da "ağ kimliği" var (bölüm 2).
 - Bir PDF materyal yükleyip hekim hesabıyla açın (Storage CORS).
-- Ders başlatıp projektör ekranını açın; telefondan passkey ile katılın (`WEBAUTHN_*` parametreleri).
+- Ders başlatıp projektör ekranını açın; telefondan "QR kodu okut" ile katılın (kamera izni HTTPS ister).
 - Kısa bir sınav yayınlayıp hekim hesabıyla çözün; karne ve sonuçlar görünüyor.
 - Tarayıcı konsolunda içerik güvenlik politikası (CSP) ihlali yok.
 
@@ -141,7 +141,6 @@ Ayrıntılı kabul senaryoları: `docs/revision/REVISION_PLAN.md` §F10.3.
 | `AUDIT_IP_SALT` | Secret Manager | Evet | Denetim kayıtlarındaki ağ özetinin tuzu. Her callable'a bağlıdır; tanımlı değilse functions dağıtımı başarısız olur. |
 | `AUDIT_RETENTION_DAYS` | Parametre | Hayır (varsayılan 730) | Denetim kayıtlarının saklama süresi (gün). **Kurumun saklama politikasına göre belirleyin.** En az 30; geçersiz değer 730 sayılır. |
 | `ENFORCE_APP_CHECK` | Parametre | Hayır (varsayılan `true`) | Canlıda `true` kalmalıdır. |
-| `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGINS` | Parametre | Evet | Yoklama cihazı (passkey) için alan adı ve kökenler. |
 
 Tuzu oluşturma (değer en az 16 karakter, rastgele olmalı; kimseyle paylaşılmaz, depoya yazılmaz):
 
@@ -192,7 +191,7 @@ politikaları "Etkin" görünmelidir.
 
 ### 4.1 Kritik güvenlik olayları
 
-Önem derecesi `CRITICAL` olan her denetim olayı (ör. üye silme, başka cihazla yoklama denemesi) ayrıca Cloud
+Önem derecesi `CRITICAL` olan her denetim olayı (ör. üye silme) ayrıca Cloud
 Logging'e işaretli bir hata satırı olarak yazılır. Satırda kişisel veri yoktur (yalnızca eylem, kaynak ve
 kullanıcı kimlikleri).
 
@@ -257,7 +256,6 @@ ve pencere başına bir denetim kaydı (`RATE_LIMIT_EXCEEDED`, Uyarı) düşer.
 
 | İşlem | Sınır | Amaç |
 |---|---|---|
-| Yoklama: cihaz doğrulaması isteme | 10 / dakika | Kod tahmini ve deneme seli |
 | Yoklama: kod gönderme | 10 / dakika | Kod tahmini |
 | Kayıt tamamlama | 5 / dakika | Davet kodu tahmini |
 | Kişisel veri dökümü | 5 / dakika | Pahalı okuma |

@@ -63,7 +63,6 @@ function toSession(
     emailVerified: user.emailVerified,
     mfaRequired: security.requireMfa,
     emailVerificationRequired: security.requireEmailVerified,
-    hasBoundDevice: Boolean(profile.webauthn?.credentialId),
     consentVersion: typeof profile.consent?.version === "string" ? profile.consent.version : null,
   };
 }
