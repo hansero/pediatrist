@@ -3,7 +3,14 @@
 import { collection, limit, onSnapshot, orderBy, query, type DocumentData, type Timestamp } from "firebase/firestore";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { MATERIAL_UPLOAD, type MaterialFileType } from "@shared/constants";
-import { isMaterialTargeted, materialLabelsOf, memberAudienceLabel } from "@shared/materials";
+import {
+  hasLabel,
+  isMaterialTargeted,
+  matchesAudience,
+  materialLabelsOf,
+  memberAudienceLabel,
+  type MaterialAudience,
+} from "@shared/materials";
 import { COLLECTIONS, type MaterialStatus } from "@shared/types";
 import { useCapped, useFirestoreSnapshot, type CappedState, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import type { MemberSummary } from "@/lib/attendance/live";
@@ -67,6 +74,30 @@ export const FILE_TYPE_LABEL: Record<MaterialFileType, string> = { pdf: "PDF", v
 export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} MB`;
+}
+
+export interface AdminMaterialFilter {
+  /** Başlık, açıklama, dosya adı ve etiketlerde arama (Türkçe büyük-küçük harf duyarsız). */
+  search: string;
+  /** `"all"` ya da `labelKey`. */
+  label: string;
+  /** Hedef kıdem: yıl, "Uzman" ya da hepsi. */
+  target: MaterialAudience | "all";
+}
+
+export const EMPTY_ADMIN_MATERIAL_FILTER: AdminMaterialFilter = { search: "", label: "all", target: "all" };
+
+/** Admin materyal süzgeci (F11.7): üç ölçüt birlikte uygulanır (VE). */
+export function filterAdminMaterials(list: readonly MaterialView[], filter: AdminMaterialFilter): MaterialView[] {
+  const term = filter.search.trim().toLocaleLowerCase("tr");
+  const fileName = (m: MaterialView) => m.storagePath.split("/").pop() ?? "";
+  return list.filter(
+    (m) =>
+      hasLabel(m, filter.label) &&
+      matchesAudience(m, filter.target) &&
+      (!term ||
+        [m.title, m.description, fileName(m), ...m.labels].some((t) => t.toLocaleLowerCase("tr").includes(term)))
+  );
 }
 
 /** Admin: bütün materyaller (taslak dahil), yeniden eskiye. */

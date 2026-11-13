@@ -134,3 +134,37 @@ test("yükle (ilerleme, sunucu doğrulaması) → düzenle → sil; izinsiz tür
   expect(await findDocIds("materials", "title", renamed)).toEqual([]);
   await expectNoHorizontalOverflow(page);
 });
+
+test("süzgeç: arama | etiket | hedef kıdem birlikte; sayım ve temizleme (F11.7)", async ({ page }) => {
+  await openMaterials(page);
+  const table = page.getByRole("table", { name: "Materyal listesi" });
+  const count = page.getByTestId("material-filter-count");
+  await expect(row(page, SEPSIS)).toBeVisible();
+  await expect(row(page, PRETERM)).toBeVisible();
+
+  // Arama: başlık, Türkçe harf duyarsız.
+  await page.getByLabel("Ara", { exact: true }).fill("PRETERM");
+  await expect(row(page, PRETERM)).toBeVisible();
+  await expect(row(page, SEPSIS)).toHaveCount(0);
+  await expect(count).toHaveText(/^1 \/ \d+ materyal gösteriliyor$/);
+  await page.getByLabel("Ara", { exact: true }).fill("");
+
+  // Etiket.
+  await page.getByLabel("Etiket").selectOption({ label: "Yoğun Bakım (1)" });
+  await expect(row(page, SEPSIS)).toBeVisible();
+  await expect(row(page, PRETERM)).toHaveCount(0);
+
+  // Hedef kıdem (Uzman) + etiket birlikte; sonra eşleşmeyen birleşim boş durum gösterir.
+  await page.getByLabel("Hedef kıdem").selectOption("specialist");
+  await expect(row(page, SEPSIS)).toBeVisible();
+  await page.getByLabel("Etiket").selectOption({ label: "Neonatoloji (1)" });
+  await expect(table.getByText("Bu süzgeçle materyal yok")).toBeVisible();
+  await expect(count).toHaveText(/^0 \/ \d+ materyal gösteriliyor$/);
+  await expectNoHorizontalOverflow(page);
+
+  await page.getByRole("button", { name: "Süzgeci temizle" }).click();
+  await expect(row(page, SEPSIS)).toBeVisible();
+  await expect(row(page, PRETERM)).toBeVisible();
+  await expect(page.getByLabel("Hedef kıdem")).toHaveValue("all");
+  await expect(page.getByRole("button", { name: "Süzgeci temizle" })).toHaveCount(0);
+});

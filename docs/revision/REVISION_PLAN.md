@@ -100,7 +100,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F11.4 | Yoklama verme yetkisi: yalnızca 1–4. yıl asistan | M | ✅ | Madde 7 (D24) |
 | F11.5 | Materyal etiketleri | M | ✅ | Madde 4 (D25) |
 | F11.6 | Hedef kitlede "Uzman" | M | ✅ | Madde 6 (D26) |
-| F11.7 | Admin materyal süzgeci | S | ⬜ | Madde 5 |
+| F11.7 | Admin materyal süzgeci | S | ✅ | Madde 5 |
 | F11.8 | Belgeler, izlenebilirlik, tam doğrulama | S | ⬜ | Hepsi |
 
 ---
@@ -110,9 +110,9 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-13
-- **Son tamamlanan adım:** F11.6 (hedef kitlede "Uzman", D26). Öncesinde F11.1–F11.4 (yoklama) ve F11.5 (etiketler). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
+- **Son tamamlanan adım:** F11.7 (admin materyal süzgeci). Öncesinde F11.1–F11.4 (yoklama), F11.5 (etiketler), F11.6 ("Uzman"). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F11.7 (admin materyal süzgeci). Ardından F11.8; her adımın kapsamı §5 F11'de.
+- **Sıradaki iş:** F11.8 (belgeler, izlenebilirlik, tam test paketi); her adımın kapsamı §5 F11'de.
   - Kullanıcı kararları: birden çok etiket; "Uzman" yalnızca `Uzm. Dr.`; kamera izni "QR kodu okut" düğmesiyle, QR okununca hemen gönderim.
   - Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`.
   - Önceki dönemden kalanlar (staging, UAT, KVKK hukuk onayı, karar bekleyenler) için `docs/revision/TRACEABILITY.md` › "Açık kalanlar".
@@ -1667,7 +1667,11 @@ Kullanıcının 7 maddelik isteği. Plan: oturumdaki onaylı plan dosyası; kara
   - Doğrulandı: typecheck, lint, format, no-mock, unit 269, functions 109, e2e materyaller + dashboard 12.
 
 #### F11.7 Admin materyal süzgeci (S) — madde 5
-- `filterAdminMaterials` (arama | etiket | hedef kıdem) + liste üstünde süzgeç satırı.
+- **✅ Uygulanan:**
+  - `src/lib/materials/admin.ts › filterAdminMaterials` (saf): arama (başlık, açıklama, Storage dosya adı, etiketler; Türkçe harf duyarsız) VE etiket (`labelKey`) VE hedef kıdem (yıl / "Uzman" / hepsi).
+  - `MaterialList`: tablonun üstünde "Ara" | "Etiket" (kullanım sayısıyla) | "Hedef kıdem" süzgeci (`role="search"`); "N / M materyal gösteriliyor" (`aria-live`), "Süzgeci temizle"; süzgeç boşsa "Bu süzgeçle materyal yok". Kıdem seçenekleri hekim süzgeciyle ortak (`AUDIENCE_OPTIONS`, `parseYearFilter`). Süzme istemcide (liste 200 sınırlı; `ListLimitNotice` kaldı); yeni indeks yok.
+  - **Testler:** unit +2 (arama alanları ve Türkçe harfler, etiket, kıdem, birleşim). e2e +1 × 2 (üç süzgeç tek tek ve birlikte, sayım, boş durum, temizleme, yatay taşma yok). Telefon ekran görüntüsüyle düzen kontrol edildi.
+  - Doğrulandı: typecheck, lint, format, no-mock, unit 271, e2e materyal yönetimi + a11y 14.
 
 #### F11.8 Belgeler, izlenebilirlik, tam doğrulama (S)
 - TRACEABILITY (S1, S2, C2), UAT, STAGING, README, DEPLOY, `Plan.MD`; bütün test paketleri.

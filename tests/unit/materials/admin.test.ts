@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildReadReport,
+  EMPTY_ADMIN_MATERIAL_FILTER,
+  filterAdminMaterials,
+  type AdminMaterialFilter,
+  type MaterialView,
   formatBytes,
   materialFileProblem,
   readReportCsv,
@@ -8,6 +12,7 @@ import {
   type ProgressView,
 } from "@/lib/materials/admin";
 import { toCsv } from "@/lib/csv";
+import { labelKey } from "@shared/materials";
 
 const doctor = (uid: string, residencyYear: number | null, fullName = uid, title = "Asistan Dr.") => ({
   uid,
@@ -117,5 +122,54 @@ describe("okunma raporu (F6.2)", () => {
     ]);
     expect(report.targeted).toBe(1);
     expect(report.rows.find((r) => r.uid === "p")?.audience).toBe("—");
+  });
+});
+
+describe("admin materyal süzgeci (F11.7): arama | etiket | hedef kıdem", () => {
+  const mat = (id: string, over: Partial<MaterialView>): MaterialView =>
+    ({
+      id,
+      title: id,
+      description: "",
+      labels: [],
+      targetYears: [],
+      targetSpecialists: false,
+      storagePath: `materials/${id}/${id}.pdf`,
+      ...over,
+    }) as MaterialView;
+  const list = [
+    mat("a", { title: "Kawasaki Hastalığı", labels: ["Kardiyoloji"], targetYears: [3, 4] }),
+    mat("b", {
+      title: "Septik Şok",
+      description: "İlk saat yönetimi",
+      labels: ["Çocuk Acil"],
+      targetSpecialists: true,
+    }),
+    mat("c", {
+      title: "Preterm",
+      labels: ["Neonatoloji", "Çocuk Acil"],
+      targetYears: [1, 2],
+      storagePath: "materials/c/dogumhane-rehberi.pdf",
+    }),
+  ];
+  const ids = (f: Partial<AdminMaterialFilter>) =>
+    filterAdminMaterials(list, { ...EMPTY_ADMIN_MATERIAL_FILTER, ...f }).map((m) => m.id);
+
+  it("boş süzgeç hepsini gösterir; arama başlık, açıklama, dosya adı ve etikette, Türkçe harf duyarsız", () => {
+    expect(ids({})).toEqual(["a", "b", "c"]);
+    expect(ids({ search: "KAWASAKİ" })).toEqual(["a"]);
+    expect(ids({ search: "ilk SAAT" })).toEqual(["b"]);
+    expect(ids({ search: "dogumhane" })).toEqual(["c"]);
+    expect(ids({ search: "neonato" })).toEqual(["c"]);
+    expect(ids({ search: "   " })).toEqual(["a", "b", "c"]);
+    expect(ids({ search: "yok-böyle" })).toEqual([]);
+  });
+
+  it("etiket ve hedef kıdem; ölçütler birlikte (VE) uygulanır", () => {
+    expect(ids({ label: labelKey("çocuk acil") })).toEqual(["b", "c"]);
+    expect(ids({ target: "specialist" })).toEqual(["b"]);
+    expect(ids({ target: 2 })).toEqual(["c"]);
+    expect(ids({ label: labelKey("Çocuk Acil"), target: 1 })).toEqual(["c"]);
+    expect(ids({ label: labelKey("Çocuk Acil"), target: 1, search: "septik" })).toEqual([]);
   });
 });

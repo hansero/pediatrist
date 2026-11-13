@@ -10,12 +10,22 @@ import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
+import { Field } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { deleteMaterial, updateMaterial } from "@/lib/firebase/callables";
-import { FILE_TYPE_LABEL, formatBytes, useMaterials, type MaterialView } from "@/lib/materials/admin";
+import {
+  EMPTY_ADMIN_MATERIAL_FILTER,
+  FILE_TYPE_LABEL,
+  filterAdminMaterials,
+  formatBytes,
+  useMaterials,
+  type AdminMaterialFilter,
+  type MaterialView,
+} from "@/lib/materials/admin";
+import { AUDIENCE_OPTIONS, parseYearFilter } from "@/lib/materials/doctor";
 import {
   MaterialFields,
   validateMaterialFields,
@@ -35,6 +45,10 @@ export function MaterialList({ onUpload }: { onUpload: () => void }) {
   const [reportId, setReportId] = useState<string | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
   const all = materials.data ?? [];
+  const [filter, setFilter] = useState<AdminMaterialFilter>(EMPTY_ADMIN_MATERIAL_FILTER);
+  const labels = distinctLabels(all);
+  const rows = filterAdminMaterials(all, filter);
+  const filtered = filter.search.trim() !== "" || filter.label !== "all" || filter.target !== "all";
   const reportFor = all.find((m) => m.id === reportId) ?? null;
 
   useEffect(() => {
@@ -112,6 +126,65 @@ export function MaterialList({ onUpload }: { onUpload: () => void }) {
         actions={<Button onClick={onUpload}>Materyal yükle</Button>}
       >
         {materials.error && <Alert tone="critical">{materials.error}</Alert>}
+        <div className="report-filter" role="search" aria-label="Materyal süzgeci">
+          <Field label="Ara" hint="Başlık, açıklama, dosya adı veya etiket.">
+            {(p) => (
+              <input
+                {...p}
+                type="search"
+                className="form-input"
+                value={filter.search}
+                onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+              />
+            )}
+          </Field>
+          <Field label="Etiket">
+            {(p) => (
+              <select
+                {...p}
+                className="form-select"
+                value={filter.label}
+                onChange={(e) => setFilter({ ...filter, label: e.target.value })}
+              >
+                <option value="all">Bütün etiketler</option>
+                {labels.map((l) => (
+                  <option key={l.key} value={l.key}>
+                    {l.label} ({l.count})
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+          <Field label="Hedef kıdem">
+            {(p) => (
+              <select
+                {...p}
+                className="form-select"
+                value={String(filter.target)}
+                onChange={(e) => setFilter({ ...filter, target: parseYearFilter(e.target.value) })}
+              >
+                <option value="all">Bütün kıdemler</option>
+                {AUDIENCE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        </div>
+        {materials.status === "ready" && all.length > 0 && (
+          <div className="ui-actions">
+            <p className="page-header-subtitle" aria-live="polite" data-testid="material-filter-count">
+              {filtered ? `${rows.length} / ${all.length} materyal gösteriliyor` : `${all.length} materyal`}
+            </p>
+            {filtered && (
+              <Button variant="secondary" size="sm" onClick={() => setFilter(EMPTY_ADMIN_MATERIAL_FILTER)}>
+                Süzgeci temizle
+              </Button>
+            )}
+          </div>
+        )}
         <ListLimitNotice
           truncated={materials.truncated}
           cap={materials.cap}
@@ -122,11 +195,17 @@ export function MaterialList({ onUpload }: { onUpload: () => void }) {
           caption="Materyal listesi"
           captionHidden
           columns={columns}
-          rows={all}
+          rows={rows}
           rowKey={(m) => m.id}
           loading={materials.status === "loading"}
           error={materials.error}
-          empty={<EmptyState title="Henüz materyal yok" description="PDF, video veya görsel yükleyin." />}
+          empty={
+            all.length > 0 ? (
+              <EmptyState title="Bu süzgeçle materyal yok" description="Süzgeci değiştirin ya da temizleyin." />
+            ) : (
+              <EmptyState title="Henüz materyal yok" description="PDF, video veya görsel yükleyin." />
+            )
+          }
         />
       </Card>
 
@@ -136,7 +215,7 @@ export function MaterialList({ onUpload }: { onUpload: () => void }) {
         </div>
       )}
 
-      <EditMaterialDialog material={editing} labelSuggestions={distinctLabels(all)} onClose={() => setEditing(null)} />
+      <EditMaterialDialog material={editing} labelSuggestions={labels} onClose={() => setEditing(null)} />
       <ConfirmDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
