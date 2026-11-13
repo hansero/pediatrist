@@ -3,6 +3,7 @@
 import { collection, limit, onSnapshot, orderBy, query, type DocumentData, type Timestamp } from "firebase/firestore";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { MATERIAL_UPLOAD, type MaterialFileType } from "@shared/constants";
+import { materialLabelsOf } from "@shared/materials";
 import { COLLECTIONS, type MaterialStatus } from "@shared/types";
 import { useCapped, useFirestoreSnapshot, type CappedState, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import type { MemberSummary } from "@/lib/attendance/live";
@@ -23,7 +24,8 @@ export interface MaterialView {
   id: string;
   title: string;
   description: string;
-  category: string;
+  /** Serbest etiketler (D25); eski dokümanda kategori tek etiket sayılır. */
+  labels: string[];
   targetYears: number[];
   isMandatory: boolean;
   allowDownload: boolean;
@@ -42,8 +44,8 @@ export function toMaterialView(id: string, d: DocumentData): MaterialView {
     id,
     title: String(d.title ?? ""),
     description: String(d.description ?? ""),
-    category: String(d.category ?? ""),
-    targetYears: Array.isArray(d.targetYears) ? d.targetYears.map(Number).sort() : [],
+    labels: materialLabelsOf(d),
+    targetYears: Array.isArray(d.targetYears) ? d.targetYears.map(Number).sort((a, b) => a - b) : [],
     isMandatory: d.isMandatory === true,
     allowDownload: d.allowDownload === true,
     fileType: d.fileType === "video" || d.fileType === "image" ? d.fileType : "pdf",

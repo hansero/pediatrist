@@ -29,6 +29,12 @@ test("hekim kendi kıdemini görür; PDF'i filigranlı açar, son sayfada tamaml
   await expect(list.getByRole("heading", { name: PRETERM })).toHaveCount(0);
   await page.getByLabel("Kıdem").selectOption("all");
   await expect(list.getByRole("heading", { name: PRETERM })).toBeVisible();
+  // Etiket süzgeci (D25): seçenekler yayındaki materyallerin etiketlerinden.
+  await page.getByLabel("Etiket").selectOption({ label: "Neonatoloji" });
+  await expect(list.getByRole("heading", { name: PRETERM })).toBeVisible();
+  await expect(list.getByRole("heading", { name: SEPSIS })).toHaveCount(0);
+  await page.getByLabel("Etiket").selectOption("all");
+  await expect(list.getByRole("heading", { name: SEPSIS })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 
   // PDF: pdf.js ile canvas'a çizilir (CSP bekçisi ihlal yakalar); ekran okuyucu için sayfa metni var.

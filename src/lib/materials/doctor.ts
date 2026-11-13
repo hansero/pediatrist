@@ -1,6 +1,7 @@
 "use client";
 
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where, type Timestamp } from "firebase/firestore";
+import { hasLabel } from "@shared/materials";
 import { COLLECTIONS } from "@shared/types";
 import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import { notConfiguredError } from "@/lib/errors";
@@ -119,11 +120,10 @@ export function canComplete(
 
 export type YearFilter = number | "all";
 
+/** Hekim süzgeci: kıdem ve etiket (`label`: `"all"` ya da `labelKey`). */
 export function filterMaterials(
   list: readonly MaterialView[],
-  { year, category }: { year: YearFilter; category: string }
+  { year, label }: { year: YearFilter; label: string }
 ): MaterialView[] {
-  return list.filter(
-    (m) => (year === "all" || m.targetYears.includes(year)) && (category === "all" || m.category === category)
-  );
+  return list.filter((m) => (year === "all" || m.targetYears.includes(year)) && hasLabel(m, label));
 }

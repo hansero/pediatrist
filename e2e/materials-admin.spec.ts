@@ -25,6 +25,7 @@ test("liste ve okunma raporu: hedef kitle, canlı ilerleme ve CSV (F6.2)", async
   await expect(row(page, SEPSIS)).toContainText("Yayında");
   await expect(row(page, SEPSIS)).toContainText("Zorunlu");
   await expect(row(page, PRETERM)).toContainText("1. yıl, 2. yıl");
+  await expect(row(page, SEPSIS)).toContainText("Çocuk Acil, Yoğun Bakım");
   await expectNoHorizontalOverflow(page);
 
   await row(page, SEPSIS)
@@ -77,7 +78,17 @@ test("yükle (ilerleme, sunucu doğrulaması) → düzenle → sil; izinsiz tür
   await file.setInputFiles({ name: "Septik Şok Özeti.pdf", mimeType: "application/pdf", buffer: PDF });
   await expect(page.getByLabel("Başlık")).toHaveValue("Septik Şok Özeti");
   await page.getByLabel("Başlık").fill(title);
-  await page.getByLabel("Kategori").selectOption("Çocuk Kardiyoloji");
+  // Etiketler (D25): biri yeni yazılır (Enter), biri mevcut etiketin farklı yazımı → mevcut yazıma çevrilir.
+  const labelInput = page.getByLabel("Etiketler", { exact: true });
+  await labelInput.fill("Çocuk  Kardiyoloji ");
+  await labelInput.press("Enter");
+  await labelInput.fill("neonatoloji");
+  await page.getByRole("button", { name: "Etiket ekle" }).click();
+  await labelInput.fill("ÇOCUK KARDİYOLOJİ");
+  await labelInput.press("Enter");
+  await expect(page.getByText('"ÇOCUK KARDİYOLOJİ" zaten ekli.')).toBeVisible();
+  const chips = page.getByRole("list", { name: "Eklenen etiketler" });
+  await expect(chips.getByRole("listitem")).toHaveText(["Çocuk Kardiyoloji×", "Neonatoloji×"]);
   await page.getByLabel("3. yıl").uncheck();
   await page.getByLabel("4. yıl").uncheck();
   await page.getByLabel("Hekimler indirebilir").check();
@@ -87,7 +98,7 @@ test("yükle (ilerleme, sunucu doğrulaması) → düzenle → sil; izinsiz tür
   await expect(page.getByRole("tab", { name: "Materyaller" })).toHaveAttribute("aria-selected", "true");
   await expect(row(page, title)).toContainText("Yayında");
   await expect(row(page, title)).toContainText("1. yıl, 2. yıl");
-  await expect(row(page, title)).toContainText("Çocuk Kardiyoloji");
+  await expect(row(page, title)).toContainText("Çocuk Kardiyoloji, Neonatoloji");
   await expect(row(page, title)).toContainText("PDF");
 
   // Düzenle: yalnızca meta veri.
@@ -98,9 +109,12 @@ test("yükle (ilerleme, sunucu doğrulaması) → düzenle → sil; izinsiz tür
   const renamed = `${title} (güncel)`;
   await dialog.getByLabel("Başlık").fill(renamed);
   await dialog.getByLabel("Zorunlu okuma").check();
+  await dialog.getByRole("button", { name: "Neonatoloji etiketini kaldır" }).click();
   await dialog.getByRole("button", { name: "Kaydet" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Materyal güncellendi." })).toBeVisible();
   await expect(row(page, renamed)).toContainText("Zorunlu");
+  await expect(row(page, renamed)).not.toContainText("Neonatoloji");
+  await expect(row(page, renamed)).toContainText("Çocuk Kardiyoloji");
 
   // Sil: onay, sunucuda doküman da gider.
   await row(page, renamed)

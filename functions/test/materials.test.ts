@@ -20,7 +20,7 @@ const PDF = readFileSync(path.join(process.cwd(), "scripts", "fixtures", "files"
 const base = {
   title: "Kawasaki Hastalığı Özeti",
   description: "Tanı ve tedavi algoritması",
-  category: "Çocuk Enfeksiyon",
+  labels: ["Çocuk Enfeksiyon", " Kawasaki  "],
   targetYears: [3, 1],
   isMandatory: true,
   allowDownload: false,
@@ -53,6 +53,7 @@ describe("materyal yükleme akışı (F6.1)", () => {
       status: "draft",
       fileType: "pdf",
       targetYears: [1, 3],
+      labels: ["Çocuk Enfeksiyon", "Kawasaki"],
       uploadedBy: "admin",
       uploadedByName: "Prof. Dr. Test admin",
     });
@@ -83,9 +84,27 @@ describe("materyal yükleme akışı (F6.1)", () => {
     expect((await errorOf(create({ sizeBytes: 151 * 1024 * 1024 }))).message).toContain("150 MB");
     expect((await errorOf(create({ targetYears: [] }))).message).toContain("En az bir hedef kıdem");
     expect((await errorOf(create({ targetYears: [5] }))).code).toBe("invalid-argument");
-    expect((await errorOf(create({ category: "Uydurma" }))).message).toContain("Kategori");
+    expect((await errorOf(create({ labels: Array.from({ length: 9 }, (_, i) => `E${i}`) }))).message).toContain(
+      "en fazla 8 etiket"
+    );
+    expect((await errorOf(create({ labels: ["x".repeat(41)] }))).message).toContain("40 karakter");
     expect((await errorOf(create({}, asMember("r1")))).code).toBe("permission-denied");
     expect((await db().collection("materials").get()).size).toBe(0);
+  });
+
+  it("etiketler serbesttir: boş liste kabul, tekrarlar tek, eski kategori alanı etiket güncellenince silinir (D25)", async () => {
+    const { materialId } = await create({ labels: [] });
+    expect((await doc(materialId))?.labels).toEqual([]);
+    // F11.5 öncesi doküman: sabit kategori alanı.
+    await db().doc(`materials/${materialId}`).update({ category: "Neonatoloji (Yenidoğan)" });
+    await updateMaterial.run(callableRequest({ materialId, title: "Yalnızca başlık" }, asAdmin()));
+    expect(await doc(materialId)).toMatchObject({ category: "Neonatoloji (Yenidoğan)" });
+    await updateMaterial.run(
+      callableRequest({ materialId, labels: ["Neonatoloji", "neonatoloji", "İnfeksiyon"] }, asAdmin())
+    );
+    const after = await doc(materialId);
+    expect(after?.labels).toEqual(["Neonatoloji", "İnfeksiyon"]);
+    expect(after).not.toHaveProperty("category");
   });
 
   it("güncelleme yalnızca meta verileri değiştirir; olmayan materyal bulunamadı; boş güncelleme reddedilir", async () => {

@@ -1298,3 +1298,37 @@
   gap: var(--space-1);
   overflow-wrap: anywhere;
 }
+
+/* Materyal etiketleri (F11.5, D25) */
+.label-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.label-input-row .form-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.label-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.15rem 0.25rem 0.15rem 0.65rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  font-size: 0.86rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

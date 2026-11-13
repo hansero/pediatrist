@@ -101,17 +101,6 @@ export type CalculatorId = (typeof CALCULATOR_IDS)[number];
 
 // --- Materyaller -----------------------------------------------------------
 
-/** Tek kategori listesi: hem yükleme hem filtreleme bunu kullanır (AUDIT kullanılabilirlik bulgusu). */
-export const MATERIAL_CATEGORIES = [
-  "Çocuk Acil & Yoğun Bakım",
-  "Neonatoloji (Yenidoğan)",
-  "Çocuk Enfeksiyon",
-  "Çocuk Nefroloji & Sıvı",
-  "Çocuk Kardiyoloji",
-  "Genel Pediatri",
-] as const;
-export type MaterialCategory = (typeof MATERIAL_CATEGORIES)[number];
-
 export const MATERIAL_FILE_TYPES = ["pdf", "video", "image"] as const;
 export type MaterialFileType = (typeof MATERIAL_FILE_TYPES)[number];
 
@@ -167,6 +156,8 @@ export const LIMITS = {
   fileNameLength: 200,
   descriptionLength: 2000,
   protocolNoteLength: 2000,
+  /** Materyal etiketleri (D25): materyal başına en çok `max` etiket, her biri en çok `length` karakter. */
+  materialLabels: { max: 8, length: 40 },
   idLength: 128,
   tabSwitchCountMax: 999,
 } as const;

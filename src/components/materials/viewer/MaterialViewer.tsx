@@ -122,7 +122,7 @@ export function MaterialViewer({
   return (
     <Card
       title={material.title}
-      description={`${material.category} · ${FILE_TYPE_LABEL[material.fileType]} · Filigranlı görüntüleme`}
+      description={[...material.labels, FILE_TYPE_LABEL[material.fileType], "Filigranlı görüntüleme"].join(" · ")}
       actions={
         <span className="ui-actions">
           {completed && <StatusChip tone="success">Tamamlandı</StatusChip>}

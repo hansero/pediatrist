@@ -67,8 +67,8 @@ export const createMaterial = defineCallable("createMaterial", "admin", async (d
   batch.set(ref, {
     title: data.title,
     description: data.description,
-    category: data.category,
-    targetYears: [...data.targetYears].sort(),
+    labels: data.labels,
+    targetYears: [...data.targetYears].sort((x, y) => x - y),
     isMandatory: data.isMandatory,
     allowDownload: data.allowDownload,
     fileType,
@@ -86,7 +86,12 @@ export const createMaterial = defineCallable("createMaterial", "admin", async (d
     action: "MATERIAL_DRAFT_CREATED",
     resourceType: "materials",
     resourceId: ref.id,
-    metadata: { title: data.title, contentType: data.contentType, sizeBytes: data.sizeBytes },
+    metadata: {
+      title: data.title,
+      contentType: data.contentType,
+      sizeBytes: data.sizeBytes,
+      labelCount: data.labels.length,
+    },
   });
   await batch.commit();
   return { materialId: ref.id, storagePath };
@@ -136,15 +141,22 @@ export const finalizeMaterialUpload = defineCallable("finalizeMaterialUpload", "
   return { published: true as const, sizeBytes, fileType };
 });
 
-/** Admin: başlık, açıklama, kategori, hedef kıdem, zorunluluk, indirme izni. Dosya değişmez. */
+/** Admin: başlık, açıklama, etiketler, hedef kıdem, zorunluluk, indirme izni. Dosya değişmez. */
 export const updateMaterial = defineCallable("updateMaterial", "admin", async (data, actor) => {
   const { ref } = await materialOrThrow(data.materialId);
   const { materialId, ...fields } = data;
-  const changes = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined));
-  if (Array.isArray(changes.targetYears)) changes.targetYears = [...changes.targetYears].sort();
+  const changes: Record<string, unknown> = Object.fromEntries(
+    Object.entries(fields).filter(([, v]) => v !== undefined)
+  );
+  if (fields.targetYears) changes.targetYears = [...fields.targetYears].sort((x, y) => x - y);
   if (Object.keys(changes).length === 0) throw new HttpsError("invalid-argument", "Değiştirilecek alan yok.");
   const batch = getFirestore().batch();
-  batch.update(ref, { ...changes, updatedAt: FieldValue.serverTimestamp() });
+  batch.update(ref, {
+    ...changes,
+    // Etiketler yazılınca F11.5 öncesi sabit kategori alanı temizlenir (tek kaynak `labels`, D25).
+    ...(changes.labels !== undefined ? { category: FieldValue.delete() } : {}),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
   auditIn(batch, {
     actorUid: actor.uid,
     actorEmail: actor.email,

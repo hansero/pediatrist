@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MATERIAL_CATEGORIES, RESIDENCY_YEARS } from "@shared/constants";
+import { RESIDENCY_YEARS } from "@shared/constants";
+import { distinctLabels } from "@shared/materials";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,15 +21,16 @@ import {
 import { MaterialViewer } from "./MaterialViewer";
 
 /**
- * Hekim materyal listesi (F6.3). Varsayılan süzgeç hekimin kendi kıdemi (kıdemsiz uzman: tümü); kategori
- * ortak listeden. Her kartta kendi okuma durumu. Görüntüleyici aynı sayfada açılır.
+ * Hekim materyal listesi (F6.3). Varsayılan süzgeç hekimin kendi kıdemi (kıdemsiz uzman: tümü); etiket süzgeci
+ * yayındaki materyallerin etiketlerinden (D25). Her kartta kendi okuma durumu. Görüntüleyici aynı sayfada açılır.
  */
 export function DoctorMaterials({ session }: { session: ClinicMemberSession }) {
   const materials = usePublishedMaterials();
   const [year, setYear] = useState<YearFilter>(session.residencyYear ?? "all");
-  const [category, setCategory] = useState("all");
+  const [label, setLabel] = useState("all");
   const [openId, setOpenId] = useState<string | null>(null);
-  const list = filterMaterials(materials.data ?? [], { year, category });
+  const labels = distinctLabels(materials.data ?? []);
+  const list = filterMaterials(materials.data ?? [], { year, label });
   const open = (materials.data ?? []).find((m) => m.id === openId) ?? null;
 
   // Ana sayfadan gelen bağlantı (`?materyal=<id>`): materyal yüklenince açılır; kapatınca parametre silinir.
@@ -81,13 +83,13 @@ export function DoctorMaterials({ session }: { session: ClinicMemberSession }) {
               </select>
             )}
           </Field>
-          <Field label="Kategori">
+          <Field label="Etiket">
             {(p) => (
-              <select {...p} className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option value="all">Bütün kategoriler</option>
-                {MATERIAL_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+              <select {...p} className="form-select" value={label} onChange={(e) => setLabel(e.target.value)}>
+                <option value="all">Bütün etiketler</option>
+                {labels.map((l) => (
+                  <option key={l.key} value={l.key}>
+                    {l.label}
                   </option>
                 ))}
               </select>
@@ -123,7 +125,9 @@ function MaterialCard({ material, uid, onOpen }: { material: MaterialView; uid: 
   return (
     <article className="material-card" aria-labelledby={`material-${material.id}`}>
       <div className="ui-actions">
-        <StatusChip>{material.category}</StatusChip>
+        {material.labels.map((l) => (
+          <StatusChip key={l}>{l}</StatusChip>
+        ))}
         {material.isMandatory && <StatusChip tone="info">Zorunlu</StatusChip>}
       </div>
       <h2 id={`material-${material.id}`} className="material-title">

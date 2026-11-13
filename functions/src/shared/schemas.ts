@@ -15,9 +15,9 @@
 import { KVKK_NOTICE_VERSION } from "./consent";
 import { z } from "./zod";
 import { QuizQuestionInput } from "./quizQuestion";
+import { normalizeLabel, normalizeLabels } from "./materials";
 import {
   CALCULATOR_IDS,
-  MATERIAL_CATEGORIES,
   MATERIAL_FILE_TYPES,
   MATERIAL_UPLOAD,
   DEFAULT_REVEAL_POLICY,
@@ -463,10 +463,31 @@ export const GetAttemptReportResponse = z.object({
 
 // --- Materyaller (F6.1) -----------------------------------------------------------
 
+/** Tek etiket (D25): normalize edilir, boş olamaz, uzunluk sınırlı. */
+const materialLabel = z
+  .string({ error: "Etiket metin olmalıdır." })
+  .transform(normalizeLabel)
+  .pipe(
+    z
+      .string()
+      .min(1, { error: "Etiket boş olamaz." })
+      .max(LIMITS.materialLabels.length, {
+        error: `Etiket en fazla ${LIMITS.materialLabels.length} karakter olabilir.`,
+      })
+  );
+
 const materialFields = {
   title: requiredText("Materyal başlığı", LIMITS.titleLength),
   description: optionalText("Açıklama", LIMITS.descriptionLength),
-  category: z.enum(MATERIAL_CATEGORIES, { error: "Kategori listeden seçilmelidir." }),
+  /** Serbest etiketler (D25); aynı materyalde Türkçe küçük harfe göre tekrar edenler tek sayılır. */
+  labels: z
+    .array(materialLabel, { error: "Etiketler liste olmalıdır." })
+    .transform(normalizeLabels)
+    .pipe(
+      z.array(z.string()).max(LIMITS.materialLabels.max, {
+        error: `Bir materyale en fazla ${LIMITS.materialLabels.max} etiket verilebilir.`,
+      })
+    ),
   targetYears: z
     .array(residencyYearSchema, { error: "Hedef kıdem listesi geçersiz." })
     .min(1, { error: "En az bir hedef kıdem seçin." })

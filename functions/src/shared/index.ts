@@ -7,3 +7,4 @@ export * from "./quizCsv";
 export * from "./issues";
 export * from "./security";
 export * from "./consent";
+export * from "./materials";

@@ -1,19 +1,15 @@
 "use client";
 
-import {
-  LIMITS,
-  MATERIAL_CATEGORIES,
-  RESIDENCY_YEARS,
-  type MaterialCategory,
-  type ResidencyYear,
-} from "@shared/constants";
+import { LIMITS, RESIDENCY_YEARS, type ResidencyYear } from "@shared/constants";
+import type { LabelOption } from "@shared/materials";
 import { Field } from "@/components/ui/Field";
+import { LabelInput } from "./LabelInput";
 
-/** Materyal meta verisi (yükleme ve düzenleme formu ortak; değerler ortak listelerden). */
+/** Materyal meta verisi (yükleme ve düzenleme formu ortak). Etiketler serbest (D25). */
 export interface MaterialFieldsValue {
   title: string;
   description: string;
-  category: MaterialCategory;
+  labels: string[];
   targetYears: ResidencyYear[];
   isMandatory: boolean;
   allowDownload: boolean;
@@ -27,7 +23,7 @@ export interface MaterialFieldErrors {
 export const emptyMaterialFields = (): MaterialFieldsValue => ({
   title: "",
   description: "",
-  category: MATERIAL_CATEGORIES[0],
+  labels: [],
   targetYears: [...RESIDENCY_YEARS],
   isMandatory: false,
   allowDownload: false,
@@ -45,11 +41,14 @@ export function MaterialFields({
   onChange,
   errors = {},
   idPrefix,
+  labelSuggestions,
 }: {
   value: MaterialFieldsValue;
   onChange: (v: MaterialFieldsValue) => void;
   errors?: MaterialFieldErrors;
   idPrefix: string;
+  /** Daha önce kullanılmış etiketler (`distinctLabels`). */
+  labelSuggestions: readonly LabelOption[];
 }) {
   const yearsErrorId = `${idPrefix}-years-error`;
   return (
@@ -77,22 +76,12 @@ export function MaterialFields({
           />
         )}
       </Field>
-      <Field label="Kategori" required>
-        {(p) => (
-          <select
-            {...p}
-            className="form-select"
-            value={value.category}
-            onChange={(e) => onChange({ ...value, category: e.target.value as MaterialCategory })}
-          >
-            {MATERIAL_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        )}
-      </Field>
+      <LabelInput
+        idPrefix={idPrefix}
+        value={value.labels}
+        suggestions={labelSuggestions}
+        onChange={(labels) => onChange({ ...value, labels })}
+      />
       <fieldset
         className="ui-fieldset"
         aria-invalid={errors.targetYears ? true : undefined}

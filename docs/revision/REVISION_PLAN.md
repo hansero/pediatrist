@@ -98,7 +98,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F11.2 | Uygulama içi QR okuyucu | M | ✅ | Madde 2 (D27) |
 | F11.3 | Ders kategorisini kaldır | S | ✅ | Madde 3 |
 | F11.4 | Yoklama verme yetkisi: yalnızca 1–4. yıl asistan | M | ✅ | Madde 7 (D24) |
-| F11.5 | Materyal etiketleri | M | ⬜ | Madde 4 (D25) |
+| F11.5 | Materyal etiketleri | M | ✅ | Madde 4 (D25) |
 | F11.6 | Hedef kitlede "Uzman" | M | ⬜ | Madde 6 (D26) |
 | F11.7 | Admin materyal süzgeci | S | ⬜ | Madde 5 |
 | F11.8 | Belgeler, izlenebilirlik, tam doğrulama | S | ⬜ | Hepsi |
@@ -110,9 +110,9 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-13
-- **Son tamamlanan adım:** F11.4 (yoklamayı yalnızca 1–4. yıl asistan verir, D24). Öncesinde F11.1 (yoklama cihazı, D23), F11.2 (QR okuyucu), F11.3 (ders kategorisi). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
+- **Son tamamlanan adım:** F11.5 (materyal etiketleri, D25). Öncesinde F11.1–F11.4 (yoklama: cihaz kaldırıldı, QR okuyucu, kategori kaldırıldı, yalnızca asistanlar). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F11.5 (materyal etiketleri, D25). Ardından sırayla F11.6 → F11.8; her adımın kapsamı §5 F11'de.
+- **Sıradaki iş:** F11.6 (hedef kitlede "Uzman", D26). Ardından F11.7 → F11.8; her adımın kapsamı §5 F11'de.
   - Kullanıcı kararları: birden çok etiket; "Uzman" yalnızca `Uzm. Dr.`; kamera izni "QR kodu okut" düğmesiyle, QR okununca hemen gönderim.
   - Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`.
   - Önceki dönemden kalanlar (staging, UAT, KVKK hukuk onayı, karar bekleyenler) için `docs/revision/TRACEABILITY.md` › "Açık kalanlar".
@@ -1646,7 +1646,15 @@ Kullanıcının 7 maddelik isteği. Plan: oturumdaki onaylı plan dosyası; kara
   - Doğrulandı: typecheck, lint, unit 262, functions 107, e2e (yoklama, dashboard, panel, gezinme, materyaller, duman) 52 + 2 atlanan.
 
 #### F11.5 Materyal etiketleri (M) — madde 4
-- `shared/materials.ts` normalizasyonu, `labels` alanı, `LabelInput`, hekim süzgecinde etiket, kullanılmayan `category` indeksi silinir.
+- **✅ Uygulanan (D25):**
+  - Yeni `functions/src/shared/materials.ts` (`@shared/materials`): `normalizeLabel`, `labelKey` (Türkçe küçük harf), `normalizeLabels`, `materialLabelsOf` (eski `category` → tek etiket), `distinctLabels` (öneri/süzgeç listesi: anahtar başına en sık yazım), `hasLabel`. `LIMITS.materialLabels = { max: 8, length: 40 }`.
+  - Sözleşme: `category` enum'u yerine `labels` (her öğe normalize, 1–40 karakter; liste tekrarsız, en çok 8). `MATERIAL_CATEGORIES` silindi.
+  - Sunucu: `createMaterial` `labels` yazar (denetimde etiket sayısı); `updateMaterial` etiket gelince eski `category` alanını siler. Kıdem sıralaması sayısal karşılaştırıcıyla.
+  - `firestore.indexes.json`: kullanılmayan `materials (category, createdAt)` indeksi silindi (deploy sırasında CLI silmeyi sorar).
+  - İstemci: `LabelInput` (Enter / virgül / "Etiket ekle"; `<datalist>` önerileri; önerideki etiketle aynı yazım önerinin yazımına çevrilir; tekrar ve sınır uyarısı; çiplerde "… etiketini kaldır"). Yükleme formu ve düzenleme penceresi önerileri mevcut materyallerden alır. Admin listesinde "Etiketler" sütunu; hekim kartında etiket çipleri; görüntüleyici açıklamasında etiketler; hekim süzgecinde "Kategori" yerine "Etiket".
+  - Seed: Septik Şok `["Çocuk Acil", "Yoğun Bakım"]`, Preterm `["Neonatoloji"]`.
+  - **Testler:** unit +4 dosya içi (`tests/unit/materials/labels.test.ts`: normalizasyon, eski doküman, öneri listesi, sözleşme sınırları) + hekim süzgeci. functions +1 (boş liste, tekrarlar, eski kategori silinir) ve sınır redleri. e2e: yüklemede yeni + mevcut yazımla etiket, tekrar uyarısı, düzenlemede etiket kaldırma; hekim etiket süzgeci.
+  - Doğrulandı: typecheck, lint, format, no-mock, unit 266, functions 108, e2e materyaller (yönetim, görüntüleyici), dashboard, a11y.
 
 #### F11.6 Hedef kitlede "Uzman" (M) — madde 6
 - `targetSpecialists`, `materialAudienceOf`, okunma raporu ve zorunlu materyal hesabı, hekim süzgecinde "Uzman".

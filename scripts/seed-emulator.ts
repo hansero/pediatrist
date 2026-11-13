@@ -145,7 +145,7 @@ async function seedViaCallables(admin: SeedUser, bucket: SeedBucket): Promise<st
       const created = await call("createMaterial", {
         title: m.title,
         description: m.description,
-        category: m.category,
+        labels: m.labels,
         targetYears: m.targetYears,
         isMandatory: m.isMandatory,
         allowDownload: m.allowDownload,

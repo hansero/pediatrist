@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { canComplete, filterMaterials, MAX_SECONDS, mergeProgress } from "@/lib/materials/doctor";
 import { watermarkText } from "@/components/materials/viewer/watermark";
 import type { MaterialView } from "@/lib/materials/admin";
+import { labelKey } from "@shared/materials";
 
 describe("okuma ilerlemesi (F6.3)", () => {
   it("süre birikir; son sayfa geri gitmez; tamamlandı geri alınmaz; kural sınırına kırpılır", () => {
@@ -32,11 +33,13 @@ describe("okuma ilerlemesi (F6.3)", () => {
     expect(canComplete("image", { maxPage: 0, pageCount: 0, watchedFraction: 0 })).toBe(true);
   });
 
-  it("süzgeç: kıdem ve kategori", () => {
-    const m = (id: string, targetYears: number[], category: string) => ({ id, targetYears, category }) as MaterialView;
-    const list = [m("a", [1, 2], "Neonatoloji (Yenidoğan)"), m("b", [1, 2, 3, 4], "Çocuk Acil & Yoğun Bakım")];
-    expect(filterMaterials(list, { year: 3, category: "all" }).map((x) => x.id)).toEqual(["b"]);
-    expect(filterMaterials(list, { year: "all", category: "Neonatoloji (Yenidoğan)" }).map((x) => x.id)).toEqual(["a"]);
+  it("süzgeç: kıdem ve etiket (Türkçe büyük-küçük harf duyarsız)", () => {
+    const m = (id: string, targetYears: number[], labels: string[]) => ({ id, targetYears, labels }) as MaterialView;
+    const list = [m("a", [1, 2], ["Neonatoloji", "İnfeksiyon"]), m("b", [1, 2, 3, 4], ["Çocuk Acil"]), m("c", [3], [])];
+    expect(filterMaterials(list, { year: 3, label: "all" }).map((x) => x.id)).toEqual(["b", "c"]);
+    expect(filterMaterials(list, { year: "all", label: labelKey("neonatoloji") }).map((x) => x.id)).toEqual(["a"]);
+    expect(filterMaterials(list, { year: "all", label: labelKey("İNFEKSİYON") }).map((x) => x.id)).toEqual(["a"]);
+    expect(filterMaterials(list, { year: 3, label: labelKey("Neonatoloji") })).toEqual([]);
   });
 
   it("filigran: ad, e-posta, zaman", () => {

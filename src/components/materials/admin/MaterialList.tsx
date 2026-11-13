@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import type { MaterialCategory, ResidencyYear } from "@shared/constants";
+import type { ResidencyYear } from "@shared/constants";
+import { distinctLabels, type LabelOption } from "@shared/materials";
 import { Alert } from "@/components/ui/Alert";
 import { ListLimitNotice } from "@/components/ui/ListLimitNotice";
 import { Button } from "@/components/ui/Button";
@@ -57,7 +58,7 @@ export function MaterialList({ onUpload }: { onUpload: () => void }) {
         </>
       ),
     },
-    { key: "category", header: "Kategori", cell: (m) => m.category },
+    { key: "labels", header: "Etiketler", cell: (m) => (m.labels.length ? m.labels.join(", ") : "—") },
     { key: "years", header: "Hedef kıdem", cell: (m) => yearsLabel(m.targetYears) },
     {
       key: "file",
@@ -135,7 +136,7 @@ export function MaterialList({ onUpload }: { onUpload: () => void }) {
         </div>
       )}
 
-      <EditMaterialDialog material={editing} onClose={() => setEditing(null)} />
+      <EditMaterialDialog material={editing} labelSuggestions={distinctLabels(all)} onClose={() => setEditing(null)} />
       <ConfirmDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
@@ -160,7 +161,15 @@ export function MaterialList({ onUpload }: { onUpload: () => void }) {
   );
 }
 
-function EditMaterialDialog({ material, onClose }: { material: MaterialView | null; onClose: () => void }) {
+function EditMaterialDialog({
+  material,
+  labelSuggestions,
+  onClose,
+}: {
+  material: MaterialView | null;
+  labelSuggestions: readonly LabelOption[];
+  onClose: () => void;
+}) {
   const toast = useToast();
   const [value, setValue] = useState<MaterialFieldsValue | null>(null);
   const [errors, setErrors] = useState<MaterialFieldErrors>({});
@@ -173,8 +182,8 @@ function EditMaterialDialog({ material, onClose }: { material: MaterialView | nu
         ? {
             title: material.title,
             description: material.description,
-            // Veritabanındaki değerler sunucuda ortak listelerle doğrulanmıştır.
-            category: material.category as MaterialCategory,
+            labels: material.labels,
+            // Veritabanındaki kıdemler sunucuda ortak listeyle doğrulanmıştır.
             targetYears: material.targetYears as ResidencyYear[],
             isMandatory: material.isMandatory,
             allowDownload: material.allowDownload,
@@ -218,7 +227,13 @@ function EditMaterialDialog({ material, onClose }: { material: MaterialView | nu
       {value && (
         <form className="auth-stack" onSubmit={onSubmit} noValidate>
           {save.error && <Alert tone="critical">{save.error}</Alert>}
-          <MaterialFields idPrefix="edit-material" value={value} onChange={setValue} errors={errors} />
+          <MaterialFields
+            idPrefix="edit-material"
+            value={value}
+            onChange={setValue}
+            errors={errors}
+            labelSuggestions={labelSuggestions}
+          />
           <p className="page-header-subtitle">Dosyayı değiştirmek için materyali silip yeniden yükleyin.</p>
           <div className="ui-dialog-actions">
             <Button variant="secondary" onClick={close} disabled={save.pending}>

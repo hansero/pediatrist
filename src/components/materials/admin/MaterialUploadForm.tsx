@@ -8,7 +8,14 @@ import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { toUserMessage } from "@/lib/errors";
 import { createMaterial, deleteMaterial, finalizeMaterialUpload } from "@/lib/firebase/callables";
-import { formatBytes, materialFileProblem, runMaterialUpload, uploadMaterialFile } from "@/lib/materials/admin";
+import { distinctLabels } from "@shared/materials";
+import {
+  formatBytes,
+  materialFileProblem,
+  runMaterialUpload,
+  uploadMaterialFile,
+  useMaterials,
+} from "@/lib/materials/admin";
 import {
   emptyMaterialFields,
   MaterialFields,
@@ -28,6 +35,9 @@ export function MaterialUploadForm({ onDone }: { onDone: () => void }) {
   const toast = useToast();
   const fileId = useId();
   const [fields, setFields] = useState<MaterialFieldsValue>(emptyMaterialFields);
+  // Etiket önerileri: mevcut materyallerde kullanılmış etiketler (D25).
+  const existing = useMaterials();
+  const labelSuggestions = distinctLabels(existing.data ?? []);
   const [errors, setErrors] = useState<MaterialFieldErrors & { file?: string }>({});
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -127,7 +137,13 @@ export function MaterialUploadForm({ onDone }: { onDone: () => void }) {
             </p>
           )}
         </div>
-        <MaterialFields idPrefix="upload" value={fields} onChange={setFields} errors={errors} />
+        <MaterialFields
+          idPrefix="upload"
+          value={fields}
+          onChange={setFields}
+          errors={errors}
+          labelSuggestions={labelSuggestions}
+        />
 
         {phase === "uploading" && (
           <div className="upload-progress">

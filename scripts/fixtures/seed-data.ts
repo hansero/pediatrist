@@ -115,7 +115,7 @@ export interface SeedMaterial {
   id: string;
   title: string;
   description: string;
-  category: string;
+  labels: string[];
   targetYears: number[];
   isMandatory: boolean;
   allowDownload: boolean;
@@ -127,7 +127,7 @@ export const SEED_MATERIALS: SeedMaterial[] = [
     id: "seed-mat-septik-sok",
     title: "Pediatrik Septik Şok: İlk Saat Yönetimi",
     description: "Kompanse şokun erken tanısı, sıvı resüsitasyonu ve vazoaktif tedaviye geçiş ölçütleri.",
-    category: "Çocuk Acil & Yoğun Bakım",
+    labels: ["Çocuk Acil", "Yoğun Bakım"],
     targetYears: [1, 2, 3, 4],
     isMandatory: true,
     allowDownload: false,
@@ -137,7 +137,7 @@ export const SEED_MATERIALS: SeedMaterial[] = [
     id: "seed-mat-preterm",
     title: "Doğumhanede Preterm Yenidoğan Stabilizasyonu",
     description: "Termoregülasyon, CPAP ve başlangıç FiO2 titrasyonu.",
-    category: "Neonatoloji (Yenidoğan)",
+    labels: ["Neonatoloji"],
     targetYears: [1, 2],
     isMandatory: false,
     allowDownload: true,

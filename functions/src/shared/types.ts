@@ -12,7 +12,6 @@
 import type {
   AuditResourceType,
   AuditSeverity,
-  MaterialCategory,
   MaterialFileType,
   MemberStatus,
   QuestionType,
@@ -302,7 +301,10 @@ export interface CalculatorConfigDoc<T> {
 export interface MaterialDoc<T> {
   title: string;
   description: string;
-  category: MaterialCategory | string;
+  /** Serbest etiketler (D25, F11.5). */
+  labels: string[];
+  /** Yalnızca F11.5 öncesi dokümanlarda (sabit kategori); okurken tek etiket sayılır (`materialLabelsOf`). */
+  category?: string;
   targetYears: number[];
   isMandatory: boolean;
   allowDownload: boolean;

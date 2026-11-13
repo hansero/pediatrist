@@ -61,7 +61,7 @@ const material = (id: string, over: Partial<MaterialView> = {}): MaterialView =>
   id,
   title: `Materyal ${id}`,
   description: "",
-  category: "Genel Pediatri",
+  labels: ["Genel Pediatri"],
   targetYears: [2],
   isMandatory: true,
   allowDownload: false,
