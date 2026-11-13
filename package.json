@@ -23,7 +23,8 @@
     "emulators": "node scripts/firebase.mjs emulators:start --only auth,firestore,storage,functions --project demo-pediatrist",
     "seed": "tsx scripts/seed-emulator.ts",
     "deploy:rules": "node scripts/firebase.mjs deploy --only firestore:rules,firestore:indexes,storage",
-    "deploy:functions": "node scripts/firebase.mjs deploy --only functions"
+    "deploy:functions": "node scripts/firebase.mjs deploy --only functions",
+    "verify:staging": "node scripts/verify-staging.mjs"
   },
   "dependencies": {
     "@simplewebauthn/browser": "14.0.0",

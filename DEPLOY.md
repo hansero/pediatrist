@@ -110,6 +110,14 @@ Yönetim paneli ilk admin olmadan kullanılamaz; ilk admin konsoldan atanır:
 
 ### 1.5 Dağıtım sonrası kısa kontrol
 
+Otomatik yapılandırma ve servis denetimi için (`gcloud auth login` açıkken):
+
+```bash
+npm run verify:staging
+```
+
+Manuel duman testi (smoke test):
+
 - Giriş › iki aşamalı doğrulama kodu › Genel bakış açılıyor.
 - Yönetim paneli › Denetim kayıtları listeleniyor; Ayrıntı'da "ağ kimliği" var (bölüm 2).
 - Bir PDF materyal yükleyip hekim hesabıyla açın (Storage CORS).
