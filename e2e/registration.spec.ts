@@ -1,6 +1,7 @@
 import { expect, test } from "./fixtures/test";
 import { fillRegistration, REGISTER_BUTTON } from "./fixtures/registration";
 import { applyOobCode, findUserProfileByEmail, listOobCodes, readDocument, writeDocument } from "./fixtures/emulator";
+import { KVKK_NOTICE_VERSION } from "../functions/src/shared/consent";
 
 /**
  * Kayıt akışı (F2.3): hesap Auth'ta açılır, profil sunucuda `completeRegistration` ile yazılır.
@@ -96,7 +97,10 @@ test("aydınlatma metni: sürümlü, veri sorumlusu yapılandırmadan; kayıt fo
   await expect(page.getByRole("link", { name: "KVKK aydınlatma metnini" })).toHaveAttribute("href", "/kvkk");
   await page.goto("/kvkk");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Kişisel Verilerin Korunması Aydınlatma Metni");
-  await expect(page.getByText("Sürüm 1.0")).toBeVisible();
+  await expect(page.getByText(`Sürüm ${KVKK_NOTICE_VERSION}`)).toBeVisible();
+  // F11.1 (D23): cihaz maddesi yerine kamera maddesi (QR okutma; görüntü cihazda kalır).
+  await expect(page.getByText(/kamera görüntüsü yalnızca kendi cihazınızda işlenir/)).toBeVisible();
+  await expect(page.getByText(/Cihaz bilgisi/)).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Veri sorumlusu" })).toContainText("Pediatrist Yerel Test Ortamı");
   await expect(page.getByRole("region", { name: "Haklarınız (KVKK md. 11)" })).toBeVisible();
 });

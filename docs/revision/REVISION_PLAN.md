@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F11.5 | Materyal etiketleri | M | ✅ | Madde 4 (D25) |
 | F11.6 | Hedef kitlede "Uzman" | M | ✅ | Madde 6 (D26) |
 | F11.7 | Admin materyal süzgeci | S | ✅ | Madde 5 |
-| F11.8 | Belgeler, izlenebilirlik, tam doğrulama | S | 🟨 | Hepsi |
+| F11.8 | Belgeler, izlenebilirlik, tam doğrulama | S | ✅ | Hepsi |
 
 ---
 
@@ -110,12 +110,13 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-13
-- **Son tamamlanan adım:** F11.7 (admin materyal süzgeci). Öncesinde F11.1–F11.4 (yoklama), F11.5 (etiketler), F11.6 ("Uzman"). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
-- **Devam eden adım:** F11.8 — belgeler yazıldı (TRACEABILITY §10, UAT B1/B7/D1/D4, STAGING E8, Plan.MD); kalan: tam test paketinin sonucu (e2e, rules, functions, iki derleme) ve tablonun ✅ yapılması.
-- **Sıradaki iş:** F11.8 (belgeler, izlenebilirlik, tam test paketi); her adımın kapsamı §5 F11'de.
-  - Kullanıcı kararları: birden çok etiket; "Uzman" yalnızca `Uzm. Dr.`; kamera izni "QR kodu okut" düğmesiyle, QR okununca hemen gönderim.
-  - Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`.
-  - Önceki dönemden kalanlar (staging, UAT, KVKK hukuk onayı, karar bekleyenler) için `docs/revision/TRACEABILITY.md` › "Açık kalanlar".
+- **Son tamamlanan adım:** F11.8. **F11 fazı tamamlandı (F11.1–F11.8 ✅)**: yoklama cihazı kaldırıldı (D23), uygulama içi QR okuyucu (D27), ders kategorisi kaldırıldı, yoklamayı yalnızca 1–4. yıl asistan verir (D24), materyal etiketleri (D25), hedef kitlede "Uzman" (D26), admin materyal süzgeci. Testler: unit 271, rules 58, functions 109, e2e 117 (+3 bilinçli atlanan).
+- **Devam eden adım:** —
+- **Sıradaki iş:** Planlı kod işi yok. Kullanıcı tarafında:
+  1. Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`; `functions/.env.<id>` içindeki `WEBAUTHN_*` satırlarını silin; kurallar/indeksler ve functions yeniden dağıtılır (kullanılmayan `materials (category, createdAt)` indeksini CLI silmek için sorar).
+  2. KVKK metni 1.1'e çıktı: her üyeden yeniden onay istenir; hukuk onayı hâlâ bekliyor (`KVKK_NOTICE_APPROVED`).
+  3. UAT: önce B1 (gerçek telefonda kamera, HTTPS), B7, D4; ardından önceki ⚠ senaryolar. `TRACEABILITY.md` › "Açık kalanlar".
+  - Yeni istek gelirse: §1'e F12.x satırı ekle, aynı ritüelle ilerle.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1674,7 +1675,12 @@ Kullanıcının 7 maddelik isteği. Plan: oturumdaki onaylı plan dosyası; kara
   - Doğrulandı: typecheck, lint, format, no-mock, unit 271, e2e materyal yönetimi + a11y 14.
 
 #### F11.8 Belgeler, izlenebilirlik, tam doğrulama (S)
-- TRACEABILITY (S1, S2, C2), UAT, STAGING, README, DEPLOY, `Plan.MD`; bütün test paketleri.
+- **✅ Uygulanan:**
+  - `TRACEABILITY.md`: S1 (passkey kaldırıldı, D23), S2 ve C2 kanıtları, yeni §10 "Kullanıcı revizyonları" (7 istek → adım, karar, kanıt).
+  - `UAT_SCENARIOS.md`: B1 (uygulama içi QR okutma ve kamera izni), B3/B4/B6 cihazsız akış, yeni B7 (uzman/öğretim üyesi hesabı), D1 (etiket + Uzman), yeni D4 (admin süzgeci ve uzman görünümü).
+  - `STAGING_CHECKLIST.md`: B7 (eski passkey verisinin temizliği), E8 (gerçek telefonda kamera, HTTPS). `Plan.MD`, README, DEPLOY güncel.
+  - Tam e2e'de bulunan: `e2e/registration.spec.ts` aydınlatma metni sürümünü sabit "1.0" bekliyordu → `KVKK_NOTICE_VERSION`; kamera maddesi ve "Cihaz bilgisi"nin yokluğu da doğrulanıyor.
+  - **Doğrulandı:** lint (0 uyarı), format, typecheck (Next + functions + testler), no-mock, unit 271, rules 58, functions 109, e2e **117 + 3 bilinçli atlanan** (tam paket 115 + düzeltilen 2 spec yeniden koşuldu), `npm run build`, `npm --prefix functions run build`.
 
 ---
 
