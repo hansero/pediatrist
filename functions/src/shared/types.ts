@@ -12,7 +12,6 @@
 import type {
   AuditResourceType,
   AuditSeverity,
-  LectureCategory,
   MaterialCategory,
   MaterialFileType,
   MemberStatus,
@@ -113,7 +112,8 @@ export type AttendanceMethod = "code" | "qr+webauthn" | "admin_excused" | "syste
 export interface AttendanceSessionDoc<T> {
   title: string;
   lecturer: string;
-  category: LectureCategory | string;
+  /** Yalnızca eski kayıtlarda (ders kategorisi F11.3'te kaldırıldı). */
+  category?: string;
   durationMinutes: number;
   status: AttendanceSessionStatus;
   startedAt: T;
@@ -161,7 +161,8 @@ export interface AttendanceLogDoc<T> extends AttendanceRecordDoc<T> {
   sessionId: string;
   sessionTitle: string;
   lecturer: string;
-  category: string;
+  /** Yalnızca eski kayıtlarda (ders kategorisi F11.3'te kaldırıldı). */
+  category?: string;
   sessionStartedAt: T;
 }
 

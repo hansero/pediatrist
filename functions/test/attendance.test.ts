@@ -57,7 +57,8 @@ describe("yoklama akışı (sunucu)", () => {
   it("admin başlatır, asistan kodla katılır; kayıt, log, sayaç ve denetim kaydı", async () => {
     const { sessionId, code } = await startLive();
     const session = (await db().collection("attendance_sessions").doc(sessionId).get()).data();
-    expect(session).toMatchObject({ title: "Sabah Dersi", category: "Genel", status: "live", startedBy: "admin" });
+    expect(session).toMatchObject({ title: "Sabah Dersi", status: "live", startedBy: "admin" });
+    expect(session).not.toHaveProperty("category");
 
     const res = await verify(sessionId, code.toLowerCase(), "r1");
     expect(CALLABLES.verifyRealTimeAttendance.response.parse(res)).toEqual({ verified: true, alreadyRecorded: false });

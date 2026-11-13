@@ -92,7 +92,7 @@ export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
   return (
     <Card
       title={lecture.title}
-      description={`${lecture.lecturer} · ${lecture.category}`}
+      description={lecture.lecturer}
       actions={
         <span className="ui-actions">
           <Countdown deadlineMs={lecture.endsAtMs} label="Yoklamanın kapanmasına kalan süre" warnAtSeconds={[60]} />

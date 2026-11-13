@@ -145,7 +145,6 @@ export const SEED_ATTENDANCE = {
   id: "seed-ders-001",
   title: "Sabah Olgu Sunumu: Ateşli Süt Çocuğuna Yaklaşım",
   lecturer: "Prof. Dr. Nevin Aydoğan",
-  category: "Sabah Vaka & Makale Saati",
   durationMinutes: 15,
   daysAgo: 2,
   records: [

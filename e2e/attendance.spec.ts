@@ -177,7 +177,7 @@ test("ders raporu: seed dersi sayıları, eşik uyarısı ve CSV (F4.5)", async 
   );
   expect(text.startsWith("\uFEFF")).toBe(true);
   const lines = csvLines(text);
-  expect(lines[0]).toBe("Ders;Tarih;Eğitici;Kategori;Hekim;Kıdem;Durum;Katılım saati;Mazeret notu;Beklenen listede");
+  expect(lines[0]).toBe("Ders;Tarih;Eğitici;Hekim;Kıdem;Durum;Katılım saati;Mazeret notu;Beklenen listede");
   expect(lines).toHaveLength(5);
   expect(lines.find((l) => l.includes("Zeynep Ergin"))).toContain(";4. yıl;Katılmadı;;;Evet");
   expect(lines.find((l) => l.includes("Emre Koç"))).toContain(";Mazeretli;;Nöbet ertesi;Evet");
@@ -213,7 +213,7 @@ test("hekim karnesi: eşik altındaki hekim işaretli, ders dökümü ve CSV (F4
   );
   expect(csv.download.suggestedFilename()).toMatch(/^hekim-karnesi-asistan-dr-zeynep-ergin-/);
   const detailLines = csvLines(csv.text);
-  expect(detailLines[0]).toBe("Hekim;Tarih;Ders;Eğitici;Kategori;Durum;Katılım saati;Mazeret notu");
+  expect(detailLines[0]).toBe("Hekim;Tarih;Ders;Eğitici;Durum;Katılım saati;Mazeret notu");
   expect(detailLines.find((l) => l.includes(SEED_LECTURE.title))).toContain(";Katılmadı;;");
   await detail.getByRole("button", { name: "Kapat" }).click();
   await expect(detail).toHaveCount(0);

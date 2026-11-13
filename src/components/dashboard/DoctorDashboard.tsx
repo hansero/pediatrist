@@ -22,7 +22,7 @@ function stepCard(step: DoctorStep) {
     case "lecture":
       return {
         title: `Canlı ders: ${step.lecture.title}`,
-        description: `${step.lecture.lecturer} · ${clock(step.lecture.endsAtMs)}'e kadar açık. Projektördeki kod ve kayıtlı telefonunuzla katılın.`,
+        description: `${step.lecture.lecturer} · ${clock(step.lecture.endsAtMs)}'e kadar açık. QR'ı okutarak ya da projektördeki kodu girerek katılın.`,
         action: { href: "/attendance", label: "Yoklamaya katıl" },
       };
     case "quiz-resume":

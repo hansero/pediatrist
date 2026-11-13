@@ -277,7 +277,6 @@ export const attendanceCode = z
 export const StartLectureSessionRequest = z.object({
   title: requiredText("Ders başlığı", LIMITS.titleLength),
   lecturer: requiredText("Eğitici", LIMITS.personNameLength),
-  category: optionalText("Kategori", LIMITS.titleLength).transform((v) => v || "Genel"),
   durationMinutes: intInRange("Yoklama süresi (dk)", LIMITS.lectureMinutes.min, LIMITS.lectureMinutes.max),
 });
 export const StartLectureSessionResponse = z.object({

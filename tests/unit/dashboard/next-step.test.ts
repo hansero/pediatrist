@@ -12,7 +12,6 @@ const lecture = (over: Partial<Lecture> = {}): Lecture => ({
   id: "L1",
   title: "Kawasaki",
   lecturer: "Öğretim üyesi",
-  category: "Genel Pediatri",
   durationMinutes: 60,
   status: "live",
   startedAtMs: NOW - 10 * MIN,

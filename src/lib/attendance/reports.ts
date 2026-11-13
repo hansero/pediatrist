@@ -272,7 +272,6 @@ export function lectureReportCsv(lecture: Lecture, report: LectureReport): CsvEx
       "Ders",
       "Tarih",
       "Eğitici",
-      "Kategori",
       "Hekim",
       "Kıdem",
       "Durum",
@@ -284,7 +283,6 @@ export function lectureReportCsv(lecture: Lecture, report: LectureReport): CsvEx
       lecture.title,
       csvDateTime(lecture.startedAtMs),
       lecture.lecturer,
-      lecture.category,
       r.name,
       residencyLabel(r.residencyYear),
       STATUS_LABEL[r.status],
@@ -324,13 +322,12 @@ export function doctorReportCsv(rows: DoctorReportRow[], range: ReportRange): Cs
 export function doctorDetailCsv(row: DoctorReportRow, range: ReportRange): CsvExport {
   return {
     fileName: `hekim-karnesi-${slugify(row.name)}-${range.from}_${range.to}.csv`,
-    headers: ["Hekim", "Tarih", "Ders", "Eğitici", "Kategori", "Durum", "Katılım saati", "Mazeret notu"],
+    headers: ["Hekim", "Tarih", "Ders", "Eğitici", "Durum", "Katılım saati", "Mazeret notu"],
     rows: row.items.map((i) => [
       row.name,
       csvDateTime(i.startedAtMs),
       i.title,
       i.lecturer,
-      i.category,
       STATUS_LABEL[i.status],
       i.status === "present" ? csvDateTime(i.verifiedAtMs) : "",
       i.excuseNote ?? "",

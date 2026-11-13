@@ -144,7 +144,7 @@ function LectureDetail({ lecture }: { lecture: Lecture }) {
   return (
     <Card
       title={lecture.title}
-      description={`${lecture.startedAtMs ? dateTimeFormat.format(lecture.startedAtMs) : "—"} · ${lecture.lecturer} · ${lecture.category}`}
+      description={`${lecture.startedAtMs ? dateTimeFormat.format(lecture.startedAtMs) : "—"} · ${lecture.lecturer}`}
       actions={
         <Button
           variant="secondary"

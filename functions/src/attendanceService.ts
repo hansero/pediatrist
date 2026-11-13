@@ -84,7 +84,6 @@ async function closeLecture(
       sessionId: session.id,
       sessionTitle: data.title,
       lecturer: data.lecturer,
-      category: data.category,
       sessionStartedAt: data.startedAt,
     });
   }
@@ -141,7 +140,6 @@ export const startLectureSession = defineCallable("startLectureSession", "admin"
     tx.set(sessionRef, {
       title: data.title,
       lecturer: data.lecturer,
-      category: data.category,
       durationMinutes: data.durationMinutes,
       status: "live",
       startedAt: now,
@@ -286,7 +284,6 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
       sessionId: data.sessionId,
       sessionTitle: session.title,
       lecturer: session.lecturer,
-      category: session.category,
       sessionStartedAt: session.startedAt,
     });
     tx.update(sessionRef, {
@@ -374,7 +371,6 @@ export const markAttendanceExcused = defineCallable("markAttendanceExcused", "ad
       sessionId: data.sessionId,
       sessionTitle: session.title,
       lecturer: session.lecturer,
-      category: session.category,
       sessionStartedAt: session.startedAt,
     });
     if (previous !== "excused") {

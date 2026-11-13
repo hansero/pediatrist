@@ -6,7 +6,7 @@ import { DoctorCheckIn } from "@/components/attendance/DoctorCheckIn";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 
-/** Ders yoklaması (F4.3): eğitim sorumlusu dersi yönetir, hekim kayıtlı telefonuyla katılır. */
+/** Ders yoklaması (F4.3): eğitim sorumlusu dersi yönetir, hekim QR okutarak ya da kodu girerek katılır (F11.2). */
 export default function AttendancePage() {
   const { session } = useClinicSession();
   if (!session) return null;

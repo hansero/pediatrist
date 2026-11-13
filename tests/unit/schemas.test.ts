@@ -67,13 +67,15 @@ describe("StartLectureSessionRequest", () => {
     );
     expect(StartLectureSessionRequest.safeParse({ ...base, durationMinutes: 1.5 }).success).toBe(false);
   });
-  it("metni kırpar ve kategori boşsa 'Genel' yapar", () => {
-    expect(StartLectureSessionRequest.parse({ title: "  Ders  ", lecturer: "Dr. X", durationMinutes: 15 })).toEqual({
-      title: "Ders",
-      lecturer: "Dr. X",
-      category: "Genel",
-      durationMinutes: 15,
-    });
+  it("metni kırpar; ders kategorisi yoktur, eski istemcinin gönderdiği kategori atılır (F11.3)", () => {
+    expect(
+      StartLectureSessionRequest.parse({
+        title: "  Ders  ",
+        lecturer: "Dr. X",
+        category: "Seminer",
+        durationMinutes: 15,
+      })
+    ).toEqual({ title: "Ders", lecturer: "Dr. X", durationMinutes: 15 });
   });
   it("sayı yerine metin gelen başlığı reddeder (eski kodda TypeError → 'internal' olurdu)", () => {
     expect(

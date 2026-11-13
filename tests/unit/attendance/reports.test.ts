@@ -46,7 +46,6 @@ const log = (
     residencyYear: 1,
     title: `Ders ${sessionId}`,
     lecturer: "Prof. Dr. Eğitici",
-    category: "Sabah Vaka & Makale Saati",
     verifiedAtMs: null,
     ...extra,
   }) as LogItem;
@@ -153,7 +152,6 @@ describe("rapor CSV'leri", () => {
     id: "s1",
     title: "Sabah Olgu Sunumu: Ateşli Süt Çocuğu",
     lecturer: "Prof. Dr. Nevin Aydoğan",
-    category: "Sabah Vaka & Makale Saati",
     startedAtMs: new Date(2026, 10, 9, 8, 30).getTime(),
     expectedAttendees: ["a", "b"],
     expectedCount: 2,
@@ -169,9 +167,9 @@ describe("rapor CSV'leri", () => {
     const text = toCsv(csv.headers, csv.rows);
     const lines = text.replace(/^﻿/, "").trimEnd().split("\r\n");
     expect(text.startsWith("﻿")).toBe(true);
-    expect(lines[0]).toBe("Ders;Tarih;Eğitici;Kategori;Hekim;Kıdem;Durum;Katılım saati;Mazeret notu;Beklenen listede");
+    expect(lines[0]).toBe("Ders;Tarih;Eğitici;Hekim;Kıdem;Durum;Katılım saati;Mazeret notu;Beklenen listede");
     expect(lines[1]).toBe(
-      'Sabah Olgu Sunumu: Ateşli Süt Çocuğu;2026-11-09 08:30;Prof. Dr. Nevin Aydoğan;Sabah Vaka & Makale Saati;Asistan Dr. Ali;2. yıl;Mazeretli;;"\'=HYPERLINK(1); izin";Evet'
+      'Sabah Olgu Sunumu: Ateşli Süt Çocuğu;2026-11-09 08:30;Prof. Dr. Nevin Aydoğan;Asistan Dr. Ali;2. yıl;Mazeretli;;"\'=HYPERLINK(1); izin";Evet'
     );
     expect(lines[2]).toContain(";Asistan Dr. Zeynep;2. yıl;Katıldı;2026-11-09 08:34;;Evet");
   });
@@ -190,7 +188,6 @@ describe("rapor CSV'leri", () => {
       "2026-11-09 08:30",
       "Ders s1",
       "Prof. Dr. Eğitici",
-      "Sabah Vaka & Makale Saati",
       "Katılmadı",
       "",
       "",

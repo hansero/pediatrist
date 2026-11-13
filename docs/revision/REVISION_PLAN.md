@@ -96,7 +96,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F11** | **Kullanıcı revizyonları (2026-11-13)** | | | |
 | F11.1 | Yoklama cihazını (passkey) kaldır | L | ✅ | Madde 1 (D23) |
 | F11.2 | Uygulama içi QR okuyucu | M | ✅ | Madde 2 (D27) |
-| F11.3 | Ders kategorisini kaldır | S | ⬜ | Madde 3 |
+| F11.3 | Ders kategorisini kaldır | S | ✅ | Madde 3 |
 | F11.4 | Yoklama verme yetkisi: yalnızca 1–4. yıl asistan | M | ⬜ | Madde 7 (D24) |
 | F11.5 | Materyal etiketleri | M | ⬜ | Madde 4 (D25) |
 | F11.6 | Hedef kitlede "Uzman" | M | ⬜ | Madde 6 (D26) |
@@ -110,9 +110,9 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-13
-- **Son tamamlanan adım:** F11.2 (uygulama içi QR okuyucu). Öncesinde F11.1 (yoklama cihazı kaldırıldı, D23). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
+- **Son tamamlanan adım:** F11.3 (ders kategorisi kaldırıldı). Öncesinde F11.1 (yoklama cihazı, D23), F11.2 (QR okuyucu). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F11.3 (ders kategorisini kaldır). Ardından sırayla F11.4 → F11.8; her adımın kapsamı §5 F11'de.
+- **Sıradaki iş:** F11.4 (yoklama verme yetkisi: yalnızca 1–4. yıl asistan, D24). Ardından sırayla F11.5 → F11.8; her adımın kapsamı §5 F11'de.
   - Kullanıcı kararları: birden çok etiket; "Uzman" yalnızca `Uzm. Dr.`; kamera izni "QR kodu okut" düğmesiyle, QR okununca hemen gönderim.
   - Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`.
   - Önceki dönemden kalanlar (staging, UAT, KVKK hukuk onayı, karar bekleyenler) için `docs/revision/TRACEABILITY.md` › "Açık kalanlar".
@@ -1625,7 +1625,13 @@ Kullanıcının 7 maddelik isteği. Plan: oturumdaki onaylı plan dosyası; kara
   - Doğrulandı: lint, format, typecheck, no-mock, unit 258, e2e yoklama + CSP 22, ekran görüntüsüyle telefon düzeni.
 
 #### F11.3 Ders kategorisini kaldır (S) — madde 3
-- `LECTURE_CATEGORIES`, istek alanı, başlatma formundaki seçim, açıklamalar ve CSV "Kategori" sütunları kalkar.
+- **✅ Uygulanan:**
+  - `LECTURE_CATEGORIES` / `LectureCategory` silindi; `StartLectureSessionRequest`'te `category` yok (eski istemcinin gönderdiği alan atılır). Sunucu derse ve loglara kategori yazmıyor; tiplerde alan "eski kayıtlar" yorumuyla isteğe bağlı.
+  - Başlatma formundan açılır liste kalktı; "Eğitici" ve "Yoklama süresi" yan yana. Canlı kart, projektör, hekim kartı ve ders raporu açıklamaları yalnızca eğiticiyi gösteriyor. Ders raporu ve hekim dökümü CSV'lerinden "Kategori" sütunu çıktı.
+  - Aynı adımda kalan eski cihaz metinleri düzeltildi (başlatma kartı açıklaması, hekim dashboard'u "kayıtlı telefonunuzla").
+  - Seed: seed dersinde kategori yok.
+  - Testler: şema (kategori atılır), functions (derste `category` yok), CSV başlıkları (unit + e2e).
+  - Doğrulandı: typecheck, lint, unit 258, functions 103, e2e yoklama + dashboard 22.
 
 #### F11.4 Yoklama verme yetkisi (M) — madde 7
 - `isAttendanceEligible` + `requireAttendee` (`"attendee"` erişim düzeyi), `expectedAttendees` süzgeci, uygun olmayan hedefe mazeret reddi, asistan olmayana kıdem atama reddi, menü/sayfa/dashboard, seed'e `Uzm. Dr.` hesabı.

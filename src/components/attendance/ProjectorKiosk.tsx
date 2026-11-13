@@ -133,9 +133,7 @@ export function ProjectorKiosk({ sessionId }: { sessionId: string }) {
       <header className="projector-header">
         <div>
           <h1 className="projector-title">{l.title}</h1>
-          <p className="projector-meta">
-            {l.lecturer} · {l.category}
-          </p>
+          <p className="projector-meta">{l.lecturer}</p>
         </div>
         <div className="ui-actions">
           <span className="projector-count" aria-label="Katılan hekim sayısı">

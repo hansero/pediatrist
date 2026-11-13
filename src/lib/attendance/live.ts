@@ -24,7 +24,6 @@ export interface Lecture {
   id: string;
   title: string;
   lecturer: string;
-  category: string;
   durationMinutes: number;
   status: "live" | "closed";
   startedAtMs: number;
@@ -59,7 +58,6 @@ export function toLecture(id: string, d: DocumentData): Lecture {
     id,
     title: String(d.title ?? ""),
     lecturer: String(d.lecturer ?? ""),
-    category: String(d.category ?? ""),
     durationMinutes: Number(d.durationMinutes ?? 0),
     status: d.status === "live" ? "live" : "closed",
     startedAtMs: ms(d.startedAt) ?? 0,
@@ -218,7 +216,6 @@ export interface HistoryItem {
   sessionId: string;
   title: string;
   lecturer: string;
-  category: string;
   startedAtMs: number | null;
   status: AttendanceStatus;
   verifiedAtMs: number | null;
@@ -240,7 +237,6 @@ export function toLogItem(v: DocumentData): LogItem {
     sessionId: String(v.sessionId ?? ""),
     title: String(v.sessionTitle ?? ""),
     lecturer: String(v.lecturer ?? ""),
-    category: String(v.category ?? ""),
     startedAtMs: ms(v.sessionStartedAt),
     status: r.status,
     verifiedAtMs: r.verifiedAtMs,

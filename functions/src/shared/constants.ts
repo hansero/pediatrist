@@ -43,14 +43,6 @@ export const ATTENDANCE_CODE_LENGTH = 6;
  */
 export const ATTENDANCE_WARN_RATE = 0.7;
 
-export const LECTURE_CATEGORIES = [
-  "Sabah Vaka & Makale Saati",
-  "Çekirdek Eğitim Semineri",
-  "Mortalite & Morbidite Konseyi",
-  "Yatak Başı Klinik Pratik",
-] as const;
-export type LectureCategory = (typeof LECTURE_CATEGORIES)[number];
-
 // --- Sınav -----------------------------------------------------------------
 
 export const QUESTION_TYPES = ["Single Choice", "Multiple Choice", "Text Input"] as const;

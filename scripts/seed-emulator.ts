@@ -309,7 +309,6 @@ async function main() {
   batch.set(sessionRef, {
     title: a.title,
     lecturer: a.lecturer,
-    category: a.category,
     durationMinutes: a.durationMinutes,
     status: "closed",
     startedAt,
@@ -344,7 +343,6 @@ async function main() {
       sessionId: a.id,
       sessionTitle: a.title,
       lecturer: a.lecturer,
-      category: a.category,
       sessionStartedAt: startedAt,
     });
   }
@@ -365,7 +363,6 @@ async function main() {
       sessionId: a.id,
       sessionTitle: a.title,
       lecturer: a.lecturer,
-      category: a.category,
       sessionStartedAt: startedAt,
     });
   }

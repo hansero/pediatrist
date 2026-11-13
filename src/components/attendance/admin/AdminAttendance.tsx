@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
-import { LECTURE_CATEGORIES, LIMITS } from "@shared/constants";
+import { LIMITS } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -92,13 +92,12 @@ function StartLectureForm({ session }: { session: ClinicMemberSession }) {
   const toast = useToast();
   const [title, setTitle] = useState("");
   const [lecturer, setLecturer] = useState(`${session.title} ${session.fullName}`.trim());
-  const [category, setCategory] = useState<string>(LECTURE_CATEGORIES[0]);
   const [duration, setDuration] = useState("15");
   const start = useAsyncAction(startLectureSession);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await start.run({ title, lecturer, category, durationMinutes: Number(duration) });
+    const res = await start.run({ title, lecturer, durationMinutes: Number(duration) });
     if (res) {
       toast.show("Ders yoklaması başlatıldı.", { tone: "success" });
       setTitle("");
@@ -108,7 +107,7 @@ function StartLectureForm({ session }: { session: ClinicMemberSession }) {
   return (
     <Card
       title="Ders yoklaması başlat"
-      description="Başlattığınız anda projektör kodu üretilir; hekimler kayıtlı telefonlarıyla katılır."
+      description="Başlattığınız anda projektör kodu üretilir; hekimler QR'ı okutarak ya da kodu girerek katılır."
     >
       <form className="auth-stack" onSubmit={onSubmit} noValidate>
         {start.error && <Alert tone="critical">{start.error}</Alert>}
@@ -135,36 +134,25 @@ function StartLectureForm({ session }: { session: ClinicMemberSession }) {
               />
             )}
           </Field>
-          <Field label="Kategori">
+          <Field
+            label="Yoklama süresi (dakika)"
+            hint={`${LIMITS.lectureMinutes.min}–${LIMITS.lectureMinutes.max} dakika. Süre dolunca yoklama kendiliğinden kapanır.`}
+            required
+          >
             {(p) => (
-              <select {...p} className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
-                {LECTURE_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+              <input
+                {...p}
+                type="number"
+                inputMode="numeric"
+                className="form-input"
+                min={LIMITS.lectureMinutes.min}
+                max={LIMITS.lectureMinutes.max}
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+              />
             )}
           </Field>
         </div>
-        <Field
-          label="Yoklama süresi (dakika)"
-          hint={`${LIMITS.lectureMinutes.min}–${LIMITS.lectureMinutes.max} dakika. Süre dolunca yoklama kendiliğinden kapanır.`}
-          required
-        >
-          {(p) => (
-            <input
-              {...p}
-              type="number"
-              inputMode="numeric"
-              className="form-input"
-              min={LIMITS.lectureMinutes.min}
-              max={LIMITS.lectureMinutes.max}
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-            />
-          )}
-        </Field>
         <div className="ui-actions">
           <Button type="submit" loading={start.pending} loadingText="Başlatılıyor…">
             Yoklamayı başlat
@@ -186,7 +174,7 @@ function LiveLecturePanel({ lecture }: { lecture: Lecture }) {
     <>
       <Card
         title={lecture.title}
-        description={`${lecture.lecturer} · ${lecture.category}`}
+        description={lecture.lecturer}
         actions={<StatusChip tone={open ? "success" : "warning"}>{open ? "Yoklama açık" : "Süre doldu"}</StatusChip>}
       >
         <div className="auth-stack">
