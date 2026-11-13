@@ -63,6 +63,7 @@ const material = (id: string, over: Partial<MaterialView> = {}): MaterialView =>
   description: "",
   labels: ["Genel Pediatri"],
   targetYears: [2],
+  targetSpecialists: false,
   isMandatory: true,
   allowDownload: false,
   fileType: "pdf",
@@ -136,15 +137,18 @@ describe("adminNextStep", () => {
 });
 
 describe("mandatoryFor / attendanceRate", () => {
-  it("yalnızca yayındaki, zorunlu ve kıdeme yönelik materyaller; kıdemsiz uzman hepsini görür", () => {
+  it("yalnızca yayındaki, zorunlu ve hekime yönelik materyaller; Uzm. Dr. 'Uzman' hedeflileri, Doç./Prof. hepsini görür", () => {
     const list = [
       material("a"),
       material("b", { targetYears: [3] }),
       material("c", { isMandatory: false }),
       material("d", { status: "draft" }),
+      material("e", { targetYears: [], targetSpecialists: true }),
     ];
-    expect(mandatoryFor(list, 2).map((m) => m.id)).toEqual(["a"]);
-    expect(mandatoryFor(list, null).map((m) => m.id)).toEqual(["a", "b"]);
+    expect(mandatoryFor(list, { title: "Asistan Dr.", residencyYear: 2 }).map((m) => m.id)).toEqual(["a"]);
+    expect(mandatoryFor(list, { title: "Uzm. Dr.", residencyYear: null }).map((m) => m.id)).toEqual(["e"]);
+    expect(mandatoryFor(list, { title: "Doç. Dr.", residencyYear: null }).map((m) => m.id)).toEqual(["a", "b", "e"]);
+    expect(mandatoryFor(list, { title: "Prof. Dr.", residencyYear: null }).map((m) => m.id)).toEqual(["a", "b", "e"]);
   });
 
   it("katılım oranı mazeretlileri paydaya katmaz (D22); ders yoksa null", () => {

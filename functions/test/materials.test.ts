@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
-import { getFirestore } from "firebase-admin/firestore";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -22,6 +22,7 @@ const base = {
   description: "Tanı ve tedavi algoritması",
   labels: ["Çocuk Enfeksiyon", " Kawasaki  "],
   targetYears: [3, 1],
+  targetSpecialists: false,
   isMandatory: true,
   allowDownload: false,
   fileName: "Kawasaki Özet (2026).PDF",
@@ -83,6 +84,7 @@ describe("materyal yükleme akışı (F6.1)", () => {
     expect((await errorOf(create({ contentType: "image/svg+xml" }))).code).toBe("invalid-argument");
     expect((await errorOf(create({ sizeBytes: 151 * 1024 * 1024 }))).message).toContain("150 MB");
     expect((await errorOf(create({ targetYears: [] }))).message).toContain("En az bir hedef kıdem");
+    expect((await errorOf(create({ targetSpecialists: undefined }))).code).toBe("invalid-argument");
     expect((await errorOf(create({ targetYears: [5] }))).code).toBe("invalid-argument");
     expect((await errorOf(create({ labels: Array.from({ length: 9 }, (_, i) => `E${i}`) }))).message).toContain(
       "en fazla 8 etiket"
@@ -105,6 +107,22 @@ describe("materyal yükleme akışı (F6.1)", () => {
     const after = await doc(materialId);
     expect(after?.labels).toEqual(["Neonatoloji", "İnfeksiyon"]);
     expect(after).not.toHaveProperty("category");
+  });
+
+  it("hedef kitle 'Uzman' (D26): tek başına yeterli; güncellemede birleşik denetim, son hedef boşaltılamaz", async () => {
+    const { materialId } = await create({ targetYears: [], targetSpecialists: true });
+    expect(await doc(materialId)).toMatchObject({ targetYears: [], targetSpecialists: true });
+    const empty = await errorOf(
+      updateMaterial.run(callableRequest({ materialId, targetSpecialists: false }, asAdmin()))
+    );
+    expect(empty).toEqual({ code: "invalid-argument", message: "En az bir hedef kıdem seçin." });
+    await updateMaterial.run(callableRequest({ materialId, targetYears: [4, 1], targetSpecialists: false }, asAdmin()));
+    expect(await doc(materialId)).toMatchObject({ targetYears: [1, 4], targetSpecialists: false });
+    // Eski doküman (alan yok): "Uzman" kapalı sayılır; yılları boşaltmak reddedilir.
+    await db().doc(`materials/${materialId}`).update({ targetSpecialists: FieldValue.delete() });
+    expect((await errorOf(updateMaterial.run(callableRequest({ materialId, targetYears: [] }, asAdmin())))).code).toBe(
+      "invalid-argument"
+    );
   });
 
   it("güncelleme yalnızca meta verileri değiştirir; olmayan materyal bulunamadı; boş güncelleme reddedilir", async () => {

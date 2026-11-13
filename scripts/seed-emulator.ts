@@ -147,6 +147,7 @@ async function seedViaCallables(admin: SeedUser, bucket: SeedBucket): Promise<st
         description: m.description,
         labels: m.labels,
         targetYears: m.targetYears,
+        targetSpecialists: m.targetSpecialists,
         isMandatory: m.isMandatory,
         allowDownload: m.allowDownload,
         fileName: m.file.name,

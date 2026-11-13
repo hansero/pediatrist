@@ -3,7 +3,7 @@
 import { collection, limit, onSnapshot, orderBy, query, type DocumentData, type Timestamp } from "firebase/firestore";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { MATERIAL_UPLOAD, type MaterialFileType } from "@shared/constants";
-import { materialLabelsOf } from "@shared/materials";
+import { isMaterialTargeted, materialLabelsOf, memberAudienceLabel } from "@shared/materials";
 import { COLLECTIONS, type MaterialStatus } from "@shared/types";
 import { useCapped, useFirestoreSnapshot, type CappedState, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import type { MemberSummary } from "@/lib/attendance/live";
@@ -27,6 +27,8 @@ export interface MaterialView {
   /** Serbest etiketler (D25); eski dokümanda kategori tek etiket sayılır. */
   labels: string[];
   targetYears: number[];
+  /** "Uzman" hedef kitlesi (D26). */
+  targetSpecialists: boolean;
   isMandatory: boolean;
   allowDownload: boolean;
   fileType: MaterialFileType;
@@ -46,6 +48,7 @@ export function toMaterialView(id: string, d: DocumentData): MaterialView {
     description: String(d.description ?? ""),
     labels: materialLabelsOf(d),
     targetYears: Array.isArray(d.targetYears) ? d.targetYears.map(Number).sort((a, b) => a - b) : [],
+    targetSpecialists: d.targetSpecialists === true,
     isMandatory: d.isMandatory === true,
     allowDownload: d.allowDownload === true,
     fileType: d.fileType === "video" || d.fileType === "image" ? d.fileType : "pdf",
@@ -65,8 +68,6 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} MB`;
 }
-
-export const yearsLabel = (years: readonly number[]) => (years.length ? years.map((y) => `${y}. yıl`).join(", ") : "—");
 
 /** Admin: bütün materyaller (taslak dahil), yeniden eskiye. */
 export function useMaterials(count = 200): CappedState<MaterialView> {
@@ -198,7 +199,9 @@ export interface ReadRow {
   uid: string;
   name: string;
   residencyYear: number | null;
-  /** Hedef kitlede mi (materyalin hedef kıdeminde etkin asistan)? */
+  /** Kıdem / kitle etiketi: "3. yıl", "Uzman" ya da "—" (Doç./Prof.). */
+  audience: string;
+  /** Hedef kitlede mi (materyalin hedef kıdeminde etkin asistan ya da "Uzman" hedefinde Uzm. Dr.)? */
   targeted: boolean;
   status: ReadStatus;
   secondsSpent: number;
@@ -207,19 +210,18 @@ export interface ReadRow {
 }
 
 /**
- * Okunma raporu: hedef kitle = materyalin hedef kıdemlerindeki ETKİN asistanlar. Hedef dışında olup okuyanlar
+ * Okunma raporu: hedef kitle = materyalin hedef kıdemlerindeki ETKİN asistanlar + ("Uzman" hedefliyse) etkin
+ * Uzm. Dr. üyeler (D26). Hedef dışında olup okuyanlar
  * da (ör. başka kıdem) listede kalır ama orana katılmaz. Sıra: başlamayan, başlayan, tamamlayan; sonra ada göre.
  */
 export function buildReadReport(
-  material: Pick<MaterialView, "targetYears">,
+  material: Pick<MaterialView, "targetYears" | "targetSpecialists">,
   doctors: readonly MemberSummary[],
   progress: readonly ProgressView[]
 ): { rows: ReadRow[]; targeted: number; completed: number; started: number; notStarted: number } {
   const byUid = new Map(progress.map((p) => [p.uid, p]));
   const doctorByUid = new Map(doctors.map((d) => [d.uid, d]));
-  const targetUids = doctors
-    .filter((d) => d.residencyYear !== null && material.targetYears.includes(d.residencyYear))
-    .map((d) => d.uid);
+  const targetUids = doctors.filter((d) => isMaterialTargeted(material, d)).map((d) => d.uid);
   const uids = [...new Set([...targetUids, ...progress.map((p) => p.uid)])];
   const targetSet = new Set(targetUids);
   const order: Record<ReadStatus, number> = { not_started: 0, started: 1, completed: 2 };
@@ -231,6 +233,7 @@ export function buildReadReport(
         uid,
         name: d ? `${d.title} ${d.fullName}`.trim() : "Etkin olmayan üye",
         residencyYear: d?.residencyYear ?? null,
+        audience: d ? memberAudienceLabel(d) : "—",
         targeted: targetSet.has(uid),
         status: p?.completed ? "completed" : p ? "started" : "not_started",
         secondsSpent: p?.secondsSpent ?? 0,
@@ -256,7 +259,7 @@ export function readReportCsv(title: string, rows: readonly ReadRow[]) {
     rows: rows.map((r): CsvCell[] => [
       title,
       r.name,
-      r.residencyYear ? `${r.residencyYear}. yıl` : "—",
+      r.audience,
       r.targeted ? "Evet" : "Hayır",
       READ_STATUS_LABEL[r.status],
       Math.round(r.secondsSpent / 60),

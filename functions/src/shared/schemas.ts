@@ -15,7 +15,7 @@
 import { KVKK_NOTICE_VERSION } from "./consent";
 import { z } from "./zod";
 import { QuizQuestionInput } from "./quizQuestion";
-import { normalizeLabel, normalizeLabels } from "./materials";
+import { AUDIENCE_REQUIRED_MESSAGE, hasAudience, normalizeLabel, normalizeLabels } from "./materials";
 import {
   CALCULATOR_IDS,
   MATERIAL_FILE_TYPES,
@@ -488,11 +488,13 @@ const materialFields = {
         error: `Bir materyale en fazla ${LIMITS.materialLabels.max} etiket verilebilir.`,
       })
     ),
+  /** Hedef kıdem yılları; boş olabilir, o zaman "Uzman" seçilmiş olmalıdır (D26, `hasAudience`). */
   targetYears: z
     .array(residencyYearSchema, { error: "Hedef kıdem listesi geçersiz." })
-    .min(1, { error: "En az bir hedef kıdem seçin." })
     .max(RESIDENCY_YEARS.length)
     .refine((ys) => new Set(ys).size === ys.length, { error: "Hedef kıdem tekrarlanamaz." }),
+  /** "Uzman" hedef kitlesi (yalnızca Uzm. Dr., D26). */
+  targetSpecialists: z.boolean({ error: "Uzman hedefi evet/hayır olmalıdır." }),
   isMandatory: z.boolean({ error: "Zorunluluk evet/hayır olmalıdır." }),
   allowDownload: z.boolean({ error: "İndirme izni evet/hayır olmalıdır." }),
 };
@@ -502,16 +504,22 @@ const materialContentType = z.enum(Object.keys(MATERIAL_UPLOAD.contentTypes) as 
 });
 
 /** Taslak + yükleme yolu. Dosyayı istemci bu yola yükler (Storage kuralı admin, tür ve boyut denetler). */
-export const CreateMaterialRequest = z.object({
-  ...materialFields,
-  fileName: requiredText("Dosya adı", LIMITS.fileNameLength),
-  contentType: materialContentType,
-  sizeBytes: z
-    .number({ error: "Dosya boyutu geçersiz." })
-    .int()
-    .positive({ error: "Dosya boş." })
-    .max(MATERIAL_UPLOAD.maxMb * 1024 * 1024, { error: `Dosya en fazla ${MATERIAL_UPLOAD.maxMb} MB olabilir.` }),
-});
+export const CreateMaterialRequest = z
+  .object({
+    ...materialFields,
+    fileName: requiredText("Dosya adı", LIMITS.fileNameLength),
+    contentType: materialContentType,
+    sizeBytes: z
+      .number({ error: "Dosya boyutu geçersiz." })
+      .int()
+      .positive({ error: "Dosya boş." })
+      .max(MATERIAL_UPLOAD.maxMb * 1024 * 1024, { error: `Dosya en fazla ${MATERIAL_UPLOAD.maxMb} MB olabilir.` }),
+  })
+  .superRefine((v, ctx) => {
+    if (!hasAudience(v.targetYears, v.targetSpecialists)) {
+      ctx.addIssue({ code: "custom", path: ["targetYears"], message: AUDIENCE_REQUIRED_MESSAGE });
+    }
+  });
 export const CreateMaterialResponse = z.object({ materialId: z.string(), storagePath: z.string() });
 
 /** Yükleme bitti: sunucu dosyayı Storage'da denetler (var mı, tür, boyut) ve yayınlar. */

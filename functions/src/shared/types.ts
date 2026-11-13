@@ -306,6 +306,8 @@ export interface MaterialDoc<T> {
   /** Yalnızca F11.5 öncesi dokümanlarda (sabit kategori); okurken tek etiket sayılır (`materialLabelsOf`). */
   category?: string;
   targetYears: number[];
+  /** "Uzman" hedef kitlesi (D26, F11.6); eski dokümanlarda yoktur (= false). */
+  targetSpecialists?: boolean;
   isMandatory: boolean;
   allowDownload: boolean;
   fileType: MaterialFileType;

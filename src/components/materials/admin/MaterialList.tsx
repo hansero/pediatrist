@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import type { ResidencyYear } from "@shared/constants";
-import { distinctLabels, type LabelOption } from "@shared/materials";
+import { audienceLabel, distinctLabels, type LabelOption } from "@shared/materials";
 import { Alert } from "@/components/ui/Alert";
 import { ListLimitNotice } from "@/components/ui/ListLimitNotice";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +15,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { deleteMaterial, updateMaterial } from "@/lib/firebase/callables";
-import { FILE_TYPE_LABEL, formatBytes, useMaterials, yearsLabel, type MaterialView } from "@/lib/materials/admin";
+import { FILE_TYPE_LABEL, formatBytes, useMaterials, type MaterialView } from "@/lib/materials/admin";
 import {
   MaterialFields,
   validateMaterialFields,
@@ -59,7 +59,7 @@ export function MaterialList({ onUpload }: { onUpload: () => void }) {
       ),
     },
     { key: "labels", header: "Etiketler", cell: (m) => (m.labels.length ? m.labels.join(", ") : "—") },
-    { key: "years", header: "Hedef kıdem", cell: (m) => yearsLabel(m.targetYears) },
+    { key: "years", header: "Hedef kıdem", cell: (m) => audienceLabel(m) },
     {
       key: "file",
       header: "Dosya",
@@ -185,6 +185,7 @@ function EditMaterialDialog({
             labels: material.labels,
             // Veritabanındaki kıdemler sunucuda ortak listeyle doğrulanmıştır.
             targetYears: material.targetYears as ResidencyYear[],
+            targetSpecialists: material.targetSpecialists,
             isMandatory: material.isMandatory,
             allowDownload: material.allowDownload,
           }

@@ -39,6 +39,7 @@ describe("materyal etiketleri (D25, F11.5)", () => {
     const base = {
       title: "T",
       targetYears: [1],
+      targetSpecialists: false,
       isMandatory: false,
       allowDownload: false,
       fileName: "a.pdf",
@@ -55,5 +56,46 @@ describe("materyal etiketleri (D25, F11.5)", () => {
     expect(errorsOf(["x".repeat(41)])).toContain("Etiket en fazla 40 karakter olabilir.");
     expect(errorsOf(["   "])).toContain("Etiket boş olamaz.");
     expect(errorsOf(undefined).length).toBeGreaterThan(0);
+  });
+});
+
+describe("materyal hedef kitlesi (D26, F11.6)", () => {
+  it("üyenin kitlesi: asistan → yılı; yalnızca Uzm. Dr. → Uzman; Doç./Prof. ve kıdemsiz asistan → yok", async () => {
+    const { materialAudienceOf, memberAudienceLabel } = await import("@shared/materials");
+    expect(materialAudienceOf({ title: "Asistan Dr.", residencyYear: 3 })).toBe(3);
+    expect(materialAudienceOf({ title: "Uzm. Dr.", residencyYear: null })).toBe("specialist");
+    expect(materialAudienceOf({ title: "Uzm. Dr.", residencyYear: 2 })).toBe("specialist");
+    expect(materialAudienceOf({ title: "Doç. Dr.", residencyYear: null })).toBeNull();
+    expect(materialAudienceOf({ title: "Prof. Dr.", residencyYear: null })).toBeNull();
+    expect(materialAudienceOf({ title: "Asistan Dr.", residencyYear: null })).toBeNull();
+    expect(memberAudienceLabel({ title: "Uzm. Dr.", residencyYear: null })).toBe("Uzman");
+    expect(memberAudienceLabel({ title: "Asistan Dr.", residencyYear: 1 })).toBe("1. yıl");
+    expect(memberAudienceLabel({ title: "Prof. Dr.", residencyYear: null })).toBe("—");
+  });
+
+  it("etiket, eşleşme ve en az bir hedef kuralı; sözleşme 'Uzman' tek başına yeterli", async () => {
+    const { audienceLabel, hasAudience, isMaterialTargeted, matchesAudience } = await import("@shared/materials");
+    const m = { targetYears: [2, 1], targetSpecialists: true };
+    expect(audienceLabel(m)).toBe("1. yıl, 2. yıl, Uzman");
+    expect(audienceLabel({ targetYears: [], targetSpecialists: false })).toBe("—");
+    expect(matchesAudience(m, "specialist")).toBe(true);
+    expect(matchesAudience({ targetYears: [1], targetSpecialists: false }, "specialist")).toBe(false);
+    expect(matchesAudience(m, 3)).toBe(false);
+    expect(matchesAudience(m, "all")).toBe(true);
+    expect(isMaterialTargeted(m, { title: "Doç. Dr.", residencyYear: null })).toBe(false);
+    expect(hasAudience([], false)).toBe(false);
+    expect(hasAudience([], true)).toBe(true);
+    const base = {
+      title: "T",
+      labels: [],
+      isMandatory: false,
+      allowDownload: false,
+      fileName: "a.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 10,
+    };
+    expect(CreateMaterialRequest.safeParse({ ...base, targetYears: [], targetSpecialists: true }).success).toBe(true);
+    const none = CreateMaterialRequest.safeParse({ ...base, targetYears: [], targetSpecialists: false });
+    expect(none.error?.issues.map((i) => i.message)).toContain("En az bir hedef kıdem seçin.");
   });
 });

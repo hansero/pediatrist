@@ -1,5 +1,6 @@
 "use client";
 
+import { audienceLabel } from "@shared/materials";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -13,7 +14,6 @@ import {
   READ_STATUS_LABEL,
   readReportCsv,
   useMaterialProgress,
-  yearsLabel,
   type MaterialView,
   type ReadRow,
 } from "@/lib/materials/admin";
@@ -33,7 +33,7 @@ export function MaterialReadReport({ material, onClose }: { material: MaterialVi
   return (
     <Card
       title={`${material.title}: okunma raporu`}
-      description={`Hedef kitle: ${yearsLabel(material.targetYears)} etkin asistanlar.`}
+      description={`Hedef kitle: ${audienceLabel(material)} (etkin üyeler).`}
       actions={
         <span className="ui-actions">
           <Button
@@ -91,7 +91,7 @@ export function MaterialReadReport({ material, onClose }: { material: MaterialVi
                 </>
               ),
             },
-            { key: "year", header: "Kıdem", cell: (r) => (r.residencyYear ? `${r.residencyYear}. yıl` : "—") },
+            { key: "year", header: "Kıdem", cell: (r) => r.audience },
             {
               key: "status",
               header: "Durum",

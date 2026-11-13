@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RESIDENCY_YEARS } from "@shared/constants";
-import { distinctLabels } from "@shared/materials";
+import { audienceLabel, distinctLabels, materialAudienceOf } from "@shared/materials";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -10,9 +9,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { StatusChip } from "@/components/ui/StatusChip";
 import type { ClinicMemberSession } from "@/lib/auth/types";
-import { FILE_TYPE_LABEL, yearsLabel, type MaterialView } from "@/lib/materials/admin";
+import { FILE_TYPE_LABEL, type MaterialView } from "@/lib/materials/admin";
 import {
+  AUDIENCE_OPTIONS,
   filterMaterials,
+  parseYearFilter,
   MATERIAL_PARAM,
   useMyProgress,
   usePublishedMaterials,
@@ -21,12 +22,14 @@ import {
 import { MaterialViewer } from "./MaterialViewer";
 
 /**
- * Hekim materyal listesi (F6.3). Varsayılan süzgeç hekimin kendi kıdemi (kıdemsiz uzman: tümü); etiket süzgeci
+ * Hekim materyal listesi (F6.3). Varsayılan süzgeç hekimin kendi kıdemi; Uzm. Dr. için "Uzman" (D26); Doç./Prof.
+ * için tümü. Etiket süzgeci
  * yayındaki materyallerin etiketlerinden (D25). Her kartta kendi okuma durumu. Görüntüleyici aynı sayfada açılır.
  */
 export function DoctorMaterials({ session }: { session: ClinicMemberSession }) {
   const materials = usePublishedMaterials();
-  const [year, setYear] = useState<YearFilter>(session.residencyYear ?? "all");
+  const mine = materialAudienceOf(session);
+  const [year, setYear] = useState<YearFilter>(mine ?? "all");
   const [label, setLabel] = useState("all");
   const [openId, setOpenId] = useState<string | null>(null);
   const labels = distinctLabels(materials.data ?? []);
@@ -72,12 +75,13 @@ export function DoctorMaterials({ session }: { session: ClinicMemberSession }) {
                 {...p}
                 className="form-select"
                 value={String(year)}
-                onChange={(e) => setYear(e.target.value === "all" ? "all" : Number(e.target.value))}
+                onChange={(e) => setYear(parseYearFilter(e.target.value))}
               >
                 <option value="all">Bütün kıdemler</option>
-                {RESIDENCY_YEARS.map((y) => (
-                  <option key={y} value={y}>
-                    {y}. yıl{y === session.residencyYear ? " (benim)" : ""}
+                {AUDIENCE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                    {o.value === mine ? " (benim)" : ""}
                   </option>
                 ))}
               </select>
@@ -135,7 +139,7 @@ function MaterialCard({ material, uid, onOpen }: { material: MaterialView; uid: 
       </h2>
       {material.description && <p className="page-header-subtitle">{material.description}</p>}
       <p className="page-header-subtitle">
-        {FILE_TYPE_LABEL[material.fileType]} · Hedef: {yearsLabel(material.targetYears)}
+        {FILE_TYPE_LABEL[material.fileType]} · Hedef: {audienceLabel(material)}
       </p>
       <div className="material-card-footer">
         <StatusChip tone={p?.completed ? "success" : p && p.secondsSpent > 0 ? "warning" : undefined}>

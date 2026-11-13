@@ -40,6 +40,8 @@ describe("okuma ilerlemesi (F6.3)", () => {
     expect(filterMaterials(list, { year: "all", label: labelKey("neonatoloji") }).map((x) => x.id)).toEqual(["a"]);
     expect(filterMaterials(list, { year: "all", label: labelKey("İNFEKSİYON") }).map((x) => x.id)).toEqual(["a"]);
     expect(filterMaterials(list, { year: 3, label: labelKey("Neonatoloji") })).toEqual([]);
+    const spec = { id: "s", targetYears: [], targetSpecialists: true, labels: [] } as unknown as MaterialView;
+    expect(filterMaterials([...list, spec], { year: "specialist", label: "all" }).map((x) => x.id)).toEqual(["s"]);
   });
 
   it("filigran: ad, e-posta, zaman", () => {

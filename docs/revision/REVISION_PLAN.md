@@ -99,7 +99,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F11.3 | Ders kategorisini kaldır | S | ✅ | Madde 3 |
 | F11.4 | Yoklama verme yetkisi: yalnızca 1–4. yıl asistan | M | ✅ | Madde 7 (D24) |
 | F11.5 | Materyal etiketleri | M | ✅ | Madde 4 (D25) |
-| F11.6 | Hedef kitlede "Uzman" | M | ⬜ | Madde 6 (D26) |
+| F11.6 | Hedef kitlede "Uzman" | M | ✅ | Madde 6 (D26) |
 | F11.7 | Admin materyal süzgeci | S | ⬜ | Madde 5 |
 | F11.8 | Belgeler, izlenebilirlik, tam doğrulama | S | ⬜ | Hepsi |
 
@@ -110,9 +110,9 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-13
-- **Son tamamlanan adım:** F11.5 (materyal etiketleri, D25). Öncesinde F11.1–F11.4 (yoklama: cihaz kaldırıldı, QR okuyucu, kategori kaldırıldı, yalnızca asistanlar). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
+- **Son tamamlanan adım:** F11.6 (hedef kitlede "Uzman", D26). Öncesinde F11.1–F11.4 (yoklama) ve F11.5 (etiketler). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F11.6 (hedef kitlede "Uzman", D26). Ardından F11.7 → F11.8; her adımın kapsamı §5 F11'de.
+- **Sıradaki iş:** F11.7 (admin materyal süzgeci). Ardından F11.8; her adımın kapsamı §5 F11'de.
   - Kullanıcı kararları: birden çok etiket; "Uzman" yalnızca `Uzm. Dr.`; kamera izni "QR kodu okut" düğmesiyle, QR okununca hemen gönderim.
   - Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`.
   - Önceki dönemden kalanlar (staging, UAT, KVKK hukuk onayı, karar bekleyenler) için `docs/revision/TRACEABILITY.md` › "Açık kalanlar".
@@ -1657,7 +1657,14 @@ Kullanıcının 7 maddelik isteği. Plan: oturumdaki onaylı plan dosyası; kara
   - Doğrulandı: typecheck, lint, format, no-mock, unit 266, functions 108, e2e materyaller (yönetim, görüntüleyici), dashboard, a11y.
 
 #### F11.6 Hedef kitlede "Uzman" (M) — madde 6
-- `targetSpecialists`, `materialAudienceOf`, okunma raporu ve zorunlu materyal hesabı, hekim süzgecinde "Uzman".
+- **✅ Uygulanan (D26):**
+  - `shared/materials.ts`: `SPECIALIST_TITLE = "Uzm. Dr."`, `materialAudienceOf` (asistan → yıl, Uzm. Dr. → "specialist", Doç./Prof. → yok), `matchesAudience`, `isMaterialTargeted`, `hasAudience`, `audienceLabel` ("1. yıl, 2. yıl, Uzman"), `memberAudienceLabel`.
+  - Sözleşme: `targetSpecialists` (boolean, zorunlu); `targetYears` boş olabilir; oluşturmada "en az bir hedef" (`superRefine`). Sunucu güncellemede mevcut dokümanla birleştirip aynı kuralı uygular (eski dokümanda alan yok = kapalı).
+  - İstemci: formda "Uzman" kutusu (varsayılan kapalı); admin listesi, hekim kartı ve okunma raporu `audienceLabel`. Hekim kıdem süzgecinde "Uzman" seçeneği; varsayılan Uzm. Dr. için "Uzman (benim)", Doç./Prof. için "Bütün kıdemler". Süzgeç seçenekleri tek yerde (`AUDIENCE_OPTIONS`, F11.7 de kullanır).
+  - Zorunlu materyal (`mandatoryFor`): Uzm. Dr. yalnızca "Uzman" hedeflileri, Doç./Prof. hepsini görür. Okunma raporu: hedef kitleye "Uzman" hedefinde Uzm. Dr. üyeler girer; "Kıdem" sütunu "Uzman" / "—".
+  - Seed: Septik Şok 1–4. yıl + Uzman.
+  - **Testler:** unit +3 (kitle kuralları, sözleşme, rapor, zorunlu materyal, süzgeç). functions +1 (yalnızca Uzman; birleşik güncelleme; eski doküman). e2e: yüklemede "Uzman"; okunma raporunda uzman hedef kitlede; uzman hesabı varsayılan süzgeç ve zorunlu materyal göstergesi.
+  - Doğrulandı: typecheck, lint, format, no-mock, unit 269, functions 109, e2e materyaller + dashboard 12.
 
 #### F11.7 Admin materyal süzgeci (S) — madde 5
 - `filterAdminMaterials` (arama | etiket | hedef kıdem) + liste üstünde süzgeç satırı.

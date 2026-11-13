@@ -1,7 +1,8 @@
 "use client";
 
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where, type Timestamp } from "firebase/firestore";
-import { hasLabel } from "@shared/materials";
+import { hasLabel, matchesAudience, type MaterialAudience } from "@shared/materials";
+import { RESIDENCY_YEARS } from "@shared/constants";
 import { COLLECTIONS } from "@shared/types";
 import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import { notConfiguredError } from "@/lib/errors";
@@ -118,12 +119,26 @@ export function canComplete(
   return true;
 }
 
-export type YearFilter = number | "all";
+/** Kıdem süzgeci: yıl, "Uzman" (D26) ya da hepsi. */
+export type YearFilter = MaterialAudience | "all";
 
-/** Hekim süzgeci: kıdem ve etiket (`label`: `"all"` ya da `labelKey`). */
+/** Kıdem süzgeci seçenekleri (hekim ve admin süzgeci ortak; "Bütün kıdemler" ayrıca eklenir). */
+export const AUDIENCE_OPTIONS: { value: Exclude<YearFilter, "all">; label: string }[] = [
+  ...RESIDENCY_YEARS.map((y) => ({ value: y, label: `${y}. yıl` })),
+  { value: "specialist", label: "Uzman" },
+];
+
+/** `<select>` değerinden süzgece. */
+export function parseYearFilter(raw: string): YearFilter {
+  if (raw === "all" || raw === "specialist") return raw;
+  const year = Number(raw);
+  return (RESIDENCY_YEARS as readonly number[]).includes(year) ? year : "all";
+}
+
+/** Hekim süzgeci: kıdem/kitle ve etiket (`label`: `"all"` ya da `labelKey`). */
 export function filterMaterials(
   list: readonly MaterialView[],
   { year, label }: { year: YearFilter; label: string }
 ): MaterialView[] {
-  return list.filter((m) => (year === "all" || m.targetYears.includes(year)) && hasLabel(m, label));
+  return list.filter((m) => matchesAudience(m, year) && hasLabel(m, label));
 }

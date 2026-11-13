@@ -92,3 +92,27 @@ test("hekim kendi kıdemini görür; PDF'i filigranlı açar, son sayfada tamaml
   await expect(row.getByRole("cell").nth(3)).toHaveText("3");
   await adminCtx.close();
 });
+
+test("uzman hesabı: varsayılan süzgeç 'Uzman (benim)'; yalnızca uzman hedefli materyaller ve zorunlu materyal sayısı (F11.6)", async ({
+  page,
+}) => {
+  await loginAs(page, "uzman@pediatrist.test");
+  await page.goto("/materials");
+  const list = page.getByRole("list", { name: "Materyaller" });
+  const kidem = page.getByLabel("Kıdem");
+  await expect(kidem).toHaveValue("specialist");
+  await expect(kidem.locator("option:checked")).toHaveText("Uzman (benim)");
+  await expect(list.getByRole("heading", { name: SEPSIS })).toBeVisible();
+  await expect(list.getByRole("heading", { name: PRETERM })).toHaveCount(0);
+  await expect(list.getByRole("article").filter({ hasText: SEPSIS })).toContainText(
+    "Hedef: 1. yıl, 2. yıl, 3. yıl, 4. yıl, Uzman"
+  );
+  // Görünürlük kısıtı yok: "Bütün kıdemler" ile asistan hedefli materyal de açılabilir.
+  await kidem.selectOption("all");
+  await expect(list.getByRole("heading", { name: PRETERM })).toBeVisible();
+
+  // Ana sayfa: zorunlu materyal göstergesi yalnızca uzman hedefli zorunlu materyali sayar.
+  await page.goto("/dashboard");
+  const mandatory = page.locator(".metric-card").filter({ hasText: "Zorunlu materyal" });
+  await expect(mandatory.locator(".metric-value")).toHaveText(/^\d+ \/ 1$/);
+});

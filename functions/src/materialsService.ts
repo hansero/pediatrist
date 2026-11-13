@@ -4,6 +4,7 @@ import { getStorage } from "firebase-admin/storage";
 import { auditIn, writeAuditLog } from "./auditLogger";
 import { defineCallable } from "./callable";
 import { MATERIAL_UPLOAD, type MaterialFileType } from "./shared/constants";
+import { AUDIENCE_REQUIRED_MESSAGE, hasAudience } from "./shared/materials";
 import { COLLECTIONS, type MaterialDoc } from "./shared/types";
 
 /**
@@ -69,6 +70,7 @@ export const createMaterial = defineCallable("createMaterial", "admin", async (d
     description: data.description,
     labels: data.labels,
     targetYears: [...data.targetYears].sort((x, y) => x - y),
+    targetSpecialists: data.targetSpecialists,
     isMandatory: data.isMandatory,
     allowDownload: data.allowDownload,
     fileType,
@@ -143,8 +145,12 @@ export const finalizeMaterialUpload = defineCallable("finalizeMaterialUpload", "
 
 /** Admin: başlık, açıklama, etiketler, hedef kıdem, zorunluluk, indirme izni. Dosya değişmez. */
 export const updateMaterial = defineCallable("updateMaterial", "admin", async (data, actor) => {
-  const { ref } = await materialOrThrow(data.materialId);
+  const { ref, data: existing } = await materialOrThrow(data.materialId);
   const { materialId, ...fields } = data;
+  // Hedef kitle birleşik denetlenir (D26): yalnızca bir alan gelse de sonuçta en az bir hedef kalmalı.
+  const years = fields.targetYears ?? existing.targetYears ?? [];
+  const specialists = fields.targetSpecialists ?? existing.targetSpecialists === true;
+  if (!hasAudience(years, specialists)) throw new HttpsError("invalid-argument", AUDIENCE_REQUIRED_MESSAGE);
   const changes: Record<string, unknown> = Object.fromEntries(
     Object.entries(fields).filter(([, v]) => v !== undefined)
   );

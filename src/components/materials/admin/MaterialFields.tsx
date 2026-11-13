@@ -1,7 +1,7 @@
 "use client";
 
 import { LIMITS, RESIDENCY_YEARS, type ResidencyYear } from "@shared/constants";
-import type { LabelOption } from "@shared/materials";
+import { AUDIENCE_REQUIRED_MESSAGE, hasAudience, type LabelOption } from "@shared/materials";
 import { Field } from "@/components/ui/Field";
 import { LabelInput } from "./LabelInput";
 
@@ -11,6 +11,8 @@ export interface MaterialFieldsValue {
   description: string;
   labels: string[];
   targetYears: ResidencyYear[];
+  /** "Uzman" hedef kitlesi (yalnızca Uzm. Dr., D26). */
+  targetSpecialists: boolean;
   isMandatory: boolean;
   allowDownload: boolean;
 }
@@ -25,6 +27,7 @@ export const emptyMaterialFields = (): MaterialFieldsValue => ({
   description: "",
   labels: [],
   targetYears: [...RESIDENCY_YEARS],
+  targetSpecialists: false,
   isMandatory: false,
   allowDownload: false,
 });
@@ -32,7 +35,7 @@ export const emptyMaterialFields = (): MaterialFieldsValue => ({
 export function validateMaterialFields(v: MaterialFieldsValue): MaterialFieldErrors {
   const errors: MaterialFieldErrors = {};
   if (!v.title.trim()) errors.title = "Başlık zorunlu.";
-  if (v.targetYears.length === 0) errors.targetYears = "En az bir hedef kıdem seçin.";
+  if (!hasAudience(v.targetYears, v.targetSpecialists)) errors.targetYears = AUDIENCE_REQUIRED_MESSAGE;
   return errors;
 }
 
@@ -98,7 +101,7 @@ export function MaterialFields({
                   onChange({
                     ...value,
                     targetYears: e.target.checked
-                      ? [...value.targetYears, y].sort()
+                      ? [...value.targetYears, y].sort((a, b) => a - b)
                       : value.targetYears.filter((t) => t !== y),
                   })
                 }
@@ -106,6 +109,14 @@ export function MaterialFields({
               {y}. yıl
             </label>
           ))}
+          <label className="consent-row">
+            <input
+              type="checkbox"
+              checked={value.targetSpecialists}
+              onChange={(e) => onChange({ ...value, targetSpecialists: e.target.checked })}
+            />
+            Uzman
+          </label>
         </div>
         {errors.targetYears && (
           <p id={yearsErrorId} className="ui-field-error">

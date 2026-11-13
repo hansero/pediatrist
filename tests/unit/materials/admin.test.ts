@@ -9,10 +9,10 @@ import {
 } from "@/lib/materials/admin";
 import { toCsv } from "@/lib/csv";
 
-const doctor = (uid: string, residencyYear: number | null, fullName = uid) => ({
+const doctor = (uid: string, residencyYear: number | null, fullName = uid, title = "Asistan Dr.") => ({
   uid,
   fullName,
-  title: "Asistan Dr.",
+  title,
   residencyYear,
 });
 const progress = (uid: string, completed: boolean, secondsSpent = 120): ProgressView => ({
@@ -75,10 +75,16 @@ describe("materyal yükleme akışı (F6.2)", () => {
 });
 
 describe("okunma raporu (F6.2)", () => {
-  const doctors = [doctor("a", 1, "Ayşe"), doctor("b", 2, "Burak"), doctor("c", 2, "Can"), doctor("u", null, "Uzman")];
+  const doctors = [
+    doctor("a", 1, "Ayşe"),
+    doctor("b", 2, "Burak"),
+    doctor("c", 2, "Can"),
+    doctor("u", null, "Deniz", "Uzm. Dr."),
+    doctor("p", null, "Mert", "Prof. Dr."),
+  ];
 
   it("hedef kitle = hedef kıdemdeki etkin asistanlar; hedef dışı okuyan listede ama orana katılmaz", () => {
-    const report = buildReadReport({ targetYears: [2] }, doctors, [
+    const report = buildReadReport({ targetYears: [2], targetSpecialists: false }, doctors, [
       progress("b", true),
       progress("a", false),
       progress("eski", true),
@@ -94,11 +100,22 @@ describe("okunma raporu (F6.2)", () => {
   });
 
   it("CSV: Türkçe başlık, dakika, hedef kitle", () => {
-    const report = buildReadReport({ targetYears: [2] }, doctors, [progress("b", true, 600)]);
+    const report = buildReadReport({ targetYears: [2], targetSpecialists: true }, doctors, [progress("b", true, 600)]);
     const csv = readReportCsv("Septik Şok", report.rows);
     expect(csv.fileName).toBe("okunma-raporu-septik-sok.csv");
     const lines = toCsv(csv.headers, csv.rows).replace(/^﻿/, "").trimEnd().split("\r\n");
     expect(lines[0]).toBe("Materyal;Hekim;Kıdem;Hedef kitlede;Durum;Süre (dk);Son sayfa");
     expect(lines).toContain("Septik Şok;Asistan Dr. Burak;2. yıl;Evet;Tamamladı;10;3");
+    expect(lines).toContain("Septik Şok;Uzm. Dr. Deniz;Uzman;Evet;Başlamadı;0;");
+  });
+
+  it("'Uzman' hedefi yalnızca Uzm. Dr.'yi hedef kitleye katar; Doç./Prof. hiçbir hedefte değildir (D26)", () => {
+    const report = buildReadReport({ targetYears: [], targetSpecialists: true }, doctors, [progress("p", true)]);
+    expect(report.rows.map((r) => [r.uid, r.targeted])).toEqual([
+      ["u", true],
+      ["p", false],
+    ]);
+    expect(report.targeted).toBe(1);
+    expect(report.rows.find((r) => r.uid === "p")?.audience).toBe("—");
   });
 });

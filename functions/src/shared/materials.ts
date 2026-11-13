@@ -5,8 +5,13 @@
  * etiket, her biri en fazla 40 karakter. Etiket kırpılır, iç boşluklar teke indirilir; aynı materyalde Türkçe
  * küçük harfe göre aynı olanlar tekrar sayılır ("İnfeksiyon" = "infeksiyon"). İlk yazım korunur.
  * Öneri listesi ayrı bir koleksiyonda tutulmaz, mevcut materyallerden türetilir (`distinctLabels`).
+ *
+ * Hedef kitle (D26, F11.6): kıdem yılları (`targetYears`, 1–4) ve "Uzman" (`targetSpecialists`). En az biri
+ * seçilir. "Uzman" yalnızca ünvanı `Uzm. Dr.` olan üyedir; Doç./Prof. hiçbir hedef kitleye girmez (varsayılan
+ * süzgeçleri "Bütün kıdemler"). Görünürlük kısıtı değildir: hedef kitle süzgeç, zorunlu materyal ve okunma
+ * raporu içindir; yayındaki her materyal etkin üyeye açıktır.
  */
-import { LIMITS } from "./constants";
+import { isResidentTitle, LIMITS, RESIDENCY_YEARS } from "./constants";
 
 /** Kırpar ve iç boşlukları (satır sonu, sekme dahil) tek boşluğa indirir. */
 export function normalizeLabel(raw: string): string {
@@ -74,3 +79,54 @@ export function hasLabel(material: { labels: readonly string[] }, key: string): 
 }
 
 export const MATERIAL_LABEL_LIMITS = LIMITS.materialLabels;
+
+// --- Hedef kitle (D26) ---------------------------------------------------------------------------
+
+/** "Uzman" hedef kitlesindeki ünvan (kullanıcı kararı: yalnızca Uzm. Dr.; Doç./Prof. dahil değil). */
+export const SPECIALIST_TITLE = "Uzm. Dr.";
+
+/** Bir üyenin materyal hedef kitlesindeki yeri: kıdem yılı, "Uzman" ya da hiçbiri (`null`: Doç./Prof., admin). */
+export type MaterialAudience = number | "specialist";
+
+export interface MaterialTarget {
+  targetYears: readonly number[];
+  targetSpecialists: boolean;
+}
+
+export function materialAudienceOf(member: { title: string; residencyYear: number | null }): MaterialAudience | null {
+  if (isResidentTitle(member.title)) {
+    return (RESIDENCY_YEARS as readonly number[]).includes(member.residencyYear ?? 0) ? member.residencyYear : null;
+  }
+  return member.title === SPECIALIST_TITLE ? "specialist" : null;
+}
+
+/** Materyal bu kitleye yönelik mi? (`"all"` her şeyi geçirir; süzgeç için) */
+export function matchesAudience(material: MaterialTarget, audience: MaterialAudience | "all"): boolean {
+  if (audience === "all") return true;
+  return audience === "specialist" ? material.targetSpecialists : material.targetYears.includes(audience);
+}
+
+/** Üye bu materyalin hedef kitlesinde mi? (Doç./Prof. ve admin hiçbir hedef kitlede değildir.) */
+export function isMaterialTargeted(material: MaterialTarget, member: { title: string; residencyYear: number | null }) {
+  const audience = materialAudienceOf(member);
+  return audience !== null && matchesAudience(material, audience);
+}
+
+/** En az bir hedef seçili mi? (sunucu ve form aynı kural) */
+export const hasAudience = (targetYears: readonly unknown[], targetSpecialists: boolean): boolean =>
+  targetYears.length > 0 || targetSpecialists;
+
+export const AUDIENCE_REQUIRED_MESSAGE = "En az bir hedef kıdem seçin.";
+
+/** "1. yıl, 2. yıl, Uzman" */
+export function audienceLabel(material: MaterialTarget): string {
+  const parts = [...material.targetYears].sort((a, b) => a - b).map((y) => `${y}. yıl`);
+  if (material.targetSpecialists) parts.push("Uzman");
+  return parts.length ? parts.join(", ") : "—";
+}
+
+/** Üyenin kıdem/kitle etiketi (rapor sütunu): "3. yıl", "Uzman" ya da "—". */
+export function memberAudienceLabel(member: { title: string; residencyYear: number | null }): string {
+  const audience = materialAudienceOf(member);
+  return audience === null ? "—" : audience === "specialist" ? "Uzman" : `${audience}. yıl`;
+}

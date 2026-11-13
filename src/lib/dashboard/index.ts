@@ -12,6 +12,7 @@ import {
   Timestamp,
   where,
 } from "firebase/firestore";
+import { materialAudienceOf, matchesAudience } from "@shared/materials";
 import { COLLECTIONS, type AttendanceStatus } from "@shared/types";
 import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
@@ -92,11 +93,17 @@ export function adminNextStep(input: {
   return { kind: "none" };
 }
 
-/** Hekimin kıdemine yönelik zorunlu materyaller (kıdemsiz uzman: bütün zorunlu materyaller). */
-export function mandatoryFor(materials: readonly MaterialView[], residencyYear: number | null): MaterialView[] {
+/**
+ * Hekime yönelik zorunlu materyaller: asistan → kendi kıdemi; Uzm. Dr. → "Uzman" hedefli olanlar (D26);
+ * hiçbir hedef kitlede olmayan (Doç./Prof.) → bütün zorunlu materyaller.
+ */
+export function mandatoryFor(
+  materials: readonly MaterialView[],
+  member: { title: string; residencyYear: number | null }
+): MaterialView[] {
+  const audience = materialAudienceOf(member);
   return materials.filter(
-    (m) =>
-      m.status === "published" && m.isMandatory && (residencyYear === null || m.targetYears.includes(residencyYear))
+    (m) => m.status === "published" && m.isMandatory && (audience === null || matchesAudience(m, audience))
   );
 }
 

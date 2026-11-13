@@ -46,6 +46,11 @@ test("liste ve okunma raporu: hedef kitle, canlı ilerleme ve CSV (F6.2)", async
   await expect(selin).toContainText("Tamamladı");
   await expect(selin).toContainText("10 dk");
   await expect(readers.getByRole("row").filter({ hasText: "Zeynep Ergin" })).toContainText("Başlamadı");
+  // "Uzman" hedefli materyalde (D26) etkin Uzm. Dr. hedef kitlededir.
+  await expect(report).toContainText("Hedef kitle: 1. yıl, 2. yıl, 3. yıl, 4. yıl, Uzman");
+  const uzman = readers.getByRole("row").filter({ hasText: "Deniz Arıkan" });
+  await expect(uzman).toContainText("Uzman");
+  await expect(uzman).toContainText("Başlamadı");
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -91,13 +96,14 @@ test("yükle (ilerleme, sunucu doğrulaması) → düzenle → sil; izinsiz tür
   await expect(chips.getByRole("listitem")).toHaveText(["Çocuk Kardiyoloji×", "Neonatoloji×"]);
   await page.getByLabel("3. yıl").uncheck();
   await page.getByLabel("4. yıl").uncheck();
+  await page.getByLabel("Uzman", { exact: true }).check();
   await page.getByLabel("Hekimler indirebilir").check();
   await page.getByRole("button", { name: "Yükle ve yayınla" }).click();
   await expect(page.getByRole("status").filter({ hasText: `"${title}" yayınlandı` })).toBeVisible();
 
   await expect(page.getByRole("tab", { name: "Materyaller" })).toHaveAttribute("aria-selected", "true");
   await expect(row(page, title)).toContainText("Yayında");
-  await expect(row(page, title)).toContainText("1. yıl, 2. yıl");
+  await expect(row(page, title)).toContainText("1. yıl, 2. yıl, Uzman");
   await expect(row(page, title)).toContainText("Çocuk Kardiyoloji, Neonatoloji");
   await expect(row(page, title)).toContainText("PDF");
 

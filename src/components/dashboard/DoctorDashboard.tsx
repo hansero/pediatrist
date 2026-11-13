@@ -71,7 +71,7 @@ export function DoctorDashboard({ session }: { session: ClinicMemberSession }) {
   const attempts = useMyAttempts(session.uid);
   const materials = usePublishedMaterials();
 
-  const mandatory = mandatoryFor(materials.data ?? [], session.residencyYear);
+  const mandatory = mandatoryFor(materials.data ?? [], session);
   const mandatoryKey = mandatory.map((m) => m.id).join(",");
   const completed = useReportQuery(
     materials.status === "ready"

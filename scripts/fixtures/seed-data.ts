@@ -117,6 +117,7 @@ export interface SeedMaterial {
   description: string;
   labels: string[];
   targetYears: number[];
+  targetSpecialists: boolean;
   isMandatory: boolean;
   allowDownload: boolean;
   file: { local: string; name: string; contentType: string };
@@ -129,6 +130,7 @@ export const SEED_MATERIALS: SeedMaterial[] = [
     description: "Kompanse şokun erken tanısı, sıvı resüsitasyonu ve vazoaktif tedaviye geçiş ölçütleri.",
     labels: ["Çocuk Acil", "Yoğun Bakım"],
     targetYears: [1, 2, 3, 4],
+    targetSpecialists: true,
     isMandatory: true,
     allowDownload: false,
     file: { local: "septik-sok-ilk-saat.pdf", name: "septik-sok-ilk-saat.pdf", contentType: "application/pdf" },
@@ -139,6 +141,7 @@ export const SEED_MATERIALS: SeedMaterial[] = [
     description: "Termoregülasyon, CPAP ve başlangıç FiO2 titrasyonu.",
     labels: ["Neonatoloji"],
     targetYears: [1, 2],
+    targetSpecialists: false,
     isMandatory: false,
     allowDownload: true,
     file: { local: "preterm-stabilizasyon.pdf", name: "preterm-stabilizasyon.pdf", contentType: "application/pdf" },
