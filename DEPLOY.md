@@ -110,7 +110,7 @@ Yönetim paneli ilk admin olmadan kullanılamaz; ilk admin konsoldan atanır:
 
 ### 1.5 Dağıtım sonrası kısa kontrol
 
-Otomatik yapılandırma ve servis denetimi için (`gcloud auth login` açıkken):
+Otomatik yapılandırma ve servis denetimi için (Firebase CLI oturumu açıkken):
 
 ```bash
 npm run verify:staging

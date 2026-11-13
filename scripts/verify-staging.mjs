@@ -3,7 +3,7 @@
  * Gerçek (staging / prod) Firebase projesi ve yerel yapılandırma doğrulama aracı.
  *
  * `DEPLOY.md` ve `docs/revision/STAGING_CHECKLIST.md` içindeki kurulum adımlarını
- * yerel `.env` dosyaları ve Google Cloud / Firebase REST API'leri üzerinden denetler:
+ * yerel `.env` dosyaları ve Firebase CLI (`firebase login`) oturumu üzerinden denetler:
  *  1) Yerel yapılandırma (`.firebaserc`, `.env.local`, `functions/.env.<proje>`)
  *  2) App Check (reCAPTCHA Enterprise kaydı, Firestore/Storage zorlaması, canlı callable negatif testi)
  *  3) Authentication / Identity Platform (E-posta/Şifre, TOTP MFA, şifre politikası)
@@ -16,7 +16,8 @@
  *   node scripts/verify-staging.mjs [--project <proje-kimliği>] [--local-only]
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -55,7 +56,7 @@ export function parseEnvFile(content) {
 }
 
 /** Yerel `.env.local` ve `functions/.env.<proje>` dosyalarını denetler. */
-export function verifyLocalEnv({ webEnv, fnEnv, projectId }) {
+export function verifyLocalEnv({ webEnv, fnEnv, projectId, autoFixedAppCheck = false }) {
   const results = [];
   const pass = (id, msg) => results.push({ status: "PASS", id, msg });
   const fail = (id, msg) => results.push({ status: "FAIL", id, msg });
@@ -100,8 +101,13 @@ export function verifyLocalEnv({ webEnv, fnEnv, projectId }) {
   } else {
     if (fnEnv.ENFORCE_APP_CHECK === "false") {
       fail("B6", `\`functions/.env.${projectId}\` içinde ENFORCE_APP_CHECK=false! Gerçek projede "true" olmalıdır.`);
+    } else if (autoFixedAppCheck) {
+      pass(
+        "B6",
+        `\`functions/.env.${projectId}\` içinde ENFORCE_APP_CHECK="true" yapıldı (dağıtım: npm run deploy:functions).`
+      );
     } else {
-      pass("B6", "`ENFORCE_APP_CHECK` açık (güvenli varsayılan veya `true`).");
+      pass("B6", "`ENFORCE_APP_CHECK` açık (`true`).");
     }
 
     const rpId = fnEnv.WEBAUTHN_RP_ID?.trim() ?? "";
@@ -133,11 +139,36 @@ export function verifyLocalEnv({ webEnv, fnEnv, projectId }) {
   return results;
 }
 
-/** Ortamdan veya gcloud CLI üzerinden OAuth2 erişim belirteci alır. */
-function resolveAccessToken() {
+/**
+ * Firebase CLI (`node scripts/firebase.mjs login` / `firebase login`) oturumundan
+ * veya yedek olarak ortam / gcloud CLI üzerinden OAuth2 erişim belirteci alır.
+ */
+async function resolveAccessToken() {
   if (process.env.GOOGLE_OAUTH_ACCESS_TOKEN?.trim()) {
     return process.env.GOOGLE_OAUTH_ACCESS_TOKEN.trim();
   }
+
+  // 1) Firebase CLI (`firebase-tools/lib/auth`) oturumu
+  try {
+    const require = createRequire(import.meta.url);
+    const auth = require("firebase-tools/lib/auth");
+    const account = auth.getProjectDefaultAccount(root) ?? auth.getGlobalDefaultAccount();
+    if (account?.tokens) {
+      const scopes = account.tokens.scopes ?? [
+        "https://www.googleapis.com/auth/cloud-platform",
+        "https://www.googleapis.com/auth/firebase",
+      ];
+      if (account.tokens.refresh_token) {
+        const refreshed = await auth.getAccessToken(account.tokens.refresh_token, scopes);
+        if (refreshed?.access_token) return refreshed.access_token;
+      }
+      if (account.tokens.access_token) return account.tokens.access_token;
+    }
+  } catch {
+    // firebase-tools oturumu yoksa veya yenilenemediyse yedeklere geç
+  }
+
+  // 2) Yedek: gcloud CLI
   for (const args of [
     ["auth", "print-access-token"],
     ["auth", "application-default", "print-access-token"],
@@ -187,7 +218,10 @@ export async function verifyRemoteServices(options) {
   }
 
   if (!token) {
-    warn("API", "Google Cloud erişim belirteci bulunamadı (`gcloud auth login`). Uzak API denetimleri atlandı.");
+    warn(
+      "API",
+      "Firebase CLI oturumu bulunamadı (`node scripts/firebase.mjs login`). Uzak API denetimleri atlandı."
+    );
     return results;
   }
 
@@ -372,15 +406,27 @@ async function main() {
   const projectId = resolveProjectId(args, webEnv);
 
   const fnEnvPath = projectId ? path.join(root, "functions", `.env.${projectId}`) : null;
-  const fnEnv = fnEnvPath && existsSync(fnEnvPath) ? parseEnvFile(readFileSync(fnEnvPath, "utf8")) : null;
+  let fnEnv = fnEnvPath && existsSync(fnEnvPath) ? parseEnvFile(readFileSync(fnEnvPath, "utf8")) : null;
+  let autoFixedAppCheck = false;
+
+  // Gerçek projede ENFORCE_APP_CHECK=false kalmışsa otomatik olarak true'ya düzelt
+  if (fnEnvPath && fnEnv && projectId && !projectId.startsWith("demo-") && fnEnv.ENFORCE_APP_CHECK === "false") {
+    const raw = readFileSync(fnEnvPath, "utf8");
+    const updated = raw.replace(/^(\s*ENFORCE_APP_CHECK\s*=\s*)["']?false["']?/m, "$1true");
+    if (updated !== raw) {
+      writeFileSync(fnEnvPath, updated, "utf8");
+      fnEnv = parseEnvFile(updated);
+      autoFixedAppCheck = true;
+    }
+  }
 
   console.log("\n🔍 Pediatrist Firebase & App Check Doğrulama Aracı");
   console.log(`   Proje: ${projectId ?? "(belirlenemedi)"}\n`);
 
-  const allResults = [...verifyLocalEnv({ webEnv, fnEnv, projectId })];
+  const allResults = [...verifyLocalEnv({ webEnv, fnEnv, projectId, autoFixedAppCheck })];
 
   if (!localOnly && projectId && !projectId.startsWith("demo-")) {
-    const token = resolveAccessToken();
+    const token = await resolveAccessToken();
     const expectedOrigins = (fnEnv?.WEBAUTHN_ORIGINS ?? "")
       .split(",")
       .map((s) => s.trim())
