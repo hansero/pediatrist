@@ -18,7 +18,7 @@ export default function AttendancePage() {
         description={
           isAdmin
             ? "Dersi başlatın, projektör ekranını yansıtın ve katılımı canlı izleyin."
-            : "Açık derse projektördeki kod ve telefonunuzun yüz/parmak izi onayıyla katılın."
+            : "Açık derse projektördeki QR kodu okutarak ya da kodu girerek katılın."
         }
       />
       {isAdmin ? (

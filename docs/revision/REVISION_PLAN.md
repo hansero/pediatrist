@@ -95,7 +95,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F10.4 | Denetim izlenebilirlik kontrolü (her bulgu → kanıt) | S | ✅ | Hepsi |
 | **F11** | **Kullanıcı revizyonları (2026-11-13)** | | | |
 | F11.1 | Yoklama cihazını (passkey) kaldır | L | ✅ | Madde 1 (D23) |
-| F11.2 | Uygulama içi QR okuyucu | M | ⬜ | Madde 2 (D27) |
+| F11.2 | Uygulama içi QR okuyucu | M | ✅ | Madde 2 (D27) |
 | F11.3 | Ders kategorisini kaldır | S | ⬜ | Madde 3 |
 | F11.4 | Yoklama verme yetkisi: yalnızca 1–4. yıl asistan | M | ⬜ | Madde 7 (D24) |
 | F11.5 | Materyal etiketleri | M | ⬜ | Madde 4 (D25) |
@@ -110,9 +110,9 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-13
-- **Son tamamlanan adım:** F11.1 (yoklama cihazı kaldırıldı, D23). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
+- **Son tamamlanan adım:** F11.2 (uygulama içi QR okuyucu). Öncesinde F11.1 (yoklama cihazı kaldırıldı, D23). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
 - **Devam eden adım:** —
-- **Sıradaki iş:** F11.2 (uygulama içi QR okuyucu). Ardından sırayla F11.3 → F11.8; her adımın kapsamı §5 F11'de.
+- **Sıradaki iş:** F11.3 (ders kategorisini kaldır). Ardından sırayla F11.4 → F11.8; her adımın kapsamı §5 F11'de.
   - Kullanıcı kararları: birden çok etiket; "Uzman" yalnızca `Uzm. Dr.`; kamera izni "QR kodu okut" düğmesiyle, QR okununca hemen gönderim.
   - Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`.
   - Önceki dönemden kalanlar (staging, UAT, KVKK hukuk onayı, karar bekleyenler) için `docs/revision/TRACEABILITY.md` › "Açık kalanlar".
@@ -1614,7 +1614,15 @@ Kullanıcının 7 maddelik isteği. Plan: oturumdaki onaylı plan dosyası; kara
   - Doğrulandı: lint, format, typecheck, no-mock, unit 254, rules 58, functions 103, e2e (yoklama, a11y, panel, KVKK, gezinme, CSP, oturum) 46 + 2 atlanan.
 
 #### F11.2 Uygulama içi QR okuyucu (M) — madde 2
-- `src/lib/attendance/checkInLink.ts` (`checkInUrl` + `parseCheckInLink`), `QrScanner.tsx` (`jsqr` 1.4.0, düğmeyle kamera izni, okununca hemen gönderim), kamera hata eşlemesi, e2e (canvas akışıyla okuma, izin reddi, yabancı QR).
+- **✅ Uygulanan:**
+  - `src/lib/attendance/checkInLink.ts`: `checkInUrl` (projektörden taşındı) ve `parseCheckInLink`. Yalnızca bu kökenin `/attendance` bağlantısı kabul edilir; kod `ATTENDANCE_CODE_*` ile denetlenir. Telefonun kendi kamerasıyla gelen `?s=&c=` bağlantısı da aynı çözücüden geçer.
+  - `src/components/attendance/QrScanner.tsx` (D27): "QR kodu okut" düğmesine basınca `getUserMedia` (arka kamera, karşılanamazsa herhangi bir kamera), önizleme, 200 ms'de bir ≤ 640 px kare `jsqr` 1.4.0 ile çözülür (okuyucu açılınca dinamik yüklenir). Bu dersin bağlantısı okununca kamera kapanır ve kod hemen gönderilir; yabancı QR / başka ders / bozuk kod için Türkçe ipucu, kamera açık kalır. Kamera; kapatma, başarı, sayfa arka plana alınma ve ayrılmada bırakılır. Güvenli bağlam veya kamera yoksa düğme yerine "kodu elle girin" notu.
+  - `DoctorCheckIn`: okuyucu üstte, "veya kodu elle girin" ve kod alanı altta. Yoklama alınınca adresteki `?s=&c=` temizlenir. Sayfa alt başlığı ve projektör yardım metni güncellendi.
+  - `lib/errors.ts › cameraErrorMessage`: izin reddi, kamera yok, kamera meşgul. Aynı adlı DOM hataları başka API'lerde farklı anlam taşıdığı için `toAppError`'a eklenmedi.
+  - CSP değişmedi (çözümleme ana iş parçacığında; `MediaStream` `srcObject` ile).
+  - **Testler:** unit +4 (çözücü gidiş-dönüş, yabancı köken/sayfa/şema, bozuk kod; kamera mesajları). e2e +2 × 2 ekran: (1) `e2e/fixtures/camera.ts` `getUserMedia`'yı bir canvas akışına bağlar; sayfa açılınca kamera istenmez, yabancı QR reddedilir, projektör QR'ı okununca düğmeye basmadan "Yoklamanız alındı", sayaç 1. (2) İzin reddi (`NotAllowedError`) → tam Türkçe mesaj, elle kodla katılım.
+  - **Not:** başsız Chromium'da kamera aygıtı yok; gerçek API `NotFoundError` veriyor. Bu yüzden izin reddi e2e'de enjekte ediliyor. Gerçek telefonda izin akışı UAT B1.
+  - Doğrulandı: lint, format, typecheck, no-mock, unit 258, e2e yoklama + CSP 22, ekran görüntüsüyle telefon düzeni.
 
 #### F11.3 Ders kategorisini kaldır (S) — madde 3
 - `LECTURE_CATEGORIES`, istek alanı, başlatma formundaki seçim, açıklamalar ve CSV "Kategori" sütunları kalkar.

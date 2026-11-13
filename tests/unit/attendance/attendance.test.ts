@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildRoster } from "@/components/attendance/admin/AdminAttendance";
-import { checkInUrl } from "@/components/attendance/ProjectorKiosk";
+import { checkInUrl, parseCheckInLink } from "@/lib/attendance/checkInLink";
 import { isLectureOpen, type Lecture } from "@/lib/attendance/live";
 
 const doctor = (uid: string, fullName: string, residencyYear: number | null = 2) => ({
@@ -55,6 +55,39 @@ describe("checkInUrl (projektör QR'ı)", () => {
     expect(url.pathname).toBe("/attendance");
     expect(url.searchParams.get("s")).toBe("ders/1");
     expect(url.searchParams.get("c")).toBe("K9P4X2");
+  });
+});
+
+describe("parseCheckInLink (uygulama içi QR okutma, F11.2)", () => {
+  const origin = "https://pediatrist.web.app";
+  it("projektörün ürettiği bağlantıyla gidiş-dönüş; kod büyük harfe çevrilir", () => {
+    expect(parseCheckInLink(checkInUrl(origin, "ders-1", "K9P4X2"), origin)).toEqual({
+      ok: true,
+      sessionId: "ders-1",
+      code: "K9P4X2",
+    });
+    expect(parseCheckInLink(`${origin}/attendance/?s=d&c=k9p4x2`, origin)).toEqual({
+      ok: true,
+      sessionId: "d",
+      code: "K9P4X2",
+    });
+  });
+  it("başka site, başka sayfa ve bağlantı olmayan metin yoklama koduna dönüşmez", () => {
+    expect(parseCheckInLink("https://kotu.example/attendance?s=d&c=K9P4X2", origin)).toEqual({
+      ok: false,
+      reason: "foreign",
+    });
+    expect(parseCheckInLink(`${origin}/materials?s=d&c=K9P4X2`, origin)).toEqual({ ok: false, reason: "foreign" });
+    expect(parseCheckInLink("http://pediatrist.web.app/attendance?s=d&c=K9P4X2", origin)).toMatchObject({
+      reason: "foreign",
+    });
+    expect(parseCheckInLink("K9P4X2", origin)).toEqual({ ok: false, reason: "not-url" });
+    expect(parseCheckInLink("", origin)).toEqual({ ok: false, reason: "not-url" });
+  });
+  it("ders veya kod eksik ya da kod alfabe/uzunluk dışında → bad-code", () => {
+    for (const q of ["?c=K9P4X2", "?s=d", "?s=d&c=K9P4X0", "?s=d&c=K9P4X", "?s=d&c=K9P4X22", "?s=%20&c=K9P4X2"]) {
+      expect(parseCheckInLink(`${origin}/attendance${q}`, origin)).toEqual({ ok: false, reason: "bad-code" });
+    }
   });
 });
 

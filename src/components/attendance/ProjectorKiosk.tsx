@@ -5,18 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
+import { checkInUrl } from "@/lib/attendance/checkInLink";
 import { isLectureOpen, useLecture } from "@/lib/attendance/live";
 import { useIdleExempt } from "@/lib/auth/IdleContext";
 import { toAppError } from "@/lib/errors";
 import { getProjectorCode } from "@/lib/firebase/callables";
-
-/** Hekimin telefonda açacağı adres: ders ve kod önceden doldurulur (F4.4 kullanır). */
-export function checkInUrl(origin: string, sessionId: string, code: string): string {
-  const url = new URL("/attendance", origin);
-  url.searchParams.set("s", sessionId);
-  url.searchParams.set("c", code);
-  return url.toString();
-}
 
 interface CodeState {
   code: string;
