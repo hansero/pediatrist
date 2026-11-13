@@ -13,7 +13,7 @@
 | Yetkinin kaynağı | Firebase Custom Claims | `users/{uid}` dokümanı; claim'ler yalnızca önbellek. Askıya alma ve yetki düşürme anında etkili (D3). |
 | Kayıt | İstemci profil yazar | Profili sunucu yazar (`completeRegistration`); davet kodu sunucuda doğrulanır (D4). |
 | İki aşamalı doğrulama | TOTP zorunlu | Gerçek TOTP (Identity Platform). Zorunluluğun tek kaynağı `config/security`; doküman yoksa zorunlu (D5, D20, D21). |
-| Yoklama cihazı | Cihaz özeti (`boundDeviceHash`) + biyometrik onay | WebAuthn platform passkey'i; imza sunucuda doğrulanır. Cihaz özeti kaldırıldı (D6). |
+| Yoklama cihazı | Cihaz özeti (`boundDeviceHash`) + biyometrik onay | Cihaz bağlama yok (D23, F11.1): yoklama MFA'lı oturum + projektör kodu ile verilir. Önce cihaz özeti (F4.2), sonra passkey (F11.1) kaldırıldı. |
 | Sınav soruları | `questions_public` yayındayken hekime açık | İstemciye kapalı; sorular yalnızca girişimle (`startQuizAttempt`) ve cevap anahtarı olmadan gelir. |
 | Karne | Teslimde anında doğru cevap + açıklama | Sınav başına gösterim kuralı: varsayılan "sınav kapanınca", isteğe bağlı "teslimde hemen" (D7). |
 | Katılmayanlar | Yalnızca katılan ve mazeretli kayıtları | Ders kapanırken "katılmadı" kaydı yazılır; oran = katıldı / (katıldı + katılmadı) (D22). |
@@ -32,7 +32,7 @@
 - **Kapalı Devre Üyelik:** Dışarıdan serbest erişim kapalıdır. Yalnızca klinik yöneticisi (`Admin`) tarafından onaylanan veya kurumsal davet (`invitations`) ile kabul edilen üyeler sisteme girebilir.
 - **Rol Tabanlı Erişim Kontrolü (RBAC):** `Admin` (Eğitim Sorumlusu / Öğretim Üyesi / Başasistan) ve `User` (Pediatri Asistanı / Uzman Hekim) rolleri **Firebase Custom Claims**, **Firestore Security Rules** ve **Storage Security Rules** ile hem istemci hem sunucu katmanında zorunlu tutulur.
 - **Ayrı Sayfa ve Modüler Yönetim:** Her ana fonksiyon kendi bağımsız sayfasında (`/materials`, `/calculators`, `/attendance`, `/quizzes`) görüntülenir ve yetkiye göre aynı modül içinden yönetilir.
-- **İleri Seviye Siber Güvenlik (Zero-Trust):** Çok faktörlü kimlik doğrulama (MFA/TOTP), Firebase App Check, cihaz/biyometrik bağlama (`WebAuthn`), 15 saniyede bir kriptografik değişen dinamik QR yoklama, filigranlı materyal görüntüleme, sunucu tarafı sınav değerlendirmesi ve değiştirilemez denetim kayıtları (`audit_logs`).
+- **İleri Seviye Siber Güvenlik (Zero-Trust):** Çok faktörlü kimlik doğrulama (MFA/TOTP), Firebase App Check, 15 saniyede bir kriptografik değişen dinamik QR yoklama (uygulama içinden kamerayla okutma), filigranlı materyal görüntüleme, sunucu tarafı sınav değerlendirmesi ve değiştirilemez denetim kayıtları (`audit_logs`).
 
 ---
 
@@ -101,7 +101,7 @@ Klinik eğitim verileri, hekim bilgileri ve yoklama/sınav bütünlüğü için 
    - `src/lib/firebase/client.ts` yapılandırma nesnesini dışa aktarmaz; yalnızca `isFirebaseConfigured()` ile boolean bağlantı durumu döndürür.
 2. **Ortam Değişkeni İzolasyonu ve Cihaz Özeti (Hashing):**
    - Tüm Firebase anahtarları kaynak kodda sabit (`hardcoded`) tutulmaz; yalnızca git'e girmeyen `.env.local` ve sunucu ortam değişkenlerinden okunur.
-   - **Güncel:** Next tarafında Admin SDK kullanılmaz (`src/lib/firebase/admin.ts` silindi). Cihaz bağlama cihaz özetiyle değil WebAuthn passkey'iyle yapılır; veritabanında yalnızca açık anahtar ve kimlik bilgisi kimliği tutulur (D6).
+   - **Güncel:** Next tarafında Admin SDK kullanılmaz (`src/lib/firebase/admin.ts` silindi). Yoklamada cihaz bağlama yoktur (D23); kimlik MFA'lı oturumdan gelir.
 3. **Kesin Rol Ayrımı (Uygulama İçi Rol Değiştirme Yok):**
    - Arayüzde istemci taraflı `viewMode` veya "Rol Değiştir" anahtarı bulunmaz; kullanıcı rolü `ClinicSessionContext` içinde canlı dinlenen `users/{uid}` dokümanından okunur (**Güncel:** token değil doküman, D3).
 
@@ -123,7 +123,7 @@ flowchart TD
     Dash --> P4["4. Online Quiz (/quizzes)"]
     Dash --> P5["5. Kullanıcı & Güvenlik Yönetimi (/admin)"]
 
-    P1 --> P1_U["User: Kategori/Kıdem Filtreleme, Filigranlı Okuma/İzleme, İlerleme Takibi"]
+    P1 --> P1_U["User: Etiket/Kıdem Filtreleme, Filigranlı Okuma/İzleme, İlerleme Takibi"]
     P1 --> P1_A["Admin: Firebase Storage Dosya Yükleme, Kıdem Etiketleme, Okunma Raporu"]
 
     P2 --> P2_U["User: Doz, Sıvı, Persentil, Yenidoğan, Acil Skor Hesaplama"]
@@ -144,7 +144,7 @@ flowchart TD
 Klinik içi ders sunumları, güncel pediatri kılavuzları (AAP, ESPGHAN, Türk Pediatri Kurumu vb.), makaleler ve eğitim videolarının yönetildiği sayfadır.
 
 - **Hekim (`User`) Görünümü:**
-  - **Kategori & Kıdem Filtreleme:** Yenidoğan, Çocuk Acil, Çocuk Yoğun Bakım, Enfeksiyon, Nefroloji, Kardiyoloji vb. bilim dallarına ve asistan kıdem yılına (1. Yıl, 2. Yıl, 3. Yıl, 4. Yıl, Tüm Klinik) göre filtreleme.
+  - **Etiket & Kıdem Filtreleme:** Admin'in serbestçe oluşturduğu etiketlere (D25; ör. Yenidoğan, Çocuk Acil) ve hedef kıdeme (1.–4. Yıl, Uzman; D26) göre filtreleme. Admin listesinde ayrıca arama | etiket | hedef kıdem süzgeci (F11.7).
   - **Güvenli Uygulama İçi Görüntüleyici:** PDF ve sunumlar Firebase Cloud Storage üzerinden güvenli akışla çekilir; üzerinde aktif kullanıcının adı-soyadı, e-postası ve zaman damgası bulunan dinamik filigran (watermark) ile görüntülenir (`allowDownload: false` olan materyaller için indirme/yazdırma engellenir).
   - **Okundu / Tamamlandı Takibi:** Hekimin hangi materyali ne kadar süre incelediği kaydedilir; zorunlu materyaller için kişisel ilerleme yüzdesi gösterilir.
 - **Yönetici (`Admin`) Yönetim Fonksiyonları:**
@@ -180,11 +180,11 @@ Klinik pratikte ve eğitimde en sık kullanılan, hata payını sıfıra indirme
 Klinik sabah toplantıları, makale saatleri, mortalite toplantıları ve teorik derslerde **başkasının yerine imza atmayı veya ekran görüntüsüyle uzaktan yoklama vermeyi imkansız kılan** gerçek zamanlı kişisel doğrulama sayfasıdır.
 
 - **Kriptografik & Cihaz Bağlamlı Yoklama Protokolü:**
-  1. **Yoklama Alınacak Dersi Admin Başlatır (`startLectureSession`):** Yoklama yalnızca `Admin` tarafından ders başlığı, eğitici, kategori ve yoklama açık kalma süresi (dakika) belirlenerek başlatıldığında açılır. Aktif ders yokken hekim ekranında yoklama girişi kapalıdır.
+  1. **Yoklama Alınacak Dersi Admin Başlatır (`startLectureSession`):** Yoklama yalnızca `Admin` tarafından ders başlığı, eğitici ve yoklama açık kalma süresi (dakika) belirlenerek (kategori yok, F11.3) başlatıldığında açılır. Aktif ders yokken hekim ekranında yoklama girişi kapalıdır.
   2. **Canlı Projektör Ekranı (`getProjectorCode`):** Canlı ders süresince projektöre **her 15 saniyede bir kriptografik olarak yenilenen (HMAC-SHA256) 6 haneli tek kullanımlık doğrulama kodu** yansıtılır.
   3. **Kişisel Doğrulama (`User` — `verifyRealTimeAttendance`):**
-     - **Adım A (Kişisel Cihaz & Biyometrik Onay):** Hekimin hesabına kayıtlı telefonun **WebAuthn passkey'i** (yüz / parmak izi onayıyla) sunucuda doğrulanır (**Güncel:** cihaz özeti yok; imza ve kullanıcı doğrulaması sunucuda denetlenir, D6).
-     - **Adım B (15 Saniyelik Kod Doğrulaması):** Projektördeki güncel kod girilir/okutulur; sunucu kodun son 15 saniyelik pencereye ait olduğunu ve aynı cihazdan başka bir hekime yoklama verilmediğini doğrulayarak kaydı `attendance_sessions/{sessionId}/records/{uid}` ve `attendance_logs` koleksiyonlarına yazar.
+     - **Adım A (Yetki):** Yalnızca rolü hekim olan 1.–4. yıl asistan yoklama verir (D24); kimlik MFA'lı oturumdan gelir, cihaz bağlama yoktur (D23).
+     - **Adım B (15 Saniyelik Kod Doğrulaması):** Projektördeki QR uygulama içinden kamerayla okutulur ("QR kodu okut", D27) ya da kod elle girilir; sunucu kodun son 15 saniyelik pencereye (veya bir öncekine) ait olduğunu doğrulayarak kaydı `attendance_sessions/{sessionId}/records/{uid}` ve `attendance_logs` koleksiyonlarına yazar.
 - **Hekim (`User`) Görünümü:**
   - Yalnızca Admin tarafından başlatılmış canlı ders varsa yoklama doğrulama formu.
   - Hekimin **yalnızca kendi geçmiş ders katılımlarını** gördüğü Kişisel Ders Katılım Geçmişi tablosu.
@@ -246,7 +246,7 @@ Her bir sınav sorusu, mevcut 9 sütunlu CSV yapısına birebir uyumlu olan **9 
 Yalnızca `Admin` rolüne sahip kullanıcıların erişebildiği yönetim sayfasıdır:
 - Bekleyen üyelik başvurularını (`pending`) onaylama / askıya alma (`suspended`).
 - Kullanıcı rolü (`Admin` / `User`) ve asistan kıdem yılı (`1..4`) atama.
-- Kullanıcının kayıtlı yoklama cihazını (passkey) ve iki aşamalı doğrulamasını sıfırlama.
+- Kullanıcının iki aşamalı doğrulamasını sıfırlama.
 - **Güncel:** davet oluşturma/iptal, üye silme (kayıtların addan arındırılması) ve kişisel veri dökümü de bu sayfadadır.
 - Değiştirilemez `audit_logs` (Siber Güvenlik Denetim Kayıtları) izleme ekranı (hiçbir proje kimliği veya API anahtarı ekrana yansıtılmaz).
 
@@ -262,7 +262,6 @@ firestore-root/
 ├── users/{uid}                          <-- yetkinin TEK kaynağı; yalnızca sunucu yazar
 │   ├── uid, email, fullName, title, residencyYear (1..4 | null), role, status
 │   ├── consent { version, acceptedAt }  (KVKK aydınlatma metni onayı)
-│   ├── webauthn { credentialId, publicKey, counter, transports, backedUp, createdAt } | null  (yoklama cihazı)
 │   ├── tokensValidAfter (epoch sn; bundan önce açılan oturumlar geçersiz)
 │   └── createdAt, updatedAt, approvedBy, updatedBy, inviteCode
 │
@@ -273,7 +272,7 @@ firestore-root/
 │   └── code, email, intendedRole, residencyYear, invitedBy, createdAt, expiresAt, used, usedBy, usedAt, revoked…
 │
 ├── materials/{materialId}
-│   ├── title, description, category, targetYears[], isMandatory, allowDownload
+│   ├── title, description, labels[], targetYears[], targetSpecialists, isMandatory, allowDownload
 │   ├── fileType ("pdf" | "video" | "image"), storagePath, contentType, sizeBytes
 │   ├── status ("draft" | "published"), uploadedBy, uploadedByName, createdAt, publishedAt, updatedAt
 │   └── progress/{uid} -> { uid, secondsSpent, lastPage, completed, updatedAt }   (hekim kendi kaydını yazar)
@@ -282,16 +281,15 @@ firestore-root/
 │   └── calculatorId, protocolNote, updatedBy, updatedByName, updatedAt
 │
 ├── attendance_sessions/{sessionId}
-│   ├── title, lecturer, category, durationMinutes, status ("live" | "closed"), startedAt, endsAt, startedBy
+│   ├── title, lecturer, durationMinutes, status ("live" | "closed"), startedAt, endsAt, startedBy
 │   ├── presentCount, excusedCount, absentCount, expectedAttendees[], expectedCount
 │   ├── closedAt, closedBy, closeReason ("manual" | "expired")
 │   └── records/{uid} -> { uid, fullName, title, residencyYear, status ("present" | "excused" | "absent"),
-│                          method ("qr+webauthn" | "admin_excused" | "system_absent"), verifiedAt, excuseNote, markedBy }
+│                          method ("code" | "admin_excused" | "system_absent"; eski kayıtlarda "qr+webauthn"), verifiedAt, excuseNote, markedBy }
 │
 ├── attendance_logs/{sessionId}_{uid}    <-- raporlar için düz kopya (kayıt alanları + ders bilgisi)
 ├── attendance_secrets/{sessionId}       <-- istemciye kapalı: hmacSecret, projectorIpHash
 ├── attendance_meta/live                 <-- istemciye kapalı: tek canlı ders kilidi
-├── webauthn_challenges/{uid}_{amaç}     <-- istemciye kapalı: tek kullanımlık, 2 dk
 │
 ├── quizzes/{quizId}
 │   ├── title, status ("draft" | "published" | "closed"), durationMinutes, closesAt
@@ -335,7 +333,7 @@ Güncel özet (`firestore.rules`, `storage.rules`; 58 kural testi `tests/rules/`
 - **`quizzes`:** hekim yayındaki ve kapanmış sınavın başlığını okur; `questions_public`, `quiz_answer_keys` ve
   `quiz_question_archive` hekime kapalıdır. `quiz_attempts`'ta herkes yalnızca kendi girişimini okur.
 - **`invitations`, `audit_logs`:** yalnızca admin okur; istemci yazamaz.
-- **Tamamen kapalı (admin dahil):** `attendance_secrets`, `attendance_meta`, `webauthn_challenges`,
+- **Tamamen kapalı (admin dahil):** `attendance_secrets`, `attendance_meta`, `webauthn_challenges` (eski veri),
   `quiz_attempt_drafts`, `rate_limits`.
 - **Storage:** dosyaları etkin üyeler okur; yalnızca admin yükler ve siler; tür ve boyut sınırları kuralda ve
   `functions/src/shared/constants.ts` içinde aynıdır (birim testi eşitliği denetler).
@@ -365,13 +363,13 @@ pediatrist/
 │   │   ├── auth/                        # oturum bağlamı, oturum kararı, hareketsizlik, MFA
 │   │   ├── firebase/                    # client.ts, config.ts, callables.ts
 │   │   ├── admin/, attendance/, quiz/, materials/, dashboard/, pediatrics/   # modül veri katmanları (okuma kancaları, saf hesaplar)
-│   │   └── errors.ts, csv.ts, privacy.ts, webauthn.ts, kvkk.ts
+│   │   └── errors.ts, csv.ts, privacy.ts, kvkk.ts
 │   └── styles/                          # tokens.css, index.css, ui.css
 ├── functions/src/                       # Cloud Functions v2 (europe-west1)
 │   ├── shared/                          # ORTAK sözleşmeler: schemas.ts (zod), constants.ts, types.ts, consent.ts, security.ts, quizCsv.ts
 │   ├── callable.ts, guards.ts, validate.ts          # callable tanımı, yetki (tek yer), istek doğrulama
 │   ├── members.ts, privacyService.ts                # üyelik, davet, KVKK (onay, silme, döküm)
-│   ├── attendanceService.ts, webauthn.ts            # yoklama, passkey
+│   ├── attendanceService.ts                         # yoklama
 │   ├── quizService.ts, quizGrading.ts               # sınav, puanlama
 │   ├── materialsService.ts, calculatorsService.ts
 │   ├── scheduled.ts                                 # süresi dolan ders ve sınavları kapatma
@@ -402,7 +400,7 @@ pediatrist/
 | Ortak sözleşmeler, yetki katmanı, hata gösterimi | Tamamlandı (F1) |
 | Güvenlik kuralları, kayıt, oturum, CSP | Tamamlandı (F2) |
 | Tasarım sistemi, gezinme, giriş/kayıt ekranları, gerçek TOTP | Tamamlandı (F3). TOTP emülatörde sınanamıyor; staging'de sınanacak. |
-| Ders yoklaması (passkey, projektör, raporlar) | Tamamlandı (F4) |
+| Ders yoklaması (QR okutma / kod, projektör, raporlar) | Tamamlandı (F4, F11) |
 | Sınavlar (stüdyo, sınav ekranı, karne, analitik) | Tamamlandı (F5) |
 | Materyaller (yükleme, görüntüleyici, okunma raporu) | Tamamlandı (F6) |
 | Yönetim paneli, ana sayfa, hesaplayıcı sayfası | Tamamlandı (F7). Hesaplayıcılarda **hesaplama yok** (bilinçli karar, D8). |
@@ -414,7 +412,7 @@ pediatrist/
 
 - Gerçek bir Firebase projesine dağıtım yapılmadı. Dağıtım, App Check, TOTP, e-posta gönderimi, Storage CORS, TTL,
   alarm ve yedekleme adımları yalnızca belgelendi (`DEPLOY.md`); staging'de denenmeli.
-- Gerçek telefonlarda (iOS Safari, Android Chrome) passkey ile yoklama denenmedi; testler sanal doğrulayıcıyla.
+- Gerçek telefonlarda (iOS Safari, Android Chrome) uygulama içi QR okutma denenmedi; e2e'de kamera canvas akışıyla taklit edilir (UAT B1).
 - Hesaplayıcı formül motoru (ilk plandaki Modül 2 hedefleri) ayrı bir iş olarak duruyor; klinik doğrulama ve
   referans değer testleri gerektirir.
 - Kullanıcı kabul testi (gerçek hekimler ve eğitim sorumlusuyla) yapılmadı.

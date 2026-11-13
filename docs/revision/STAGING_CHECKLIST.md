@@ -68,6 +68,7 @@ Kurulumu yapan: ……………………… Tarih: ……………… Proje kiml
 | E5  | Geri yükleme tatbikatı: bir yedek geçici bir veritabanına geri yüklendi (5)           | Geçici veritabanında üye ve yoklama kayıtları okunur                | ☐   |        |
 | E6  | "Aynı ağ" işareti: hastane ağından ve mobil veriden birer yoklama (7)                 | Denetim kayıtlarında biri `true`, diğeri `false`                    | ☐   |        |
 | E7  | Hız sınırı: bir dakikada 11 hatalı yoklama kodu (6)                                   | 11. deneme "Çok fazla deneme yapıldı" der; denetim kaydı düşer      | ☐   |        |
+| E8  | Gerçek telefonda (HTTPS alan adı) "QR kodu okut": kamera izni istenir, projektör QR'ı okununca yoklama alınır (UAT B1) | iPhone Safari ve Android Chrome'da geçer; izin reddinde Türkçe mesaj | ☐   |        |
 
 ## F. Hukuk ve kurum kararları
 

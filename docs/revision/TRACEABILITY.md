@@ -42,7 +42,7 @@ doğrulanmalıdır (🔎). Kapanmayan ve kısmen kalanlar ile kapanan bulgularda
 | Bulgu | Durum | Adım | Kanıt | Not |
 | --- | --- | --- | --- | --- |
 | **S1** Cihaz bağlama `localStorage` sırrına dayanıyor | ✅ | F4.2 → F11.1, D23 | `localStorage` sırrı F4.2'de kalktı; passkey ile cihaz bağlama F11.1'de kullanıcı kararıyla tamamen kaldırıldı. `tests/unit/schemas.test.ts › "yalnızca ders ve kodu taşır…"`; `functions/test/attendance.test.ts › "MFA zorunluyken ikinci faktörsüz oturum yoklama veremez…"` | Kimlik MFA'lı oturumdan gelir. Bulgudaki kök neden (tarayıcıda tutulan sır) artık yok. Cihaz bağlama olmadığı için hesabı açık bir telefondan yoklama verilebilir; kabul edilen risk (D23). |
-| **S2** Kod iletilebilir; yakınlık kanıtı yok | 🟡 | F9.2 | `functions/test/attendance.test.ts › "projektörle aynı ağdan katılım işaretlenmez; farklı ağdan katılım kaydedilir ama denetim kaydında işaretlenir"`; `functions/test/operations.test.ts › "projektör ekranının ağ özeti gizli dokümanda tutulur…"` | Önerinin "en azından işaretle" kısmı yapıldı. Konum (geofence) ya da salon içi ikinci etken **yapılmadı**: katılım engellenmez, yalnızca işaretlenir. Kod penceresi 15 sn + bir önceki pencere. |
+| **S2** Kod iletilebilir; yakınlık kanıtı yok | 🟡 | F9.2 | `functions/test/attendance.test.ts › "projektörle aynı ağdan katılım işaretlenmez; farklı ağdan katılım kaydedilir ama denetim kaydında işaretlenir"`; `functions/test/operations.test.ts › "projektör ekranının ağ özeti gizli dokümanda tutulur…"` | Önerinin "en azından işaretle" kısmı yapıldı. Konum (geofence) ya da salon içi ikinci etken **yapılmadı**: katılım engellenmez, yalnızca işaretlenir. Kod penceresi 15 sn + bir önceki pencere. F11.1'de cihaz bağlama kaldırıldı (D23); bu risk passkey döneminde de aynıydı (devamsız hekim kendi hesabıyla iletilen kodu girebilir). |
 | **S3** Yoklama yazımları transaction değil; sayaçlar bozuluyor | ✅ | F4.1 | `functions/test/attendance.test.ts › "aynı imzayla eşzamanlı iki istek: biri kaydedilir…; sayaç 1"`, `"mazeretli → katıldı: katılan +1, mazeretli −1"`, `"tekrar mazeret: sayaç artmaz…"` | |
 | **S4** Tek canlı ders denetimi yarışlı; süresi dolan ders açık kalıyor | ✅ | F4.1, F5.1 | `functions/test/attendance.test.ts › "eşzamanlı iki ders başlatma isteğinden yalnızca biri geçer (kilit)"`, `"closeExpiredLectures: süresi dolanı kapatır…"`, `"süresi dolmuş derste kod üretilmez ve yoklama alınmaz"`; `functions/test/quiz.test.ts › "kapanış zamanı: …zamanlayıcı sınavı kapatır"` | |
 | **S5** `endLectureSession` varlık/durum denetlemiyor | ✅ | F4.1 | `functions/test/attendance.test.ts › "bitirme: olmayan ders not-found; ikinci bitirme failed-precondition…"` | |
@@ -145,7 +145,23 @@ doğrulanmalıdır (🔎). Kapanmayan ve kısmen kalanlar ile kapanan bulgularda
 | --- | --- | --- | --- | --- |
 | Aydınlatma metni ve onay yok; saklama politikası yok | 🟡 | F3.5, F9.1, F9.2 | `functions/test/members.test.ts › "KVKK onayı zorunlu ve yalnızca güncel sürüm kabul edilir (F3.5)"`; `functions/test/privacy.test.ts › "güncel sürüm onayı sürüm + zamanla kaydedilir…"`; `e2e/privacy.spec.ts › "onaysız üye içerik yerine onay ekranını görür…"`; `e2e/registration.spec.ts › "aydınlatma metni: sürümlü…"` | Altyapı tamam. **Metin hukuk birimince onaylanmadı** ("taslak" işaretli); eğitim kayıtlarının saklama süresi kurum kararı bekliyor (kontrol listesi F1–F3). |
 | Hesap silme ve veri dışa aktarımı yok | ✅ | F9.1 | `functions/test/privacy.test.ts` (7 test; ör. `"hesap ve profil silinir; kayıtlar addan arındırılır ama istatistik kalır…"`, `"üye kendi verisini alır: …cevap anahtarı yok"`); `e2e/privacy.spec.ts › "admin veri dökümünü indirir ve üyeyi adını yazarak siler…"` | |
-| Cihaz özetleri tuzsuz SHA-256 | ✅ | F4.2 | S1 kanıtları | Cihaz özeti kaldırıldı (passkey). |
+| Cihaz özetleri tuzsuz SHA-256 | ✅ | F4.2, F11.1 | S1 kanıtları | Cihaz özeti F4.2'de, passkey F11.1'de kaldırıldı (D23); kalan veri için `scripts/remove-attendance-device-data.ts`. |
+
+---
+
+## 10. Kullanıcı revizyonları (F11, 2026-11-13)
+
+Denetim bulgusu değil; kullanıcının 7 maddelik isteği. Kararlar `REVISION_PLAN.md` §3 D23–D27.
+
+| İstek | Durum | Adım | Kanıt | Not |
+| --- | --- | --- | --- | --- |
+| 1. Yoklama cihazı gereksiz (MFA yeterli) | ✅ | F11.1, D23 | `functions/test/attendance.test.ts › "eski istemcinin gönderdiği cihaz alanları … yok sayılır"`, `"MFA zorunluyken ikinci faktörsüz oturum yoklama veremez…"`; `tests/unit/securityHeaders.test.ts › "Permissions-Policy: kamera … passkey izinleri kapalı"` | KVKK metni 1.1 (yeniden onay). Staging verisi için temizlik betiği. |
+| 2. QR'ı kamerayla okutma veya kodu girme | ✅ 🔎 | F11.2, D27 | `e2e/attendance.spec.ts › "QR kodu okut: kamera yalnızca düğmeyle açılır…"`, `"kamera izni verilmezse Türkçe açıklama çıkar…"`; `tests/unit/attendance/attendance.test.ts › "parseCheckInLink…"` | e2e'de kamera canvas akışıyla taklit edilir; gerçek telefon UAT B1. |
+| 3. Ders başlatırken kategori yok | ✅ | F11.3 | `tests/unit/schemas.test.ts › "… ders kategorisi yoktur…"`; `functions/test/attendance.test.ts` (derste `category` yok); CSV başlıkları (`e2e/attendance.spec.ts`) | |
+| 4. Materyalde serbest etiket | ✅ | F11.5, D25 | `tests/unit/materials/labels.test.ts`; `functions/test/materials.test.ts › "etiketler serbesttir…"`; `e2e/materials-admin.spec.ts › "yükle … → düzenle → sil…"` | Birden çok etiket; mevcut etiketler öneri olarak gelir. |
+| 5. Admin süzgeci: arama \| etiket \| hedef kıdem | ✅ | F11.7 | `tests/unit/materials/admin.test.ts › "admin materyal süzgeci (F11.7)…"`; `e2e/materials-admin.spec.ts › "süzgeç: arama \| etiket \| hedef kıdem birlikte…"` | |
+| 6. Hedef kıdemde "Uzman" | ✅ | F11.6, D26 | `tests/unit/materials/labels.test.ts › "materyal hedef kitlesi (D26, F11.6)"`; `functions/test/materials.test.ts › "hedef kitle 'Uzman'…"`; `e2e/materials-viewer.spec.ts › "uzman hesabı: varsayılan süzgeç 'Uzman (benim)'…"` | Yalnızca Uzm. Dr. (kullanıcı kararı). |
+| 7. Yoklamayı admin yönetir, yalnızca 1–4. yıl asistan verir | ✅ | F11.4, D24 | `functions/test/attendance.test.ts › "D24: …"` (3 test); `functions/test/members.test.ts › "kıdem yılı yalnızca asistanlarda (D24)"`; `e2e/attendance.spec.ts › "uzman hesabında ders yoklaması yok…"` | Uzm./Doç./Prof. kayıt olabilir; yoklamaya tabi değildir. |
 
 ---
 
@@ -159,7 +175,7 @@ engel değil; canlıya çıkmadan önce her biri için karar verilmelidir.
 1. **Staging kurulumu** ve `DEPLOY.md` adımlarının doğrulanması: [`STAGING_CHECKLIST.md`](STAGING_CHECKLIST.md).
    Komutlar ve konsol adımları resmî belgelerle karşılaştırılamadı.
 2. **Kullanıcı kabul testi:** [`UAT_SCENARIOS.md`](UAT_SCENARIOS.md); özellikle ⚠ işaretli dokuz senaryo (gerçek
-   e-posta, Authenticator, gerçek telefonda passkey, ders salonu, Storage'dan PDF).
+   e-posta, Authenticator, gerçek telefonda kamerayla QR okutma, ders salonu, Storage'dan PDF).
 3. **KVKK aydınlatma metninin hukuk onayı**, yurt dışı aktarım dayanağı ve saklama süreleri.
 4. **Yedek, alarm ve bütçe uyarılarının** kurulması ve bir geri yükleme tatbikatı.
 
@@ -168,7 +184,7 @@ engel değil; canlıya çıkmadan önce her biri için karar verilmelidir.
 | Konu | Bulgu | Neden yapılmadı | Risk |
 | --- | --- | --- | --- |
 | Hesaplayıcı formül motoru | Kullanılabilirlik, D8 | Klinik doğrulama ve referans değer testleri gerektirir; ayrı bir iş | Sayfa hesaplama yapmaz; yanlış doz riski yok, işlev de yok. |
-| Yoklamada konum ya da salon içi ikinci etken | S2 | Konum izni ve bina içi doğruluk sorunlu; önce işaretleme denenmeli | Kod 15–30 sn içinde iletilirse salonda olmayan hekim kendi kayıtlı telefonuyla katılabilir; kayıt "farklı ağ" olarak işaretlenir. |
+| Yoklamada konum ya da salon içi ikinci etken | S2 | Konum izni ve bina içi doğruluk sorunlu; önce işaretleme denenmeli | Kod 15–30 sn içinde iletilirse salonda olmayan hekim kendi hesabıyla katılabilir; kayıt "farklı ağ" olarak işaretlenir. |
 | Sunucuda sayfa görüntüsü üretme, imzalı kısa ömürlü adres | S13 | Kapsam ve maliyet; etiket düzeltildi | Erişimi olan üye özgün dosyayı tarayıcı araçlarıyla indirebilir; filigran yalnızca ekran görüntüsünü caydırır. |
 | App Check tek kullanımlık belirteçleri | S10 | Emülatörde sınanamaz, her çağrıya gecikme ekler; hız sınırı var | Ele geçirilen bir App Check belirteci süresi dolana kadar yeniden kullanılabilir (oturum belirteci yine gerekir). |
 | Denetim kayıtlarının BigQuery'ye aktarımı | S10 | Gereksinim belirsiz; kayıtlar Firestore'da ve yönetim panelinde | Uzun dönemli analiz ve saklama süresi sonrası arşiv yok. |

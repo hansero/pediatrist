@@ -101,7 +101,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F11.5 | Materyal etiketleri | M | ✅ | Madde 4 (D25) |
 | F11.6 | Hedef kitlede "Uzman" | M | ✅ | Madde 6 (D26) |
 | F11.7 | Admin materyal süzgeci | S | ✅ | Madde 5 |
-| F11.8 | Belgeler, izlenebilirlik, tam doğrulama | S | ⬜ | Hepsi |
+| F11.8 | Belgeler, izlenebilirlik, tam doğrulama | S | 🟨 | Hepsi |
 
 ---
 
@@ -111,7 +111,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 
 - **Tarih:** 2026-11-13
 - **Son tamamlanan adım:** F11.7 (admin materyal süzgeci). Öncesinde F11.1–F11.4 (yoklama), F11.5 (etiketler), F11.6 ("Uzman"). F0–F10 önceden tamamdı; kullanıcı 7 maddelik yeni revizyon istedi → **F11** fazı (§1, §5) ve kararlar D23–D27 (§3).
-- **Devam eden adım:** —
+- **Devam eden adım:** F11.8 — belgeler yazıldı (TRACEABILITY §10, UAT B1/B7/D1/D4, STAGING E8, Plan.MD); kalan: tam test paketinin sonucu (e2e, rules, functions, iki derleme) ve tablonun ✅ yapılması.
 - **Sıradaki iş:** F11.8 (belgeler, izlenebilirlik, tam test paketi); her adımın kapsamı §5 F11'de.
   - Kullanıcı kararları: birden çok etiket; "Uzman" yalnızca `Uzm. Dr.`; kamera izni "QR kodu okut" düğmesiyle, QR okununca hemen gönderim.
   - Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`.

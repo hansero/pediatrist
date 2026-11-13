@@ -185,6 +185,18 @@ da yeni telefondaysa ve eskisi kaybolduysa iki aşamalı doğrulama sıfırlamas
 
 Sonuç: ☐ G ☐ K ☐ A — Not:
 
+### B7. Uzman ve öğretim üyesi hesabı — Uzm. Dr. / Doç. Dr. / Prof. Dr. ünvanlı hekim + eğitim sorumlusu
+
+1. Uzm. Dr. ünvanıyla kayıt olun; eğitim sorumlusu onaylasın.
+2. Açık bir ders varken menüye ve ana sayfaya bakın; adres çubuğuna `/attendance` yazın.
+3. Eğitim sorumlusu dersi bitirsin; Raporlar › Hekimler sekmesine baksın. Üyeler › bu hesabın işlemlerine baksın.
+
+**Beklenen:** Menüde "Ders Yoklaması" yok; ana sayfada canlı ders adımı ve "Derse katılım" göstergesi yok;
+`/attendance` "yalnızca 1.–4. yıl asistan hekimler içindir" diyor. Uzman, dersin beklenen listesinde ve
+karnede yok; "katılmadı" yazılmıyor. Üye işlemlerinde "Kıdem yılını değiştir" yok.
+
+Sonuç: ☐ G ☐ K ☐ A — Not:
+
 ---
 
 ## C. Sınavlar
@@ -250,13 +262,14 @@ Sonuç: ☐ G ☐ K ☐ A — Not:
 
 ### D1. Yükleme — eğitim sorumlusu
 
-1. Eğitim Materyalleri › "Materyal yükle"; bir PDF seçin; kategori, hedef kıdem ve "zorunlu okuma" seçin ›
-   "Yükle ve yayınla".
+1. Eğitim Materyalleri › "Materyal yükle"; bir PDF seçin; iki etiket yazın (birini daha önce kullanılmış bir
+   etiketten seçin), hedef kıdem (biri "Uzman" olsun) ve "zorunlu okuma" seçin › "Yükle ve yayınla".
 2. Büyük bir video (ör. 100 MB) yükleyin; yükleme sürerken bir kez iptal edin.
 3. Bir PowerPoint dosyası seçmeyi deneyin.
 
 **Beklenen:** İlerleme çubuğu; iptal edince yarım kayıt kalmıyor. PowerPoint reddediliyor ve "sunumu PDF olarak
-kaydedin" deniyor.
+kaydedin" deniyor. Listede etiketler ve "…, Uzman" görünüyor; aynı etiketi farklı büyük/küçük harfle yazınca
+"zaten ekli" uyarısı çıkıyor.
 
 Sonuç: ☐ G ☐ K ☐ A — Not:
 
@@ -279,6 +292,18 @@ Sonuç: ☐ G ☐ K ☐ A — Not:
 
 **Beklenen:** Hedef kıdemdeki hekimler "tamamladı / başladı / başlamadı" olarak listeleniyor; süre ve sayfa
 bilgisi gerçek okumayla tutarlı.
+
+Sonuç: ☐ G ☐ K ☐ A — Not:
+
+### D4. Materyal süzgeci ve "Uzman" hedefi — eğitim sorumlusu + Uzm. Dr.
+
+1. Eğitim sorumlusu: Materyaller listesinde "Ara"ya başlıktan bir kelime yazın; sonra bir etiket ve "Uzman"
+   hedef kıdemi seçin; "Süzgeci temizle".
+2. Uzm. Dr. hesabıyla Eğitim Materyalleri'ni açın.
+
+**Beklenen:** Her süzgeç listeyi daraltıyor, "N / M materyal gösteriliyor" yazıyor, eşleşme yoksa "Bu süzgeçle
+materyal yok". Uzmanın kıdem süzgeci "Uzman (benim)"; yalnızca uzman hedefli materyaller görünüyor, "Bütün
+kıdemler" ile hepsi. Ana sayfadaki zorunlu materyal sayısı yalnızca uzman hedefli zorunlu materyalleri sayıyor.
 
 Sonuç: ☐ G ☐ K ☐ A — Not:
 
