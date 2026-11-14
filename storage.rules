@@ -78,7 +78,11 @@ service firebase.storage {
     // Modül 4: sınav görselleri — quiz_media/{dosya}
     match /quiz_media/{fileName} {
       allow read: if isActive();
-      allow create, update: if isAdmin()
+      // Yalnızca yeni dosya (D29): aynı adlı görselin üzerine yazılamaz; yayındaki/arşivdeki soruların görseli
+      // sessizce değişmesin. Yeni sürüm yeni adla yüklenir. `update` izni yok; ayrıca `resource == null`
+      // açıkça denetlenir (emülatör var olan nesneye yazmayı da `create` olarak değerlendiriyor, F14.1'de görüldü).
+      allow create: if isAdmin()
+        && resource == null
         && sizeBelowMb(15)
         && contentTypeMatches('image/(png|jpeg|webp|gif)');
       allow delete: if isAdmin();

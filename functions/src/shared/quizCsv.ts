@@ -6,7 +6,7 @@
  * doğrulaması, JSON dizi sütunlarının okunması ve hataların satır/sütun etiketine çevrilmesi.
  */
 import { QUESTION_TYPES } from "./constants";
-import { QUESTION_FIELD_LABELS, QuizQuestionInput, type NormalizedQuizQuestion } from "./quizQuestion";
+import { validateQuizQuestion, type NormalizedQuizQuestion, type QuizQuestionDraft } from "./quizQuestion";
 
 export const NINE_FIELD_CSV_HEADERS = [
   "Soru İçeriği",
@@ -29,9 +29,26 @@ export interface CsvRowError {
   message: string;
 }
 
-export interface CsvParseResult {
-  questions: NormalizedQuizQuestion[];
+/** CSV'nin bir soru satırı: hatalı olsa da ham taslağıyla döner (önizlemede düzeltilebilsin, F14). */
+export interface CsvParsedRow {
+  /** CSV'deki fiziksel satır (başlık = 1). */
+  row: number;
+  /** Şemaya verilen ham soru; `QuizQuestionInput` ile yeniden doğrulanabilir. */
+  draft: QuizQuestionDraft;
+  /** Bu satırın hataları (boşsa satır geçerlidir ve `questions` içindedir). */
   errors: CsvRowError[];
+}
+
+export interface CsvParseResult {
+  /** Yalnızca geçerli satırlar (normalize). */
+  questions: NormalizedQuizQuestion[];
+  /** Bütün hatalar (dosya düzeyi + satırlar). */
+  errors: CsvRowError[];
+  /**
+   * Geçerli ve hatalı bütün soru satırları, dosyadaki sırayla. Dosya düzeyindeki hatalarda (boyut, başlık)
+   * boştur: o durumda dosyanın kendisi düzeltilmelidir.
+   */
+  rows: CsvParsedRow[];
   rowCount: number;
 }
 
@@ -89,11 +106,16 @@ const normHeader = (h: string) => h.trim().toLocaleLowerCase("tr-TR");
 
 /**
  * Admin'in yüklediği CSV'yi normalize edilmiş soru listesine dönüştürür ve satır bazlı doğrular.
- * Bir satırda hata varsa o satır `questions`'a eklenmez.
+ * Bir satırda hata varsa o satır `questions`'a eklenmez; `rows` içinde ham taslağı ve hatalarıyla yer alır.
  */
 export function parseNineFieldQuizCsv(text: string): CsvParseResult {
   if (new TextEncoder().encode(text).byteLength > MAX_CSV_BYTES) {
-    return { questions: [], errors: [{ row: 0, field: "Dosya", message: "Dosya 2 MB sınırını aşıyor." }], rowCount: 0 };
+    return {
+      questions: [],
+      errors: [{ row: 0, field: "Dosya", message: "Dosya 2 MB sınırını aşıyor." }],
+      rows: [],
+      rowCount: 0,
+    };
   }
 
   const rows = parseCsvText(text);
@@ -101,6 +123,7 @@ export function parseNineFieldQuizCsv(text: string): CsvParseResult {
     return {
       questions: [],
       errors: [{ row: 0, field: "Dosya", message: "Başlık satırı ve en az 1 soru gerekli." }],
+      rows: [],
       rowCount: 0,
     };
   }
@@ -116,6 +139,7 @@ export function parseNineFieldQuizCsv(text: string): CsvParseResult {
           message: `${NINE_FIELD_CSV_HEADERS.length} sütun bekleniyordu, ${header.length} bulundu. Şablonu kullanın.`,
         },
       ],
+      rows: [],
       rowCount: rows.length - 1,
     };
   }
@@ -124,10 +148,11 @@ export function parseNineFieldQuizCsv(text: string): CsvParseResult {
       ? []
       : [{ row: 1, field: "Başlık", message: `${i + 1}. sütun "${expected}" olmalı, "${header[i]}" bulundu.` }]
   );
-  if (headerErrors.length) return { questions: [], errors: headerErrors, rowCount: rows.length - 1 };
+  if (headerErrors.length) return { questions: [], errors: headerErrors, rows: [], rowCount: rows.length - 1 };
 
   const errors: CsvRowError[] = [];
   const questions: NormalizedQuizQuestion[] = [];
+  const parsedRows: CsvParsedRow[] = [];
 
   rows.slice(1).forEach((cells, idx) => {
     const rowNo = idx + 2;
@@ -146,34 +171,31 @@ export function parseNineFieldQuizCsv(text: string): CsvParseResult {
     if (correct === null) {
       rowErrors.push({ row: rowNo, field: "8: Doğru Seçenek", message: 'Geçerli bir JSON dizi olmalı. Örn: ["A"]' });
     }
-    if (rowErrors.length) {
-      errors.push(...rowErrors);
-      return;
-    }
 
     const typeRaw = c(3);
     const maxLengthRaw = c(4);
-    const result = QuizQuestionInput.safeParse({
+    const draft: QuizQuestionDraft = {
       caseContent: c(0),
       imageUrl: c(1),
       questionText: c(2),
-      questionType: QUESTION_TYPES.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) ?? typeRaw,
+      questionType: (QUESTION_TYPES.find((t) => t.toLowerCase() === typeRaw.toLowerCase()) ??
+        typeRaw) as QuizQuestionDraft["questionType"],
       maxLength: maxLengthRaw === "" ? undefined : Number(maxLengthRaw),
       optionsRaw: c(5),
       optionsArray: optionsJson ?? [],
       correctAnswers: correct ?? [],
       feedbackText: c(8),
-    });
+    };
 
-    if (result.success) {
-      questions.push(result.data);
-      return;
+    // Bozuk JSON hücresi: önce o düzeltilmeli (içeriği bilinmeden şema hataları yanıltıcı olur).
+    if (rowErrors.length === 0) {
+      const result = validateQuizQuestion(draft);
+      if (result.question) questions.push(result.question);
+      for (const issue of result.issues) rowErrors.push({ row: rowNo, field: issue.label, message: issue.message });
     }
-    for (const issue of result.error.issues) {
-      const key = String(issue.path[0] ?? "");
-      errors.push({ row: rowNo, field: QUESTION_FIELD_LABELS[key] ?? (key || "Satır"), message: issue.message });
-    }
+    errors.push(...rowErrors);
+    parsedRows.push({ row: rowNo, draft, errors: rowErrors });
   });
 
-  return { questions, errors, rowCount: rows.length - 1 };
+  return { questions, errors, rows: parsedRows, rowCount: rows.length - 1 };
 }

@@ -80,10 +80,10 @@ function futureClosesAt(closesAtMs: number | null | undefined): Timestamp | null
   return Timestamp.fromMillis(closesAtMs);
 }
 
-/** Sorulardaki `quiz_media/...` görsellerinin Storage'da var olduğunu denetler (CSV satır numarasıyla). */
+/** Sorulardaki `quiz_media/...` görsellerinin Storage'da var olduğunu denetler (gönderilen sıradaki soru numarasıyla). */
 async function assertMediaExists(questions: readonly NormalizedQuizQuestion[]) {
   const bucket = getStorage().bucket();
-  const checks = questions.map((q, index) => ({ path: q.imageUrl, row: index + 2 })).filter((c) => c.path);
+  const checks = questions.map((q, index) => ({ path: q.imageUrl, number: index + 1 })).filter((c) => c.path);
   const missing: string[] = [];
   const cache = new Map<string, Promise<boolean>>();
   for (const c of checks) {
@@ -97,7 +97,7 @@ async function assertMediaExists(questions: readonly NormalizedQuizQuestion[]) {
       );
   }
   for (const c of checks) {
-    if (!(await cache.get(c.path))) missing.push(`Satır ${c.row}: soru görseli bulunamadı (${c.path}).`);
+    if (!(await cache.get(c.path))) missing.push(`Soru ${c.number}: görsel bulunamadı (${c.path}).`);
   }
   if (missing.length) {
     const extra = missing.length > 3 ? ` (+${missing.length - 3} hata daha)` : "";
@@ -249,7 +249,11 @@ export const saveQuizDraft = defineCallable("saveQuizDraft", "admin", async (dat
     action: "QUIZ_DRAFT_CREATED_FROM_CSV",
     resourceType: "quizzes",
     resourceId: quizRef.id,
-    metadata: { questionCount: data.questions.length, sourceFileName: data.sourceFileName },
+    metadata: {
+      questionCount: data.questions.length,
+      sourceFileName: data.sourceFileName,
+      editedInPreview: data.editedInPreview,
+    },
   });
   await batch.commit();
   return { quizId: quizRef.id, questionCount: data.questions.length };

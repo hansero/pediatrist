@@ -152,3 +152,29 @@ export const QuizQuestionInput = structural
 
 /** İstemcinin gönderebileceği (normalizasyon öncesi) soru biçimi. */
 export type QuizQuestionDraft = z.input<typeof QuizQuestionInput>;
+
+/** Bir sorunun tek bir doğrulama sorunu: alan adı, CSV sütun etiketi ve mesaj. */
+export interface QuizQuestionIssue {
+  field: string;
+  label: string;
+  message: string;
+}
+
+export type QuizQuestionValidation =
+  { question: NormalizedQuizQuestion; issues: [] } | { question: null; issues: QuizQuestionIssue[] };
+
+/**
+ * Tek soruyu sunucuyla AYNI şemayla (`QuizQuestionInput`) doğrular. CSV ayrıştırıcısı ve admin önizleme
+ * düzenleyicisi (F14) bunu kullanır: önizlemede geçen soru sunucuda reddedilemez.
+ */
+export function validateQuizQuestion(draft: unknown): QuizQuestionValidation {
+  const result = QuizQuestionInput.safeParse(draft);
+  if (result.success) return { question: result.data, issues: [] };
+  return {
+    question: null,
+    issues: result.error.issues.map((issue) => {
+      const field = String(issue.path[0] ?? "");
+      return { field, label: QUESTION_FIELD_LABELS[field] ?? (field || "Soru"), message: issue.message };
+    }),
+  };
+}

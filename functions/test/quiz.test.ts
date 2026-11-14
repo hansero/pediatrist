@@ -308,6 +308,14 @@ describe("sınav: yayın, kapanış zamanı, zamanlayıcı", () => {
 });
 
 describe("sınav taslağı: güncelleme, silme, görsel kontrolü", () => {
+  it("önizlemede düzenlenmiş taslak denetim kaydında işaretlenir; varsayılan işaretsizdir (F14)", async () => {
+    await draft();
+    await draft({ editedInPreview: true });
+    const logs = (await db().collection("audit_logs").where("action", "==", "QUIZ_DRAFT_CREATED_FROM_CSV").get()).docs;
+    expect(logs.map((d) => d.data().metadata?.editedInPreview).sort()).toEqual([false, true]);
+    expect((await errorOf(draft({ editedInPreview: "evet" }))).code).toBe("invalid-argument");
+  });
+
   it("taslak güncellenir (soru seti küçülünce fazlası silinir); yayındaki sınav güncellenemez/silinemez", async () => {
     const quizId = await draft();
     const res = await updateQuizDraft.run(
@@ -343,16 +351,16 @@ describe("sınav taslağı: güncelleme, silme, görsel kontrolü", () => {
     expect((await errorOf(deleteQuizDraft.run(callableRequest({ quizId }, asAdmin())))).code).toBe("not-found");
   });
 
-  it("Storage'da olmayan görsel satır numarasıyla reddedilir; geçersiz soru önizlemeyle aynı mesajla", async () => {
+  it("Storage'da olmayan görsel soru numarasıyla reddedilir; geçersiz soru önizlemeyle aynı mesajla", async () => {
     const missing = [questions[1], { ...questions[0], imageUrl: "quiz_media/yok.png" }];
     const err = await errorOf(draft({ questions: missing }));
     expect(err.code).toBe("invalid-argument");
-    expect(err.message).toContain("Satır 3: soru görseli bulunamadı (quiz_media/yok.png).");
+    expect(err.message).toContain("Soru 2: görsel bulunamadı (quiz_media/yok.png).");
 
     const bad = [questions[0], { ...questions[1], correctAnswers: ["Listede olmayan"] }];
     expect(await errorOf(draft({ questions: bad }))).toEqual({
       code: "invalid-argument",
-      message: "Satır 3: Seçeneklerde bulunmuyor: Listede olmayan",
+      message: "Soru 2: Seçeneklerde bulunmuyor: Listede olmayan",
     });
     expect((await db().collection("quizzes").get()).size).toBe(0);
   });

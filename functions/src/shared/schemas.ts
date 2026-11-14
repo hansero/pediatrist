@@ -330,6 +330,8 @@ export const SaveQuizDraftRequest = z.object({
   revealPolicy: revealPolicy.optional().default(DEFAULT_REVEAL_POLICY),
   sourceFileName: optionalText("Kaynak dosya adı", LIMITS.fileNameLength),
   questions: quizQuestions,
+  /** Sorular CSV'den sonra önizlemede değiştirildi mi (F14)? Yalnızca denetim kaydına yazılır. */
+  editedInPreview: z.boolean({ error: "editedInPreview evet/hayır olmalıdır." }).optional().default(false),
 });
 export const SaveQuizDraftResponse = z.object({ quizId: z.string(), questionCount: z.number() });
 

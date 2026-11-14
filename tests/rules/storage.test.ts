@@ -125,6 +125,11 @@ describe("sınav görselleri", () => {
     await assertSucceeds(as(admin).ref(IMAGE).delete());
   });
 
+  it("D29: var olan sınav görselinin üzerine admin bile yazamaz; yeni adla yükler", async () => {
+    await assertFails(upload(as(admin), IMAGE, "image/png"));
+    await assertSucceeds(upload(as(admin), "quiz_media/ornek-2.png", "image/png"));
+  });
+
   it("15 MB ve üzeri görsel reddedilir", async () => {
     const big = new Uint8Array(15 * 1024 * 1024);
     await assertFails(upload(as(admin), "quiz_media/buyuk.png", "image/png", big));

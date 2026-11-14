@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SaveQuizDraftRequest } from "@shared";
+import { validateQuizQuestion } from "@shared/quizQuestion";
 import {
   buildNineFieldCsvTemplate,
   normalizeClinicalAnswer,
@@ -161,6 +162,45 @@ describe("ortak doğrulayıcı (F1.2): istemci önizlemesi = sunucu sözleşmesi
     const res = parseNineFieldQuizCsv(`${HEADER}\n${toRow(valid)}\n${toRow({ ...valid, optionsRaw: "A | a | B" })}`);
     expect(res.questions).toHaveLength(1);
     expect(res.errors).toEqual([{ row: 3, field: "6/7: Seçenekler", message: "Tekrarlanan seçenek var." }]);
+  });
+});
+
+describe("satır taslakları (F14): hatalı satır önizlemede düzeltilebilsin", () => {
+  const good = csvRow(["Vaka", "", "Soru?", "Single Choice", "", "A | B", "", '["A"]', "Not"]);
+  const badType = csvRow(["Vaka 2", "quiz_media/x.png", "Soru 2?", "Tek Seçim", "", "A | B", "", '["B"]', "Not 2"]);
+  const badJson = csvRow(["Vaka 3", "", "Soru 3?", "Multiple Choice", "", "C | D", "[bozuk", '["C"]', "Not 3"]);
+
+  it("geçerli ve hatalı bütün satırlar sırayla, ham taslak ve kendi hatalarıyla döner", () => {
+    const res = parseNineFieldQuizCsv(`${HEADER}\n${good}\n${badType}\n${badJson}`);
+    expect(res.questions).toHaveLength(1);
+    expect(res.rows.map((r) => [r.row, r.errors.length > 0])).toEqual([
+      [2, false],
+      [3, true],
+      [4, true],
+    ]);
+    expect(res.rows[1].draft).toMatchObject({
+      caseContent: "Vaka 2",
+      imageUrl: "quiz_media/x.png",
+      questionType: "Tek Seçim",
+    });
+    expect(res.rows[1].errors).toEqual([expect.objectContaining({ row: 3, field: "4: Soru Tipi" })]);
+    // Bozuk JSON: 6. sütun korunur, yalnızca JSON hatası bildirilir.
+    expect(res.rows[2].draft).toMatchObject({ optionsRaw: "C | D", optionsArray: [], correctAnswers: ["C"] });
+    expect(res.rows[2].errors).toEqual([expect.objectContaining({ field: "7: Seçenekler (JSON)" })]);
+    expect(res.errors).toEqual(res.rows.flatMap((r) => r.errors));
+  });
+
+  it("satır taslağı düzeltilince ortak doğrulayıcıdan geçer ve CSV'nin üreteceği soruyla aynıdır", () => {
+    const res = parseNineFieldQuizCsv(`${HEADER}\n${good}\n${badType}`);
+    const fixed = validateQuizQuestion({ ...res.rows[1].draft, questionType: "Single Choice" });
+    const direct = parseNineFieldQuizCsv(`${HEADER}\n${badType.replace("Tek Seçim", "Single Choice")}`);
+    expect(fixed.issues).toEqual([]);
+    expect(fixed.question).toEqual(direct.questions[0]);
+    expect(validateQuizQuestion(res.rows[0].draft).question).toEqual(res.questions[0]);
+  });
+
+  it("dosya düzeyindeki hatada satır taslağı yoktur", () => {
+    expect(parseNineFieldQuizCsv("a,b,c\n1,2,3").rows).toEqual([]);
   });
 });
 

@@ -61,4 +61,11 @@ describe("storage.rules ↔ ortak yükleme sabitleri", () => {
     for (const type of QUIZ_MEDIA_UPLOAD.contentTypes) expect(r.allows(type), type).toBe(true);
     for (const type of ["image/svg+xml", "application/pdf", "image/bmp"]) expect(r.allows(type), type).toBe(false);
   });
+
+  it("sınav görselleri yalnızca oluşturulur: üzerine yazma (update) izni yok (D29)", () => {
+    const b = block("quiz_media/{fileName}");
+    expect(b).toMatch(/allow create:/);
+    expect(b).toMatch(/resource == null/);
+    expect(b).not.toMatch(/allow[^:]*\bupdate\b/);
+  });
 });
