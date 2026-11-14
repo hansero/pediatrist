@@ -119,7 +119,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 
 - **Tarih:** 2026-11-14
 - **Son tamamlanan adım:** F13.5 (dış #19 collectionGroup kuralı, #3 CORS şablonu, belgeler). **F13 (dış denetim düzeltmeleri) tamam:** F13.1 (#5, #6), F13.2 (#7, #10), F13.3 (#8, #11), F13.4 (#13, #14, #18), F13.5 (#19, #3). Bulgu bulgu hüküm: `EXTERNAL_AUDIT_2026-11-14.md`; kanıt: TRACEABILITY §11.
-- **Doğrulama:** lint, format, typecheck, no-mock, unit 282, rules 58, functions 109 yeşil; adım adım ilgili e2e'ler yeşil (attendance+csp 20, quiz-exam+quiz-timeout, materials-viewer+session+admin-panel+privacy+auth 26). **Tam e2e paketi bu commit sırasında çalışıyordu; sonucu bir sonraki commit'te buraya yazılır.**
+- **Doğrulama:** lint, format, typecheck, no-mock, unit 282, rules 58, functions 109 yeşil; adım adım ilgili e2e'ler yeşil (attendance+csp 20, quiz-exam+quiz-timeout, materials-viewer+session+admin-panel+privacy+auth 26). **Tam e2e paketi: 115 geçti + 5 bilinçli atlanan** (önceki 3 + yeni iki F13.3 gerçek saat testinin telefon kopyası; masaüstünde koşarlar). `npm run build` (e2e sunucusu) ve `npm --prefix functions run build` yeşil.
 - **Devam eden adım:** —
 - **Sıradaki iş:** Planlı kod işi yok. Kullanıcı tarafında:
   1. Staging: eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), `storage-cors.example.json` → `cors.json` → kovaya uygula (DEPLOY 1.1.7), canlı reCAPTCHA ile CSP kontrolü (STAGING C5).
@@ -1747,7 +1747,7 @@ Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştır�
   - **collectionGroup kuralı (dış #19):** `{path=**}/progress/{uid}` kaldırıldı. Uygulama kodu collectionGroup kullanmıyordu; okunma raporu materyal başına alt koleksiyonu okur. Joker eşleşme ileride eklenecek her `progress` koleksiyonunu da açardı. Kural testi tersine çevrildi: admin materyal başına okur, collectionGroup kimseye açık değil.
   - **CORS (dış #3):** `storage-cors.example.json` şablonu (yer tutuculu; doğrudan `cors.json` adıyla yanlışlıkla uygulanmasın diye `.example`; yerel kopya `.gitignore`'da). `DEPLOY.md` 1.1.7 ve STAGING A11 şablona yönlendirir; doğrulama `verify-staging --origin`.
   - **Belgeler:** `EXTERNAL_AUDIT_2026-11-14.md` (19 bulgunun hükmü), TRACEABILITY §11 (dış denetim → adım → kanıt) ve "Açık kalanlar" 5. madde.
-  - **Doğrulandı (F13 tamamı):** lint (0 uyarı), format, typecheck, no-mock, unit 282, rules 58, functions 109, e2e tam paket (bkz. devir notu), `npm run build`, `npm --prefix functions run build`.
+  - **Doğrulandı (F13 tamamı):** lint (0 uyarı), format, typecheck, no-mock, unit 282, rules 58, functions 109, e2e tam paket 115 + 5 bilinçli atlanan, `npm run build`, `npm --prefix functions run build`.
 
 ---
 
