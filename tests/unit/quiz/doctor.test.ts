@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createSaveQueue, isAnswered, toMyAttempt } from "@/lib/quiz/doctor";
+import { isAnswered, toMyAttempt } from "@/lib/quiz/doctor";
+import { createSaveQueue } from "@/lib/saveQueue";
 
 const deferred = () => {
   let resolve!: () => void;

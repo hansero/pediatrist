@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClinicMemberSession } from "@/lib/auth/types";
 import { KVKK_NOTICE_VERSION } from "@shared/consent";
@@ -12,6 +12,7 @@ const h = vi.hoisted(() => ({
   generateSecret: vi.fn(),
   sendEmailVerification: vi.fn(),
   emulators: false,
+  factors: [] as { uid: string; displayName: string; factorId: string; enrollmentTime: string }[],
   user: { uid: "u1", email: "dr@pediatrist.test", emailVerified: true, reload: vi.fn(), getIdToken: vi.fn() },
 }));
 vi.mock("@/lib/auth/ClinicSessionContext", () => ({
@@ -29,7 +30,14 @@ vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn().mockResolvedValue("data
 vi.mock("firebase/auth", () => ({
   sendEmailVerification: h.sendEmailVerification,
   getMultiFactorResolver: vi.fn(),
-  multiFactor: () => ({ getSession: vi.fn().mockResolvedValue("s"), enroll: h.enroll, enrolledFactors: [] }),
+  multiFactor: () => ({
+    getSession: vi.fn().mockResolvedValue("s"),
+    enroll: h.enroll,
+    enrolledFactors: h.factors,
+    unenroll: async (uid: string) => {
+      h.factors = h.factors.filter((f) => f.uid !== uid);
+    },
+  }),
   TotpMultiFactorGenerator: {
     FACTOR_ID: "totp",
     generateSecret: h.generateSecret,
@@ -137,6 +145,23 @@ describe("Hesap güvenliği", () => {
     render(<AccountSecurityPage />);
     expect(screen.getByText("Etkin")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Kaldır" })).toBeNull();
+  });
+
+  it("F13.4: zorunlu değilken kaldırılan yöntem listeden hemen düşer (birden çok yöntem varken de)", async () => {
+    h.session = session({ mfaEnrolled: true, mfaRequired: false });
+    h.factors = [
+      { uid: "f1", displayName: "Telefon", factorId: "totp", enrollmentTime: "Mon, 10 Nov 2026 10:00:00 GMT" },
+      { uid: "f2", displayName: "Tablet", factorId: "totp", enrollmentTime: "Tue, 11 Nov 2026 10:00:00 GMT" },
+    ];
+    render(<AccountSecurityPage />);
+    expect(screen.getByText("Telefon")).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "Kaldır" })[0]);
+    const dialog = screen.getByRole("alertdialog", { name: "Doğrulama yöntemini kaldır" });
+    await act(async () => fireEvent.click(within(dialog).getByRole("button", { name: "Kaldır" })));
+    // `mfaEnrolled` hâlâ true (bir yöntem kaldı); liste yine de güncellenir.
+    expect(screen.queryByText("Telefon")).toBeNull();
+    expect(screen.getByText("Tablet")).toBeTruthy();
+    h.factors = [];
   });
 
   it("kişisel verilerim (F9.1): döküm kendi uid'i için istenir; başarı yalnızca yanıttan sonra, hata gösterilir", async () => {

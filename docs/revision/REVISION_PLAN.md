@@ -108,7 +108,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F13.1 | Onay ↔ MFA kilitlenmesi; CSP'de reCAPTCHA `connect-src` | S | ✅ | Dış #5, #6 |
 | F13.2 | Yoklama: süre dolunca ekran güncellenir; projektörde sunucu saati | S | ✅ | Dış #7, #10 |
 | F13.3 | Sınav: süre bitiminde teslim hatasında "Tekrar dene"; süresi geçmiş girişim | S | ✅ | Dış #8, #11 |
-| F13.4 | Küçük yarış durumları (materyal ilerlemesi, oturum bağlamı, faktör listesi, denetim kaydı) | S | ⬜ | Dış #13, #14, #18 |
+| F13.4 | Küçük yarış durumları (materyal ilerlemesi, oturum bağlamı, faktör listesi, denetim kaydı) | S | ✅ | Dış #13, #14, #18 |
 | F13.5 | Kullanılmayan collectionGroup kuralı; `cors.json` şablonu; belgeler | S | ⬜ | Dış #19, #3 |
 
 ---
@@ -118,9 +118,9 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-14
-- **Son tamamlanan adım:** F13.3 (dış #8 sınavda "Tekrar dene", #11 süresi geçmiş girişim). Önceki: F13.1 (#5, #6), F13.2 (#7, #10). Dış denetimin bulgu bulgu değerlendirmesi: `EXTERNAL_AUDIT_2026-11-14.md`.
+- **Son tamamlanan adım:** F13.4 (dış #13, #14, #18 yarış durumları). Önceki: F13.1 (#5, #6), F13.2 (#7, #10), F13.3 (#8, #11). Dış denetimin bulgu bulgu değerlendirmesi: `EXTERNAL_AUDIT_2026-11-14.md`.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F13.4 → F13.5 (§1 tablosu ve §5 F13). Ardından tam doğrulama (rules, functions, e2e dahil) ve TRACEABILITY'ye dış denetim bölümü.
+- **Sıradaki iş:** F13.5 (§1 tablosu ve §5 F13). Ardından tam doğrulama (rules, functions, e2e dahil) ve TRACEABILITY'ye dış denetim bölümü.
   - Kullanıcı tarafında bekleyenler değişmedi: staging'de eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`), UAT (önce ⚠ senaryolar; yeni: E4.2).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
@@ -1727,6 +1727,14 @@ Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştır�
   - **Bekleyen ara kayıt (dış #8a):** veri kaybı yoktu (teslim bütün yanıtları taşır; taslak ve teslim transaction'la `in_progress` ön koşulunu sınar). Yine de teslim başlarken bekleyen ara kayıt iptal edilir; teslim başarısız olursa değişiklikler yeniden kaydedilir.
   - **Süresi geçmiş girişim (dış #11):** bulgudaki `deadline-exceeded` iddiası yanlıştı. Kozmetik düzeltme: `startQuizAttempt` yanıtında süre sunucu saatine göre dolmuşsa soru ekranı açılmadan kaydedilmiş yanıtlarla teslim edilir ve karne gösterilir. Panel düğmesi "Sonucu gör" olur. Zamanlayıcı az önce teslim ettiyse (`failed-precondition`) hata gösterilmez; panel puanı kendi kaydından gösterir.
   - **Testler (e2e, gerçek saat):** "teslim ağ hatası → Tekrar dene → karne" ve "sınavdan ayrıl → süre dolar → yenile → soru ekranı olmadan karne". `quiz-exam` + `quiz-timeout` yeşil (seri; paralel çalıştırma ortak hesaplar yüzünden bilinçli olarak desteklenmez, `workers: 1`).
+
+#### F13.4 Küçük yarış durumları (S)
+- **✅ Uygulanan:**
+  - **Materyal ilerlemesi (dış #13):** bulgudaki senaryo (eski yazımın `completed: false` ile sonradan gelmesi) Firestore istemcisi yazımları sırayla uyguladığı için oluşmuyordu. Asıl hata farklıydı: eşzamanlı iki kayıt aynı eski değerden hesap yapıyor, ikinci yazım ilkinin saniyelerini siliyordu. `createProgressSaver` (`src/lib/materials/doctor.ts`) yazmaları `createSaveQueue` ile sıralar ve her yazımı gönderim anında son başarılı yazımdan hesaplar. `createSaveQueue` ortak modüle taşındı (`src/lib/saveQueue.ts`; sınav ekranı da kullanır).
+  - **Oturum bağlamı (dış #14a):** `ClinicSessionContext` her kimlik değişiminde nesil numarası, her profil görüntüsünde sıra numarası tutar. `await` sürerken oturum kapanırsa ya da daha yeni bir profil gelirse eski çağrı state yazmaz (önceden kapanmış oturum "hazır" olarak geri gelebiliyor, eski profil yenisini ezebiliyordu). "Profil görüldü" bilgisi `await`'ten önce kaydedilir; hesap silme algısı korunur.
+  - **Faktör listesi (dış #14b):** yöntem kaldırılınca liste yeniden okunur (yalnızca MFA zorunlu değilken ve birden çok yöntem varken görülüyordu).
+  - **Denetim kayıtları (dış #18):** yalnızca son isteğin yanıtı tabloya yazılır; süzgeç değişince uçuştaki "daha fazla" sayfası da eklenmez.
+  - **Testler:** `createProgressSaver` (eşzamanlı kayıt, başarısız saniyelerin yeniden gönderimi), `ClinicSessionContext` (çıkış sırasında bekleyen token; sırasız iki profil), güvenlik sayfası (kaldırılan yöntem listeden düşer), `AuditLog` (geç dönen eski süzgeç). Bileşen testlerinin üçü düzeltme olmadan başarısız olduğu doğrulandı. e2e `materials-viewer`, `session`, `admin-panel`, `privacy`, `auth` 26/26.
 
 ---
 

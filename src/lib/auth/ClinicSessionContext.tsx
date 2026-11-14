@@ -94,7 +94,16 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
     };
 
     let unsubscribeProfile: (() => void) | null = null;
+    /**
+     * Her kimlik değişiminde (giriş, çıkış, token yenileme) artar (F13.4). Profil geri çağrısı async'tir:
+     * `await`'ler sürerken oturum kapanır ya da yenilenirse eski çağrı state yazmaz (yoksa kapanmış oturum
+     * "hazır" olarak geri gelebilirdi).
+     */
+    let generation = 0;
     const unsubscribeAuth = onIdTokenChanged(auth, (user) => {
+      const gen = ++generation;
+      /** Aynı oturumda art arda gelen profil anlık görüntülerinden yalnızca en sonuncusu state yazar. */
+      let latestSnapshot = 0;
       unsubscribeProfile?.();
       unsubscribeProfile = null;
       if (!user) {
@@ -112,11 +121,18 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
       unsubscribeProfile = onSnapshot(
         doc(db, "users", user.uid),
         async (snap) => {
+          const mine = ++latestSnapshot;
+          const stale = () => gen !== generation || mine !== latestSnapshot;
           const profile = snap.exists() ? (snap.data() as MemberDoc<Timestamp>) : null;
+          // Önceki anlık görüntülerde profil vardı mı? `await`'ten ÖNCE kaydedilir: bayat sayılıp erken dönen bir
+          // görüntü de "profil görüldü" bilgisini bırakır (hesap silme algısı kaybolmaz).
+          const profileSeenBefore = hadProfile;
+          if (profile) hadProfile = true;
           // Hesap silindiyse belirteç alınamayabilir; karar için oturum açma anı gerekmez.
           const token = await user.getIdTokenResult().catch(() => null);
+          if (stale()) return;
           if (!token) {
-            if (!profile && hadProfile) await endSession("hesap-silindi");
+            if (!profile && profileSeenBefore) await endSession("hesap-silindi");
             return;
           }
           const decision = evaluateSession(
@@ -126,9 +142,8 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
               claimRole: token.claims.role,
               claimStatus: token.claims.status,
             },
-            hadProfile
+            profileSeenBefore
           );
-          if (profile) hadProfile = true;
 
           if (decision.kind === "needsProfile") {
             setState({ phase: "needsProfile", session: null, error: "" });
@@ -144,17 +159,22 @@ export function ClinicSessionProvider({ children }: { children: React.ReactNode 
             refreshedFor.current = key;
             void user.getIdToken(true).catch(() => undefined);
           }
+          const securityConfig = await security;
+          if (stale()) return;
           setState({
             phase: "ready",
-            session: toSession(user, profile!, Boolean(token.signInSecondFactor), await security),
+            session: toSession(user, profile!, Boolean(token.signInSecondFactor), securityConfig),
             error: "",
           });
         },
-        (err) => setState({ phase: "error", session: null, error: toUserMessage(err) })
+        (err) => {
+          if (gen === generation) setState({ phase: "error", session: null, error: toUserMessage(err) });
+        }
       );
     });
 
     return () => {
+      generation += 1; // kapanışta uçuştaki geri çağrılar state yazmaz
       unsubscribeProfile?.();
       unsubscribeAuth();
     };

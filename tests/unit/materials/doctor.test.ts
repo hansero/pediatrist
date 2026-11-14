@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canComplete, filterMaterials, MAX_SECONDS, mergeProgress } from "@/lib/materials/doctor";
+import { canComplete, createProgressSaver, filterMaterials, MAX_SECONDS, mergeProgress } from "@/lib/materials/doctor";
 import { watermarkText } from "@/components/materials/viewer/watermark";
 import type { MaterialView } from "@/lib/materials/admin";
 import { labelKey } from "@shared/materials";
@@ -48,5 +48,73 @@ describe("okuma ilerlemesi (F6.3)", () => {
     expect(watermarkText("Dr. A", "a@b.test", new Date(2026, 10, 11, 9, 5).getTime())).toMatch(
       /^Dr\. A · a@b\.test · 11\.11\.2026 09:05$/
     );
+  });
+});
+
+describe("createProgressSaver (F13.4: sıralı ilerleme kaydı)", () => {
+  type Value = { secondsSpent: number; lastPage: number; completed: boolean };
+  function deferred() {
+    let resolve!: () => void;
+    let reject!: (e: unknown) => void;
+    const promise = new Promise<void>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  }
+
+  it("düzenli kayıt sürerken 'Tamamlandı': saniyeler kaybolmaz, son yazım tamamlandı ve toplam süreyle", async () => {
+    const writes: Value[] = [];
+    const pending: ReturnType<typeof deferred>[] = [];
+    const state = { page: 3, completed: false };
+    const saver = createProgressSaver({
+      saved: { secondsSpent: 100, lastPage: 2, completed: false },
+      current: () => state,
+      write: (v) => {
+        writes.push(v);
+        const d = deferred();
+        pending.push(d);
+        return d.promise;
+      },
+    });
+
+    saver.addSeconds(15);
+    const periodic = saver.flush(); // uçuşta
+    saver.addSeconds(5);
+    state.completed = true;
+    const complete = saver.flush(); // "Tamamlandı"
+    expect(writes).toHaveLength(1); // ikinci yazım birincinin bitmesini bekler
+
+    pending[0].resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(writes).toHaveLength(2);
+    pending[1].resolve();
+    await Promise.all([periodic, complete]);
+
+    expect(writes[0]).toEqual({ secondsSpent: 115, lastPage: 3, completed: false });
+    // Önceden ikinci yazım aynı eski değerden (100) hesaplanıp 105 yazıyordu.
+    expect(writes[1]).toEqual({ secondsSpent: 120, lastPage: 3, completed: true });
+    expect(saver.saved).toEqual(writes[1]);
+  });
+
+  it("gönderilemeyen saniyeler sonraki kayıtta yeniden gönderilir", async () => {
+    const writes: Value[] = [];
+    let fail = true;
+    const saver = createProgressSaver({
+      saved: { secondsSpent: 0, lastPage: 0, completed: false },
+      current: () => ({ page: 1, completed: false }),
+      write: async (v) => {
+        writes.push(v);
+        if (fail) throw new Error("ağ");
+      },
+    });
+    saver.addSeconds(10);
+    await expect(saver.flush()).rejects.toThrow("ağ");
+    fail = false;
+    saver.addSeconds(5);
+    await saver.flush();
+    expect(writes.at(-1)).toEqual({ secondsSpent: 15, lastPage: 1, completed: false });
+    expect(saver.saved.secondsSpent).toBe(15);
   });
 });

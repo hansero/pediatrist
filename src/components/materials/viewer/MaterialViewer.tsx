@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import type { ClinicMemberSession } from "@/lib/auth/types";
 import { toUserMessage } from "@/lib/errors";
 import { FILE_TYPE_LABEL, type MaterialView } from "@/lib/materials/admin";
-import { canComplete, mergeProgress, writeProgress, type MyProgress } from "@/lib/materials/doctor";
+import { canComplete, createProgressSaver, writeProgress, type MyProgress } from "@/lib/materials/doctor";
 import { useStorageUrl } from "@/lib/quiz/media";
 import { PdfViewer } from "./PdfViewer";
 import { watermarkText } from "./watermark";
@@ -42,8 +42,6 @@ export function MaterialViewer({
   const [completed, setCompleted] = useState(saved.completed);
   const [saveError, setSaveError] = useState("");
   const [completing, setCompleting] = useState(false);
-  const pendingSeconds = useRef(0);
-  const savedRef = useRef<Pick<MyProgress, "secondsSpent" | "lastPage" | "completed">>(saved);
   const stateRef = useRef({ page, completed });
   stateRef.current = { page: maxPage || page, completed };
   const watermark = useMemo(
@@ -51,29 +49,35 @@ export function MaterialViewer({
     [session.title, session.fullName, session.email]
   );
 
-  const flush = useCallback(async () => {
-    const value = mergeProgress(savedRef.current, {
-      addSeconds: pendingSeconds.current,
-      page: stateRef.current.page,
-      completed: stateRef.current.completed,
-    });
-    const sent = pendingSeconds.current;
-    pendingSeconds.current = 0;
-    try {
-      await writeProgress(material.id, session.uid, value);
-      savedRef.current = value;
-      setSaveError("");
-    } catch (err) {
-      pendingSeconds.current += sent; // sonraki denemede yeniden gönderilir
-      setSaveError(toUserMessage(err));
-      throw err;
-    }
-  }, [material.id, session.uid]);
+  // Yazmalar sırayla (F13.4): düzenli kayıt sürerken "Tamamlandı" gelirse saniyeler kaybolmaz.
+  // `saved` yalnızca açılıştaki değerdir; görüntüleyici açıkken kaydedici kendi son yazımını esas alır.
+  const savedAtOpen = useRef(saved);
+  const saver = useMemo(
+    () =>
+      createProgressSaver({
+        saved: savedAtOpen.current,
+        current: () => stateRef.current,
+        write: (value) => writeProgress(material.id, session.uid, value),
+      }),
+    [material.id, session.uid]
+  );
+
+  const flush = useCallback(
+    () =>
+      saver.flush().then(
+        () => setSaveError(""),
+        (err: unknown) => {
+          setSaveError(toUserMessage(err)); // gönderilemeyen süre sonraki kayıtta yeniden gönderilir
+          throw err;
+        }
+      ),
+    [saver]
+  );
 
   // Yalnızca görünür sekmede süre say; düzenli ve kapanışta kaydet.
   useEffect(() => {
     const tick = window.setInterval(() => {
-      if (document.visibilityState === "visible") pendingSeconds.current += 1;
+      if (document.visibilityState === "visible") saver.addSeconds(1);
     }, 1000);
     const save = window.setInterval(() => void flush().catch(() => undefined), PROGRESS_SAVE_MS);
     const onHide = () => {
@@ -86,7 +90,7 @@ export function MaterialViewer({
       document.removeEventListener("visibilitychange", onHide);
       void flush().catch(() => undefined);
     };
-  }, [flush]);
+  }, [flush, saver]);
 
   const onPage = useCallback((p: number, total: number) => {
     setPage(p);

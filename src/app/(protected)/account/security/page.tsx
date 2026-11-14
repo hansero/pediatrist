@@ -1,7 +1,7 @@
 "use client";
 
 import QRCode from "qrcode";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { EmailVerification } from "@/components/auth/EmailVerification";
 import { PersonalDataCard } from "@/components/auth/PersonalDataCard";
@@ -42,11 +42,16 @@ const dateFormat = new Intl.DateTimeFormat("tr-TR", { dateStyle: "long", timeSty
 export default function AccountSecurityPage() {
   const { session, signOutUser } = useClinicSession();
   const [factors, setFactors] = useState<EnrolledFactorView[]>([]);
-
-  useEffect(() => {
+  // Liste, oturum bağlamı değişince ve bir yöntem kaldırılınca yeniden okunur (F13.4: birden çok yöntem varken
+  // `mfaEnrolled` değişmediği için kaldırılan yöntem listede kalıyordu).
+  const refreshFactors = useCallback(() => {
     const user = initPediatristFirebase()?.auth.currentUser;
     setFactors(user ? enrolledFactors(user) : []);
-  }, [session?.mfaEnrolled]);
+  }, []);
+
+  useEffect(() => {
+    refreshFactors();
+  }, [session?.mfaEnrolled, refreshFactors]);
 
   if (!session) return null;
   const required = session.mfaRequired;
@@ -72,7 +77,7 @@ export default function AccountSecurityPage() {
           }
         >
           {session.mfaEnrolled ? (
-            <EnrolledFactors factors={factors} canRemove={!required} />
+            <EnrolledFactors factors={factors} canRemove={!required} onRemoved={refreshFactors} />
           ) : !session.emailVerified ? (
             <EmailVerification
               email={session.email}
@@ -181,7 +186,15 @@ function TotpSetup({ onDone }: { onDone: () => Promise<void> }) {
   );
 }
 
-function EnrolledFactors({ factors, canRemove }: { factors: EnrolledFactorView[]; canRemove: boolean }) {
+function EnrolledFactors({
+  factors,
+  canRemove,
+  onRemoved,
+}: {
+  factors: EnrolledFactorView[];
+  canRemove: boolean;
+  onRemoved: () => void;
+}) {
   const [removing, setRemoving] = useState<EnrolledFactorView | null>(null);
   return (
     <>
@@ -214,7 +227,9 @@ function EnrolledFactors({ factors, canRemove }: { factors: EnrolledFactorView[]
         confirmLabel="Kaldır"
         pendingLabel="Kaldırılıyor…"
         onConfirm={async () => {
-          if (removing) await unenrollFactor(currentUser(), removing.uid);
+          if (!removing) return;
+          await unenrollFactor(currentUser(), removing.uid);
+          onRemoved();
         }}
       />
     </>

@@ -9,7 +9,8 @@ import { Countdown } from "@/components/ui/Countdown";
 import { useIdleExempt } from "@/lib/auth/IdleContext";
 import { toUserMessage } from "@/lib/errors";
 import { saveAttemptDraft, submitQuizAttempt } from "@/lib/firebase/callables";
-import { createSaveQueue, isAnswered } from "@/lib/quiz/doctor";
+import { isAnswered } from "@/lib/quiz/doctor";
+import { createSaveQueue } from "@/lib/saveQueue";
 import { ExamQuestion } from "./ExamQuestion";
 
 type StartResponse = CallableResponse<"startQuizAttempt">;

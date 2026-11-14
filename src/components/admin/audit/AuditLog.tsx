@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { QueryDocumentSnapshot } from "firebase/firestore";
 import { AUDIT_RESOURCE_TYPES, AUDIT_SEVERITIES, type AuditResourceType, type AuditSeverity } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
@@ -44,14 +44,21 @@ export function AuditLog() {
   const [error, setError] = useState("");
   const [nonce, setNonce] = useState(0);
 
+  // Yalnızca son isteğin yanıtı tabloya yazılır (F13.4): süzgeç hızla değişince geç dönen eski sorgu yeni
+  // sonuçların üzerine yazmaz; süzgeç değiştikten sonra dönen "daha fazla" sayfası da eklenmez.
+  const latestRequest = useRef(0);
+
   async function load(after: QueryDocumentSnapshot | null) {
+    const request = ++latestRequest.current;
     setStatus("loading");
     try {
       const page = await fetchAuditPage({ severity, resourceType: module }, after);
+      if (request !== latestRequest.current) return;
       setRows((prev) => (after ? [...prev, ...page.rows] : page.rows));
       setCursor(page.cursor);
       setStatus("ready");
     } catch (err) {
+      if (request !== latestRequest.current) return;
       setError(toUserMessage(err));
       setStatus("error");
     }
@@ -59,6 +66,9 @@ export function AuditLog() {
 
   useEffect(() => {
     void load(null);
+    return () => {
+      latestRequest.current += 1; // süzgeç değişti ya da sayfa kapandı: uçuştaki yanıt yok sayılır
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [severity, module, nonce]);
 

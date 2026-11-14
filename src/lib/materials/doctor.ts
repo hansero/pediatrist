@@ -8,6 +8,7 @@ import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapsh
 import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
 import { toMaterialView, type MaterialView } from "./admin";
+import { createSaveQueue } from "@/lib/saveQueue";
 
 /**
  * Hekim materyal verisi (F6.3). Kurallar: hekim yalnızca yayındaki materyalleri (liste sorgusu
@@ -107,6 +108,48 @@ export async function writeProgress(
     completed: value.completed,
     updatedAt: serverTimestamp(),
   });
+}
+
+type ProgressValue = Pick<MyProgress, "secondsSpent" | "lastPage" | "completed">;
+
+/**
+ * İlerleme kaydedici (F13.4). Yazmalar SIRAYLA yapılır (`createSaveQueue`): her yazım değerini gönderim anında,
+ * bir önceki başarılı yazımın sonucundan hesaplar. Önceden eşzamanlı iki kayıt (15 sn'lik düzenli kayıt ve
+ * "Tamamlandı") aynı eski değerden hesap yapıyor, ikinci yazım ilkinin saniyelerini siliyordu.
+ * Gönderilemeyen saniyeler bir sonraki kayıtta yeniden gönderilir.
+ */
+export function createProgressSaver(options: {
+  saved: ProgressValue;
+  /** Gönderim anındaki ekran durumu: en uzak sayfa ve "tamamlandı" işareti. */
+  current: () => { page: number; completed: boolean };
+  write: (value: ProgressValue) => Promise<void>;
+}) {
+  let saved = options.saved;
+  let pendingSeconds = 0;
+  const queue = createSaveQueue<null>(async () => {
+    const { page, completed } = options.current();
+    const value = mergeProgress(saved, { addSeconds: pendingSeconds, page, completed });
+    const sent = pendingSeconds;
+    pendingSeconds = 0;
+    try {
+      await options.write(value);
+      saved = value;
+    } catch (err) {
+      pendingSeconds += sent;
+      throw err;
+    }
+  });
+  return {
+    /** Görünür sekmede geçen bir saniye. */
+    addSeconds(n = 1) {
+      pendingSeconds += n;
+    },
+    /** Güncel durumu kaydeder; o ana kadarki bütün değişiklikler yazılınca çözülür. */
+    flush: () => queue.push(null),
+    get saved(): ProgressValue {
+      return saved;
+    },
+  };
 }
 
 /** "Tamamlandı" işaretlenebilir mi? PDF: son sayfa görüldü; video: ≥ %90 izlendi; görsel: açıldı. */
