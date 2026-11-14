@@ -104,6 +104,12 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F11.8 | Belgeler, izlenebilirlik, tam doğrulama | S | ✅ | Hepsi |
 | **F12** | **Kullanıcı revizyonları (2026-11-14)** | | | |
 | F12.1 | Yoklamada yalnızca elle kod; kod 30 sn'de bir değişir | S | ✅ | D28 (D27'nin yerine) |
+| **F13** | **Dış denetim düzeltmeleri (2026-11-14)** — değerlendirme: [`EXTERNAL_AUDIT_2026-11-14.md`](EXTERNAL_AUDIT_2026-11-14.md) | | | |
+| F13.1 | Onay ↔ MFA kilitlenmesi; CSP'de reCAPTCHA `connect-src` | S | ✅ | Dış #5, #6 |
+| F13.2 | Yoklama: süre dolunca ekran güncellenir; projektörde sunucu saati | S | ⬜ | Dış #7, #10 |
+| F13.3 | Sınav: süre bitiminde teslim hatasında "Tekrar dene"; süresi geçmiş girişim | S | ⬜ | Dış #8, #11 |
+| F13.4 | Küçük yarış durumları (materyal ilerlemesi, oturum bağlamı, faktör listesi, denetim kaydı) | S | ⬜ | Dış #13, #14, #18 |
+| F13.5 | Kullanılmayan collectionGroup kuralı; `cors.json` şablonu; belgeler | S | ⬜ | Dış #19, #3 |
 
 ---
 
@@ -112,13 +118,10 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-14
-- **Son tamamlanan adım:** F12.1 (yoklamada yalnızca elle kod, 30 sn'de bir değişir; QR tamamen kaldırıldı, D28). F11 (2026-11-13) tamamdı.
+- **Son tamamlanan adım:** F13.1 (dış denetim #5 onay ↔ MFA kilitlenmesi, #6 CSP reCAPTCHA). Dış denetimin bulgu bulgu değerlendirmesi: `EXTERNAL_AUDIT_2026-11-14.md`.
 - **Devam eden adım:** —
-- **Sıradaki iş:** Planlı kod işi yok. Kullanıcı tarafında:
-  1. Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`; `functions/.env.<id>` içindeki `WEBAUTHN_*` satırlarını silin; kurallar/indeksler, functions ve arayüz yeniden dağıtılır.
-  2. KVKK metni 1.2: her üyeden yeniden onay istenir; hukuk onayı hâlâ bekliyor (`KVKK_NOTICE_APPROVED`).
-  3. UAT: önce B1 (telefondan kod girişi), B2 (arka sıradan okunabilirlik, 30 sn), B7, D4; ardından önceki ⚠ senaryolar. `TRACEABILITY.md` › "Açık kalanlar".
-  - Yeni istek gelirse: §1'e F12.x / F13.x satırı ekle, aynı ritüelle ilerle.
+- **Sıradaki iş:** F13.2 → F13.5 (§1 tablosu ve §5 F13). Ardından tam doğrulama (rules, functions, e2e dahil) ve TRACEABILITY'ye dış denetim bölümü.
+  - Kullanıcı tarafında bekleyenler değişmedi: staging'de eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`), UAT (önce ⚠ senaryolar; yeni: E4.2).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1699,6 +1702,17 @@ Kullanıcının 7 maddelik isteği. Plan: oturumdaki onaylı plan dosyası; kara
   - **Testler:** e2e ana akış artık kodu elle yazar (küçük harfle; eski QR bağlantısının kodu doldurmadığı ve projektörde görsel olmadığı da doğrulanır); süresi geçmiş kod testi 30 sn'lik yenilemeye göre (poll 40 sn, test 180 sn); QR e2e'leri silindi. unit: 30 sn ve ipucu; `camera=()`; çözücü ve kamera testleri silindi. KVKK e2e'si "Kamera" ve "Cihaz bilgisi" maddelerinin yokluğunu doğrular. functions pencere testi sabitten türediği için değişmeden 30 sn'yi sınar.
   - Belgeler: TRACEABILITY (§10 madde 2 değişti, C2/S2/kullanılabilirlik satırları), UAT B1 (telefondan kod girişi), B2/B3, STAGING E8 silindi, README, DEPLOY, `Plan.MD`.
   - **Doğrulandı:** lint (0 uyarı), format, typecheck, no-mock, unit 267, rules 58, functions 109, e2e **113 + 3 bilinçli atlanan** (tam paket; QR'ın 4 e2e'si silindi), `npm run build`, `npm --prefix functions run build`.
+
+### F13 — Dış denetim düzeltmeleri (2026-11-14)
+
+Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştırıldı. Bulgu bulgu hüküm ve gerekçe:
+[`EXTERNAL_AUDIT_2026-11-14.md`](EXTERNAL_AUDIT_2026-11-14.md). Yalnızca doğrulanan bulgular düzeltilir.
+
+#### F13.1 Onay ↔ MFA kilitlenmesi; CSP'de reCAPTCHA (S)
+- **✅ Uygulanan:**
+  - **Kilitlenme (dış #5):** MFA zorunlu ve kurulmamış üye yalnızca güvenlik sayfasına yönlendiriliyordu, ama `SessionGuard` önce onay ekranını gösteriyordu; `acceptConsent` (`member` → `requireActive`) MFA'lı oturum istediği için reddediliyordu. KVKK 1.2 ile her üyeden yeniden onay istendiğinden, MFA kurmamış her yeni onaylı üye takılırdı. Çözüm istemcide sıra: `needsConsent()` (`src/lib/auth/sessionDecision.ts`) MFA zorunlu ve kurulmamışken onayı erteler (layout'un yönlendirme koşuluyla aynı). Sunucu bekçisi değişmedi.
+  - **CSP (dış #6):** `connect-src`'e `https://www.google.com/recaptcha/` (Google reCAPTCHA SSS'sindeki CSP listesi). Emülatör debug sağlayıcı kullandığı için yalnızca staging'de görülebilir → STAGING C5, DEPLOY 1.5 notu.
+  - **Testler:** `needsConsent` birim testleri; `SessionGuard` kilitlenme senaryosu; mevcut onay testleri gerçekçi MFA'lı oturumla; `securityHeaders` reCAPTCHA `connect-src`. UAT E4.2 (⚠) eklendi.
 
 ---
 

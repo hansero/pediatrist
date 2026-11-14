@@ -121,8 +121,12 @@ describe("SessionGuard: e-posta doğrulama zorunluluğu (D21)", () => {
 });
 
 describe("SessionGuard: aydınlatma metni onayı (F9.1)", () => {
+  // MFA kurulmuş ve ikinci faktörle açılmış oturum (onay callable'ının sunucuda geçtiği tek durum).
   const guard = (consentVersion: string | null, onSignOut = vi.fn().mockResolvedValue(undefined)) => (
-    <SessionGuard session={{ ...session("active"), consentVersion }} onSignOut={onSignOut}>
+    <SessionGuard
+      session={{ ...session("active"), mfaEnrolled: true, mfaVerified: true, consentVersion }}
+      onSignOut={onSignOut}
+    >
       <p>içerik</p>
     </SessionGuard>
   );
@@ -154,6 +158,35 @@ describe("SessionGuard: aydınlatma metni onayı (F9.1)", () => {
     // Başarıda ekran kendi kapanmaz: profil dinleyicisi yeni sürümü görünce kapanır (iyimser başarı yok).
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Onayla" })));
     expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Aydınlatma metni güncellendi" })).toBeTruthy();
+  });
+
+  it("F13.1: MFA zorunlu ve kurulmamışsa onay ekranı yerine güvenlik sayfası açılır (kilitlenme yok)", () => {
+    // Bu üye yalnızca hesap güvenliği sayfasına yönlendirilir; onay callable'ı MFA'sız oturumu reddeder.
+    // Onay ekranı burada gösterilseydi üye ne onaylayabilir ne de MFA kurabilirdi.
+    const unenrolled = { ...session("active"), mfaEnrolled: false, mfaVerified: false, consentVersion: "0.9" };
+    const { rerender } = render(
+      <SessionGuard session={unenrolled} onSignOut={vi.fn()}>
+        <p>güvenlik sayfası</p>
+      </SessionGuard>
+    );
+    expect(screen.getByText("güvenlik sayfası")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Aydınlatma metni güncellendi" })).toBeNull();
+
+    // MFA zorunlu değilse (emülatör) onay hemen istenir.
+    rerender(
+      <SessionGuard session={{ ...unenrolled, mfaRequired: false }} onSignOut={vi.fn()}>
+        <p>güvenlik sayfası</p>
+      </SessionGuard>
+    );
+    expect(screen.getByRole("heading", { name: "Aydınlatma metni güncellendi" })).toBeTruthy();
+
+    // MFA kurulduktan sonra (yeniden girişte) onay istenir.
+    rerender(
+      <SessionGuard session={{ ...unenrolled, mfaEnrolled: true, mfaVerified: true }} onSignOut={vi.fn()}>
+        <p>güvenlik sayfası</p>
+      </SessionGuard>
+    );
     expect(screen.getByRole("heading", { name: "Aydınlatma metni güncellendi" })).toBeTruthy();
   });
 

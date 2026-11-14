@@ -12,7 +12,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { acceptConsent } from "@/lib/firebase/callables";
 import { IdleProvider, useIdle } from "@/lib/auth/IdleContext";
-import type { SignOutReason } from "@/lib/auth/sessionDecision";
+import { needsConsent, type SignOutReason } from "@/lib/auth/sessionDecision";
 import type { ClinicMemberSession } from "@/lib/auth/types";
 
 interface SessionGuardProps {
@@ -54,8 +54,9 @@ export function SessionGuard({ session, requireAdmin = false, onSignOut, childre
   }
 
   // F9.1: aydınlatma metni güncellendiyse (ya da hiç onaylanmadıysa, ör. konsoldan oluşturulan ilk admin)
-  // üye güncel metni onaylamadan devam edemez.
-  if (session.consentVersion !== KVKK_NOTICE_VERSION) {
+  // üye güncel metni onaylamadan devam edemez. MFA zorunlu ama kurulmamışsa önce MFA kurulur: onay
+  // callable'ı MFA'lı oturum ister (F13.1; aksi halde kilitlenme).
+  if (needsConsent(session, KVKK_NOTICE_VERSION)) {
     return <ConsentGate session={session} onSignOut={onSignOut} />;
   }
 

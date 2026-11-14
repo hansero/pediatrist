@@ -123,7 +123,8 @@ Manuel duman testi (smoke test):
 - Bir PDF materyal yükleyip hekim hesabıyla açın (Storage CORS).
 - Ders başlatıp projektör ekranını açın; telefondan projektördeki kodu girerek katılın.
 - Kısa bir sınav yayınlayıp hekim hesabıyla çözün; karne ve sonuçlar görünüyor.
-- Tarayıcı konsolunda içerik güvenlik politikası (CSP) ihlali yok.
+- Tarayıcı konsolunda içerik güvenlik politikası (CSP) ihlali yok. Özellikle `www.google.com/recaptcha` isteklerine
+  bakın: engellenirse App Check token'ı alınamaz ve bütün işlemler "Uygulama doğrulaması başarısız" ile reddedilir.
 
 Ayrıntılı kabul senaryoları: `docs/revision/REVISION_PLAN.md` §F10.3.
 

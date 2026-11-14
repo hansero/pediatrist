@@ -24,6 +24,9 @@ describe("üretim CSP'si", () => {
       expect.arrayContaining(["https://www.google.com/recaptcha/", "https://recaptcha.google.com/recaptcha/"])
     );
     expect(prod["connect-src"]).toContain("https://content-firebaseappcheck.googleapis.com");
+    // F13.1: Google'ın reCAPTCHA CSP listesi `connect-src https://www.google.com/recaptcha/` ister; yoksa
+    // App Check token'ı alınamaz ve zorlama açıkken bütün callable'lar reddedilir.
+    expect(prod["connect-src"]).toContain("https://www.google.com/recaptcha/");
   });
 
   it("Auth, Firestore ve Storage uç noktaları açık; Storage medyası (görsel, video, PDF) yüklenebilir", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SIGN_OUT_MESSAGES, SIGN_OUT_TONES, evaluateSession } from "@/lib/auth/sessionDecision";
+import { SIGN_OUT_MESSAGES, SIGN_OUT_TONES, evaluateSession, needsConsent } from "@/lib/auth/sessionDecision";
 
 const now = 1_800_000_000;
 const token = (overrides = {}) => ({ authTimeSeconds: now, claimRole: "user", claimStatus: "active", ...overrides });
@@ -67,5 +67,25 @@ describe("evaluateSession", () => {
       "oturum-sonlandi",
     ]);
     expect(Object.keys(SIGN_OUT_TONES).sort()).toEqual(Object.keys(SIGN_OUT_MESSAGES).sort());
+  });
+});
+
+describe("needsConsent (F13.1: onay ve MFA sırası)", () => {
+  const base = { consentVersion: "1.0", mfaRequired: true, mfaEnrolled: true };
+
+  it("güncel sürümü onaylamış üyeden onay istenmez", () => {
+    expect(needsConsent(base, "1.0")).toBe(false);
+    expect(needsConsent({ ...base, mfaEnrolled: false }, "1.0")).toBe(false);
+  });
+
+  it("eski sürüm veya onaysız: MFA kuruluysa ya da zorunlu değilse onay istenir", () => {
+    expect(needsConsent(base, "1.2")).toBe(true);
+    expect(needsConsent({ ...base, consentVersion: null }, "1.2")).toBe(true);
+    expect(needsConsent({ ...base, mfaRequired: false, mfaEnrolled: false }, "1.2")).toBe(true);
+  });
+
+  it("MFA zorunlu ve kurulmamışsa onay ertelenir (önce MFA; onay callable'ı MFA'lı oturum ister)", () => {
+    expect(needsConsent({ ...base, mfaEnrolled: false }, "1.2")).toBe(false);
+    expect(needsConsent({ ...base, consentVersion: null, mfaEnrolled: false }, "1.2")).toBe(false);
   });
 });

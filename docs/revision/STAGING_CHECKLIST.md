@@ -47,7 +47,7 @@ Kurulumu yapan: ……………………… Tarih: ……………… Proje kiml
 | C2  | Kurallar ve indeksler dağıtıldı                                            | Firestore › İndeksler: hepsi "Etkin"                          | ☐   |        |
 | C3  | TTL politikaları etkin: `audit_logs.expireAt`, `rate_limits.expireAt` (3)  | Firestore › TTL sekmesi                                       | ☐   |        |
 | C4  | Cloud Functions dağıtıldı (`europe-west1`)                                 | Functions listesinde hepsi sağlıklı; zamanlanmış işler kayıtlı | ☐   |        |
-| C5  | Arayüz dağıtıldı                                                           | Uygulama alan adında açılır; tarayıcı konsolunda CSP ihlali yok | ☐   |        |
+| C5  | Arayüz dağıtıldı                                                           | Uygulama alan adında açılır; tarayıcı konsolunda CSP ihlali yok (özellikle `www.google.com/recaptcha`; App Check token alınabiliyor, F13.1) | ☐   |        |
 
 ## D. İlk eğitim sorumlusu ve kısa kontrol (1.4, 1.5)
 

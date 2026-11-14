@@ -349,6 +349,11 @@ Sonuç: ☐ G ☐ K ☐ A — Not:
 **Beklenen:** Modüller yerine onay ekranı; metin bağlantısı açılıyor; kutu işaretlenmeden devam edilemiyor;
 "Çıkış yap" çalışıyor. Metin henüz hukuk birimince onaylanmadıysa "Taslak metin" uyarısı görünüyor.
 
+2. ⚠ (F13.1) Metin sürümü değiştikten SONRA onaylanan, henüz Authenticator kurmamış yeni bir hekimle girin.
+
+**Beklenen:** Önce "Hesap güvenliği" sayfası açılıyor ve Authenticator kurulabiliyor (onay ekranı araya girmiyor).
+Kurulumdan sonra kodla yeniden girişte onay ekranı geliyor ve "Onayla" hatasız çalışıyor.
+
 Sonuç: ☐ G ☐ K ☐ A — Not:
 
 ### E5. Kişisel veri dökümü — hekim + eğitim sorumlusu

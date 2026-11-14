@@ -66,3 +66,20 @@ export function evaluateSession(
   const refreshClaims = token.claimRole !== role || token.claimStatus !== status;
   return { kind: "ready", role, status, refreshClaims };
 }
+
+/**
+ * Aydınlatma metni onay ekranı (F9.1) gösterilmeli mi?
+ *
+ * Onay (`acceptConsent`) sunucuda etkin üye bekçisinden geçer; MFA zorunluysa ikinci faktörle açılmış oturum
+ * ister (`guards.ts`). MFA zorunlu olup henüz kurulmamışsa üye yalnızca hesap güvenliği sayfasına yönlendirilir
+ * (`(protected)/layout.tsx`, aynı koşul). O sayfada onay ekranı gösterilirse üye ne onaylayabilir ne de MFA
+ * kurabilir: çıkışı olmayan kilitlenme (F13.1). Bu yüzden onay, MFA kurulup ikinci faktörle yeniden giriş
+ * yapıldıktan SONRA istenir. Sunucu bekçisi gevşetilmez; MFA kurulmadan içerik sayfaları zaten açılmaz.
+ */
+export function needsConsent(
+  session: { consentVersion: string | null; mfaRequired: boolean; mfaEnrolled: boolean },
+  currentVersion: string
+): boolean {
+  if (session.consentVersion === currentVersion) return false;
+  return !(session.mfaRequired && !session.mfaEnrolled);
+}

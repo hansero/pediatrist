@@ -15,8 +15,9 @@ import { REGION } from "../functions/src/shared/constants";
  *  - Storage: firebasestorage.googleapis.com (yükleme, indirme URL'leri; görsel, video, PDF).
  *  - Cloud Functions (callable): https://{REGION}-{projectId}.cloudfunctions.net.
  *  - App Check (reCAPTCHA Enterprise): betik www.google.com/recaptcha + www.gstatic.com/recaptcha,
- *    çerçeve www.google.com/recaptcha + recaptcha.google.com/recaptcha, token takası
- *    content-firebaseappcheck.googleapis.com.
+ *    çerçeve www.google.com/recaptcha + recaptcha.google.com/recaptcha, bağlantı www.google.com/recaptcha
+ *    (Google reCAPTCHA SSS'sindeki CSP listesi; F13.1), token takası content-firebaseappcheck.googleapis.com.
+ *    Emülatör debug sağlayıcıyı kullandığı için bu izinler yalnızca staging/canlıda denenebilir.
  *  - Yazı tipleri: `next/font` ile kendi sunucumuzdan (F3.1); çalışma zamanında Google Fonts'a istek yok.
  *
  * Bilinçli açık kalanlar:
@@ -38,6 +39,8 @@ export type CspDirectives = Record<string, string[]>;
 
 const RECAPTCHA_SCRIPTS = ["https://www.google.com/recaptcha/", "https://www.gstatic.com/recaptcha/"];
 const RECAPTCHA_FRAMES = ["https://www.google.com/recaptcha/", "https://recaptcha.google.com/recaptcha/"];
+/** reCAPTCHA betiğinin sayfa kökeninden yaptığı istekler (Google'ın CSP listesi: `connect-src`). */
+const RECAPTCHA_CONNECT = ["https://www.google.com/recaptcha/"];
 const STORAGE = "https://firebasestorage.googleapis.com";
 const LOCAL_HTTP = ["http://127.0.0.1:*", "http://localhost:*"];
 const LOCAL_WS = ["ws://127.0.0.1:*", "ws://localhost:*"];
@@ -70,6 +73,7 @@ export function buildCspDirectives({ isDev, useEmulators, projectId }: SecurityH
       "https://firestore.googleapis.com",
       STORAGE,
       "https://content-firebaseappcheck.googleapis.com",
+      ...RECAPTCHA_CONNECT,
       functionsOrigin(projectId),
     ],
     "manifest-src": ["'self'"],
