@@ -205,7 +205,7 @@ Sonuç: ☐ G ☐ K ☐ A — Not:
 1. Sınavlar › Yeni sınav; örnek CSV şablonunu indirin, kendi 3–5 sorunuzla doldurun (en az biri görselli).
 2. Görseller sekmesinden görseli yükleyin; CSV'yi seçin; önizlemeyi inceleyin ("Cevap anahtarını göster").
 3. Bilerek hatalı bir satır (ör. doğru cevabı seçeneklerde olmayan soru) ekleyip yeniden seçin.
-4. Hatayı düzeltin; başlık ve süre girin; "Taslak olarak kaydet" › "Yayınla".
+4. Hatayı düzeltin (dosyada ya da önizlemedeki soru kartında, bkz. C6); başlık ve süre girin; "Taslak olarak kaydet" › "Yayınla".
 
 **Beklenen:** Hatalı satır, satır numarası ve anlaşılır bir açıklamayla gösteriliyor; hata varken kayıt
 yapılamıyor. Önizleme hekimin göreceği gibi. Yayınlanan sınav hekimlerin ana sayfasında beliriyor.
@@ -252,6 +252,24 @@ Sonuç: ☐ G ☐ K ☐ A — Not:
 2. "Sınav sonuçlarını CSV olarak indir"; Hekimler sekmesinde bir hekimin gelişimini açın.
 
 **Beklenen:** Sayılar hekimlerin kendi ekranlarındaki puanlarla aynı. CSV Excel'de doğru açılıyor.
+
+Sonuç: ☐ G ☐ K ☐ A — Not:
+
+### C6. Önizlemede düzenleme ve görsel ekleme — eğitim sorumlusu (bir kez bilgisayarda, bir kez telefonda)
+
+1. Sınavlar › Yeni sınav; 4 soruluk bir CSV seçin. Bir satırda soru tipini bilerek yanlış yazın (ör. "Tek Seçim"); hiçbir satırda görsel olmasın.
+2. Hata tablosunda "Soruya git"e basın; açılan kartta soru tipini düzeltin, "Bitti".
+3. Bir soruda "Görsel ekle" › "Bilgisayardan yükle" ile bir görsel yükleyin. Başka bir soruda aynı dosyayı yeniden yükleyin; sonra "Görseli değiştir" › "Yüklü görsellerden seç" ile ilk görseli seçin.
+4. Seçenekli bir soruda "Düzenle": bir seçenek ekleyip doğru işaretleyin, doğru seçeneklerden birinin metnini değiştirin, öğrenme notunu değiştirin; seçenek kutusunda Enter'a basın.
+5. Bir soruyu "Yukarı" ile taşıyın; bir soruyu "Çıkar" ile (onaylayarak) çıkarın.
+6. "Görseller" sekmesine geçip "Yeni sınav"a dönün; ardından sayfayı yenilemeyi deneyin (tarayıcı uyarısında "Kalın").
+7. Başlık girip "Taslak olarak kaydet"; taslağı yayınlayın ve bir hekim hesabıyla sınava girin.
+
+**Beklenen:** Hatalı satır önizlemede kırmızı işaretli; düzeltilince hata tablosu kalkıyor ve kayıt açılıyor.
+İkinci yüklemede aynı ad yerine "-2" ekli yeni ad gösteriliyor; var olan görsel değişmiyor. Enter taslağı
+kaydetmiyor. Sekme değişince ve sayfa yenileme uyarısında değişiklikler korunuyor. Kayıttan sonra hekim,
+soruları önizlemedeki sırayla, eklenen görsellerle ve değiştirilmiş seçeneklerle görüyor. Karnede (sınav
+kapandıktan sonra) doğru cevaplar ve öğrenme notu önizlemede yapılan değişikliklerle aynı.
 
 Sonuç: ☐ G ☐ K ☐ A — Not:
 

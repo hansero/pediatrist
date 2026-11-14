@@ -190,6 +190,18 @@ bilgi); düzeltme yapılmadı.
 
 ---
 
+## 12. Sınav önizlemesinde düzenleme ve görsel ekleme (F14, 2026-11-14)
+
+Denetim bulgusu değil; kullanıcı isteği. Karar `REVISION_PLAN.md` §3 D29 (yalnızca "Yeni sınav" önizlemesi).
+
+| İstek | Durum | Adım | Kanıt | Not |
+| --- | --- | --- | --- | --- |
+| Görsel önizlemede eklensin (yükle veya yüklü görsellerden seç) | ✅ | F14.1–F14.3 | `e2e/quiz-preview-edit.spec.ts` (yükleme, aynı ad → `-2`, SVG reddi, seçme, Firestore'da `imageUrl`); `tests/rules/storage.test.ts › "D29: var olan sınav görselinin üzerine admin bile yazamaz…"`; `tests/unit/quiz/questionForm.test.ts › "uniqueQuizMediaPath"` | Üzerine yazma kuralda da yasak (`resource == null`). Kullanılmayan görseller silinmez. |
+| Metinler ve cevap yapısı önizlemede değişsin | ✅ | F14.2, F14.3 | `tests/unit/quiz/questionForm.test.ts` (8 test); `e2e/quiz-preview-edit.spec.ts` (seçenek ekleme, doğru işareti, doğru seçeneğin metni, öğrenme notu → cevap anahtarı) | Aynı ortak şema (`validateQuizQuestion`) önizlemede ve sunucuda. |
+| Sıra ve silme | ✅ | F14.2, F14.3 | `tests/unit/quiz/useCsvQuestions.test.tsx › "taşıma ve silme…"`; e2e (q_001–q_003 sırası, 4. soru yok) | Silme onaylı; geri almak için CSV yeniden seçilir. |
+| Hatalı CSV satırı önizlemede düzeltilsin | ✅ | F14.1–F14.3 | `tests/unit/quizParser.test.ts › "satır taslakları (F14)…"`; `useCsvQuestions.test.tsx › "hatalı satır önizlemede görünür…"`; e2e ("Soruya git" → düzelt) | Dosya düzeyindeki hata (başlık, boyut) yine dosyada düzeltilir. |
+| Denetim izi | ✅ | F14.1 | `functions/test/quiz.test.ts › "önizlemede düzenlenmiş taslak denetim kaydında işaretlenir…"`; e2e (`editedInPreview: true`) | |
+
 ## Açık kalanlar
 
 Aşağıdakiler bilinçli olarak yapılmadı ya da yalnızca siz yapabilirsiniz. Hiçbiri otomatik testlerin geçmesine
