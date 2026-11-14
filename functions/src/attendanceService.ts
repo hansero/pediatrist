@@ -19,9 +19,9 @@ import { COLLECTIONS, type AttendanceLiveLockDoc, type AttendanceStatus, type Me
  * Akış:
  *  1. Admin `startLectureSession` ile dersi başlatır → oturum `live` olur, HMAC anahtarı
  *     yalnızca sunucuda (`attendance_secrets`, istemciye kapalı) üretilir.
- *  2. Projektör ekranı (yalnızca Admin) `getProjectorCode` ile 15 sn'lik güncel kodu alır.
+ *  2. Projektör ekranı (yalnızca Admin) `getProjectorCode` ile güncel kodu alır (`ATTENDANCE_SLOT_MS`, 30 sn; D28).
  *     Kod / anahtar hiçbir zaman hekim istemcisine gönderilmez.
- *  3. Hekim, MFA ile açtığı oturumda kodu (QR okutarak ya da elle) `verifyRealTimeAttendance` ile gönderir.
+ *  3. Hekim, MFA ile açtığı oturumda kodu elle girer ve `verifyRealTimeAttendance` ile gönderir (QR yok, D28).
  *     Cihaz bağlama yoktur (D23): yetkinin kaynağı oturum (`guards.ts`) ve projektör kodudur.
  *  4. Admin `endLectureSession` ile yoklamayı kapatır; süre dolunca zamanlayıcı (`closeExpiredLectures`)
  *     veya bir sonraki ders başlatma isteği kapatır.
@@ -283,8 +283,7 @@ export const verifyRealTimeAttendance = defineCallable("verifyRealTimeAttendance
       title: profile.title ?? "",
       residencyYear: profile.residencyYear ?? null,
       verifiedAt: FieldValue.serverTimestamp(),
-      // Yöntem yalnızca sunucunun doğruladığı şeyi yansıtır: MFA'lı oturum + projektör kodu (D23).
-      // Kodun QR'dan mı elle mi geldiğini sunucu bilemez; bu yüzden ayrı bir değer yazılmaz.
+      // Yöntem yalnızca sunucunun doğruladığı şeyi yansıtır: MFA'lı oturum + projektör kodu (D23, D28).
       method: "code",
       status: "present",
     };

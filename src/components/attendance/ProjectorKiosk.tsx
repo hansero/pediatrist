@@ -1,11 +1,9 @@
 "use client";
 
-import QRCode from "qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
-import { checkInUrl } from "@/lib/attendance/checkInLink";
 import { isLectureOpen, useLecture } from "@/lib/attendance/live";
 import { useIdleExempt } from "@/lib/auth/IdleContext";
 import { toAppError } from "@/lib/errors";
@@ -29,7 +27,6 @@ export function ProjectorKiosk({ sessionId }: { sessionId: string }) {
   useIdleExempt();
   const lecture = useLecture(sessionId);
   const [code, setCode] = useState<CodeState | null>(null);
-  const [qr, setQr] = useState("");
   const [error, setError] = useState("");
   const [ended, setEnded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -68,23 +65,6 @@ export function ProjectorKiosk({ sessionId }: { sessionId: string }) {
       window.clearTimeout(timer);
     };
   }, [sessionId, live, ended]);
-
-  // QR
-  useEffect(() => {
-    if (!code) {
-      setQr("");
-      return;
-    }
-    let alive = true;
-    QRCode.toDataURL(checkInUrl(window.location.origin, sessionId, code.code), {
-      errorCorrectionLevel: "M",
-      margin: 1,
-      width: 480,
-    }).then((url) => alive && setQr(url));
-    return () => {
-      alive = false;
-    };
-  }, [code, sessionId]);
 
   // Ekranı açık tut (Screen Wake Lock); sekme yeniden görünür olunca kilit yeniden alınır.
   useEffect(() => {
@@ -180,17 +160,7 @@ export function ProjectorKiosk({ sessionId }: { sessionId: string }) {
               />
             )}
           </div>
-          {qr && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              className="projector-qr"
-              src={qr}
-              width={480}
-              height={480}
-              alt="Yoklama için telefonla taranacak QR kod"
-            />
-          )}
-          <p className="projector-help">Pediatrist › Ders Yoklaması ekranında QR kodu okutun ya da kodu girin.</p>
+          <p className="projector-help">Pediatrist › Ders Yoklaması ekranına bu kodu girin.</p>
         </div>
       )}
       {error && <Alert tone="warning">{error}</Alert>}

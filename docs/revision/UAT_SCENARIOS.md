@@ -113,17 +113,17 @@ Sonuç: ☐ G ☐ K ☐ A — Not:
 
 ## B. Ders yoklaması
 
-### B1. ⚠ Uygulama içinden QR okutma ve kamera izni — hekim (iPhone Safari **ve** Android Chrome ayrı ayrı)
+### B1. ⚠ Telefondan kod girişi — hekim (iPhone Safari **ve** Android Chrome ayrı ayrı)
 
 Açık bir ders yokken eğitim sorumlusundan ders başlatmasını isteyin (B2).
 
-1. Telefonun tarayıcısında giriş yapın; Ders Yoklaması › "QR kodu okut". Tarayıcının kamera iznini **reddedin**.
-2. Tarayıcı ayarlarından kamera iznini açın; tekrar "QR kodu okut" › izin verin › projektördeki QR'ı okutun.
-3. Kamerayı projektör dışındaki bir QR koduna (ör. bir ürün etiketi) tutun.
+1. Telefonun tarayıcısında giriş yapın; Ders Yoklaması'nı açın. Projektördeki kodu küçük harfle yazıp "Yoklamaya katıl".
+2. Başka bir telefonda kodu bilerek bir harf yanlış girin; sonra kodun değişmesini bekleyip **eski** kodu girin.
+3. Projektördeki "Yeni kod" sayacını izleyin.
 
-**Beklenen:** 1. adımda Türkçe ve anlaşılır bir mesaj ("Kamera izni verilmedi …"); elle kod girme alanı çalışıyor.
-2. adımda arka kamera açılıyor; QR okununca kamera kapanıyor ve "Yoklamanız alındı" görünüyor (ayrıca düğmeye
-basmak gerekmiyor). 3. adımda "Bu bir Pediatrist yoklama kodu değil." yazıyor ve kamera açık kalıyor.
+**Beklenen:** Telefonda klavye büyük harfe geçiyor; küçük harfle yazılan kod kabul ediliyor ve "Yoklamanız alındı"
+görünüyor. Yanlış kod ve iki değişim önceki kod "Kod geçersiz veya süresi doldu" ile reddediliyor. Kod yaklaşık
+30 saniyede bir değişiyor; yazmaya yetecek kadar ekranda kalıyor. Uygulamada QR okutma ve kamera izni yok (D28).
 
 Telefon modeli / tarayıcı: ……………………… Sonuç: ☐ G ☐ K ☐ A — Not:
 
@@ -131,18 +131,17 @@ Telefon modeli / tarayıcı: ……………………… Sonuç: ☐ G ☐ K ☐
 
 1. Ders Yoklaması › ders başlığı ve süre girin › "Yoklamayı başlat".
 2. "Projektör ekranını aç"; pencereyi projektöre taşıyıp tam ekran yapın.
-3. Salonun **en arka sırasından** koda ve QR koda bakın; bir telefonla QR'ı arka sıradan okutmayı deneyin.
-4. Kodu 20 saniye izleyin.
+3. Salonun **en arka sırasından** koda bakın.
+4. Kodu 1 dakika izleyin.
 
-**Beklenen:** Kod arka sıradan okunuyor; QR arka sıradan okutulabiliyor. Kod yaklaşık 15 saniyede bir
-değişiyor. Projektör bilgisayarı uykuya geçmiyor ve oturum hareketsizlikten kapanmıyor.
+**Beklenen:** Kod arka sıradan okunuyor. Kod yaklaşık 30 saniyede bir değişiyor. Projektör bilgisayarı uykuya geçmiyor ve oturum hareketsizlikten kapanmıyor.
 
 Salon / mesafe: ……………………… Sonuç: ☐ G ☐ K ☐ A — Not:
 
 ### B3. ⚠ Yoklamaya katılım — hekim
 
-1. Projektördeki QR kodu telefonun **kendi kamera uygulamasıyla** okutun; açılan sayfada kod dolu gelir › "Yoklamaya katıl".
-2. Başka bir hekim QR yerine sayfayı elle açıp projektördeki kodu yazarak katılsın.
+1. Ders Yoklaması'nı açın; projektördeki kodu girin › "Yoklamaya katıl".
+2. Başka bir hekim aynı dersi ana sayfadaki "Yoklamaya katıl" bağlantısından açıp katılsın.
 3. Aynı hekim sayfayı kapatıp yeniden açsın.
 
 **Beklenen:** "Yoklamanız alındı". Eğitim sorumlusunun listesi ve sayaç yenilemeden güncelleniyor. Sayfayı

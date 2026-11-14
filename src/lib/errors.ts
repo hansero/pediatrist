@@ -218,24 +218,4 @@ export function toUserMessage(err: unknown): string {
   return toAppError(err).message;
 }
 
-/**
- * Kamera (`getUserMedia`) hataları → Türkçe (F11.2: yoklamada QR okutma). Yalnızca kamera açılırken yakalanan
- * hatalar için çağrılır; aynı adlı DOM hataları başka API'lerde farklı anlam taşıdığından `toAppError`'a eklenmedi.
- */
-const CAMERA_ERRORS: Record<string, string> = {
-  NotAllowedError: "Kamera izni verilmedi. Tarayıcı ayarlarından kamera izni verin ya da kodu elle girin.",
-  SecurityError: "Kamera izni verilmedi. Tarayıcı ayarlarından kamera izni verin ya da kodu elle girin.",
-  NotFoundError: "Bu cihazda kamera bulunamadı. Kodu elle girin.",
-  OverconstrainedError: "Bu cihazda kamera bulunamadı. Kodu elle girin.",
-  NotReadableError: "Kamera başka bir uygulamada açık. O uygulamayı kapatıp tekrar deneyin ya da kodu elle girin.",
-  AbortError: "Kamera açılamadı. Tekrar deneyin ya da kodu elle girin.",
-};
-
-export const CAMERA_UNSUPPORTED_MESSAGE = "Bu tarayıcı kamerayı açamıyor; kodu elle girin.";
-
-export function cameraErrorMessage(err: unknown): string {
-  const name = (err as { name?: unknown })?.name;
-  return (typeof name === "string" && CAMERA_ERRORS[name]) || "Kamera açılamadı. Tekrar deneyin ya da kodu elle girin.";
-}
-
 export { DEFAULT_ERROR_MESSAGES as APP_ERROR_MESSAGES };

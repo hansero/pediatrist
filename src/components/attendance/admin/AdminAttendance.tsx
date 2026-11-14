@@ -107,7 +107,7 @@ function StartLectureForm({ session }: { session: ClinicMemberSession }) {
   return (
     <Card
       title="Ders yoklaması başlat"
-      description="Başlattığınız anda projektör kodu üretilir; hekimler QR'ı okutarak ya da kodu girerek katılır."
+      description="Başlattığınız anda projektör kodu üretilir; hekimler kodu telefonlarından girerek katılır."
     >
       <form className="auth-stack" onSubmit={onSubmit} noValidate>
         {start.error && <Alert tone="critical">{start.error}</Alert>}

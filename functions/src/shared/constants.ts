@@ -51,8 +51,11 @@ export const ATTENDANCE_INELIGIBLE_MESSAGE = "Ders yoklaması yalnızca 1.–4. 
 
 // --- Yoklama ---------------------------------------------------------------
 
-/** Projektör kodunun yenilenme aralığı. Bir önceki pencere ağ gecikmesi toleransı olarak kabul edilir. */
-export const ATTENDANCE_SLOT_MS = 15_000;
+/**
+ * Projektör kodunun yenilenme aralığı (D28: 30 sn; hekim kodu elle girer). Bir önceki pencere ağ gecikmesi ve
+ * yazma süresi toleransı olarak kabul edilir; yani bir kod en çok iki pencere (~60 sn) geçerlidir.
+ */
+export const ATTENDANCE_SLOT_MS = 30_000;
 /** Karışıklık yaratan 0/O/1/I karakterleri yoktur. */
 export const ATTENDANCE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const ATTENDANCE_CODE_LENGTH = 6;

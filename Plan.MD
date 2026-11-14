@@ -32,7 +32,7 @@
 - **Kapalı Devre Üyelik:** Dışarıdan serbest erişim kapalıdır. Yalnızca klinik yöneticisi (`Admin`) tarafından onaylanan veya kurumsal davet (`invitations`) ile kabul edilen üyeler sisteme girebilir.
 - **Rol Tabanlı Erişim Kontrolü (RBAC):** `Admin` (Eğitim Sorumlusu / Öğretim Üyesi / Başasistan) ve `User` (Pediatri Asistanı / Uzman Hekim) rolleri **Firebase Custom Claims**, **Firestore Security Rules** ve **Storage Security Rules** ile hem istemci hem sunucu katmanında zorunlu tutulur.
 - **Ayrı Sayfa ve Modüler Yönetim:** Her ana fonksiyon kendi bağımsız sayfasında (`/materials`, `/calculators`, `/attendance`, `/quizzes`) görüntülenir ve yetkiye göre aynı modül içinden yönetilir.
-- **İleri Seviye Siber Güvenlik (Zero-Trust):** Çok faktörlü kimlik doğrulama (MFA/TOTP), Firebase App Check, 15 saniyede bir kriptografik değişen dinamik QR yoklama (uygulama içinden kamerayla okutma), filigranlı materyal görüntüleme, sunucu tarafı sınav değerlendirmesi ve değiştirilemez denetim kayıtları (`audit_logs`).
+- **İleri Seviye Siber Güvenlik (Zero-Trust):** Çok faktörlü kimlik doğrulama (MFA/TOTP), Firebase App Check, 30 saniyede bir kriptografik değişen dinamik yoklama kodu (elle girilir), filigranlı materyal görüntüleme, sunucu tarafı sınav değerlendirmesi ve değiştirilemez denetim kayıtları (`audit_logs`).
 
 ---
 
@@ -58,7 +58,7 @@
   - **Görsel Disiplin (Anti-Cliché Kuralları):** Koyu zeminde mor/neon parlamalar, gradyan metin dolguları, aşırı iç içe geçmiş (over-nested) kartlar veya dekoratif karmaşa kesinlikle kullanılmaz; her piksel klinik bir işleve hizmet eder.
 - **Semantik HTML5, Erişilebilirlik ve Benzersiz Kimlikler (`Unique IDs`):**
   - Her bağımsız sayfa (`/materials`, `/calculators`, `/attendance`, `/quizzes`, `/admin`) kendine özgü `<title>`, `<meta name="description">`, tek bir `<h1>` başlık hiyerarşisi ve semantik HTML5 etiketleri (`<main>`, `<section>`, `<article>`, `<nav>`, `<aside>`) içerir.
-  - Tüm etkileşimli form elemanları ve butonlar deterministik test ve erişilebilirlik için benzersiz, açıklayıcı `id` niteliklerine sahiptir (Örn: `id="calc-weight-kg-input"`, `id="attendance-scan-qr-btn"`, `id="quiz-submit-attempt-btn"`).
+  - Tüm etkileşimli form elemanları ve butonlar deterministik test ve erişilebilirlik için benzersiz, açıklayıcı `id` niteliklerine sahiptir (Örn: `id="calc-weight-kg-input"`, `id="quiz-submit-attempt-btn"`).
 
 ---
 
@@ -97,7 +97,7 @@ Klinik eğitim verileri, hekim bilgileri ve yoklama/sınav bütünlüğü için 
 
 ### 3.4. Kimlik Bilgisi ve Altyapı Sızıntısı Önleme (Zero Credential & Identifier Exposure)
 1. **Arayüzde Sıfır Altyapı Bilgisi:**
-   - Hiçbir kullanıcı (`User`) veya yönetici (`Admin`) ekranında Firebase `projectId`, `apiKey`, `authDomain`, `storageBucket`, `messagingSenderId`, `appId`, ham cihaz kimliği (`boundDeviceId`) veya beklenen 15 saniyelik HMAC doğrulama kodu paylaşılmaz.
+   - Hiçbir kullanıcı (`User`) veya yönetici (`Admin`) ekranında Firebase `projectId`, `apiKey`, `authDomain`, `storageBucket`, `messagingSenderId`, `appId`, ham cihaz kimliği (`boundDeviceId`) veya beklenen 30 saniyelik HMAC doğrulama kodu paylaşılmaz.
    - `src/lib/firebase/client.ts` yapılandırma nesnesini dışa aktarmaz; yalnızca `isFirebaseConfigured()` ile boolean bağlantı durumu döndürür.
 2. **Ortam Değişkeni İzolasyonu ve Cihaz Özeti (Hashing):**
    - Tüm Firebase anahtarları kaynak kodda sabit (`hardcoded`) tutulmaz; yalnızca git'e girmeyen `.env.local` ve sunucu ortam değişkenlerinden okunur.
@@ -130,7 +130,7 @@ flowchart TD
     P2 --> P2_A["Admin: Formül/İlaç Sınırı Güncelleme, Klinik Protokol Notu Ekleme"]
 
     P3 --> P3_U["User: Admin'in Başlattığı Aktif Derse Yoklama Verme + Kişisel Katılım Geçmişi"]
-    P3 --> P3_A["Admin: Dersi Başlatma/Bitirme, 15 sn Dinamik QR Projektör, Ders & Katılımcı Bazlı Log Dashboard'u"]
+    P3 --> P3_A["Admin: Dersi Başlatma/Bitirme, 30 sn Dinamik Kod Projektör, Ders & Katılımcı Bazlı Log Dashboard'u"]
 
     P4 --> P4_U["User: Sadece Aktif Sınava Katılma, Soruları Çözme, Eski & Şimdiki Sınav Logları Dashboard'u"]
     P4 --> P4_A["Admin: 9 Sütunlu CSV Yükleme, Sınavı Önizleme, Süre Belirleme, Yayına Alma + Tüm Kullanıcı/Sınav Log Dashboard'u"]
@@ -181,10 +181,10 @@ Klinik sabah toplantıları, makale saatleri, mortalite toplantıları ve teorik
 
 - **Kriptografik & Cihaz Bağlamlı Yoklama Protokolü:**
   1. **Yoklama Alınacak Dersi Admin Başlatır (`startLectureSession`):** Yoklama yalnızca `Admin` tarafından ders başlığı, eğitici ve yoklama açık kalma süresi (dakika) belirlenerek (kategori yok, F11.3) başlatıldığında açılır. Aktif ders yokken hekim ekranında yoklama girişi kapalıdır.
-  2. **Canlı Projektör Ekranı (`getProjectorCode`):** Canlı ders süresince projektöre **her 15 saniyede bir kriptografik olarak yenilenen (HMAC-SHA256) 6 haneli tek kullanımlık doğrulama kodu** yansıtılır.
+  2. **Canlı Projektör Ekranı (`getProjectorCode`):** Canlı ders süresince projektöre **her 30 saniyede bir kriptografik olarak yenilenen (HMAC-SHA256) 6 haneli doğrulama kodu** yansıtılır (D28; QR yok).
   3. **Kişisel Doğrulama (`User` — `verifyRealTimeAttendance`):**
      - **Adım A (Yetki):** Yalnızca rolü hekim olan 1.–4. yıl asistan yoklama verir (D24); kimlik MFA'lı oturumdan gelir, cihaz bağlama yoktur (D23).
-     - **Adım B (15 Saniyelik Kod Doğrulaması):** Projektördeki QR uygulama içinden kamerayla okutulur ("QR kodu okut", D27) ya da kod elle girilir; sunucu kodun son 15 saniyelik pencereye (veya bir öncekine) ait olduğunu doğrulayarak kaydı `attendance_sessions/{sessionId}/records/{uid}` ve `attendance_logs` koleksiyonlarına yazar.
+     - **Adım B (30 Saniyelik Kod Doğrulaması):** Projektördeki kod telefondan elle girilir (QR yok, D28); sunucu kodun son 30 saniyelik pencereye (veya bir öncekine) ait olduğunu doğrulayarak kaydı `attendance_sessions/{sessionId}/records/{uid}` ve `attendance_logs` koleksiyonlarına yazar.
 - **Hekim (`User`) Görünümü:**
   - Yalnızca Admin tarafından başlatılmış canlı ders varsa yoklama doğrulama formu.
   - Hekimin **yalnızca kendi geçmiş ders katılımlarını** gördüğü Kişisel Ders Katılım Geçmişi tablosu.
@@ -400,7 +400,7 @@ pediatrist/
 | Ortak sözleşmeler, yetki katmanı, hata gösterimi | Tamamlandı (F1) |
 | Güvenlik kuralları, kayıt, oturum, CSP | Tamamlandı (F2) |
 | Tasarım sistemi, gezinme, giriş/kayıt ekranları, gerçek TOTP | Tamamlandı (F3). TOTP emülatörde sınanamıyor; staging'de sınanacak. |
-| Ders yoklaması (QR okutma / kod, projektör, raporlar) | Tamamlandı (F4, F11) |
+| Ders yoklaması (elle kod, projektör, raporlar) | Tamamlandı (F4, F11, F12) |
 | Sınavlar (stüdyo, sınav ekranı, karne, analitik) | Tamamlandı (F5) |
 | Materyaller (yükleme, görüntüleyici, okunma raporu) | Tamamlandı (F6) |
 | Yönetim paneli, ana sayfa, hesaplayıcı sayfası | Tamamlandı (F7). Hesaplayıcılarda **hesaplama yok** (bilinçli karar, D8). |
@@ -412,7 +412,6 @@ pediatrist/
 
 - Gerçek bir Firebase projesine dağıtım yapılmadı. Dağıtım, App Check, TOTP, e-posta gönderimi, Storage CORS, TTL,
   alarm ve yedekleme adımları yalnızca belgelendi (`DEPLOY.md`); staging'de denenmeli.
-- Gerçek telefonlarda (iOS Safari, Android Chrome) uygulama içi QR okutma denenmedi; e2e'de kamera canvas akışıyla taklit edilir (UAT B1).
 - Hesaplayıcı formül motoru (ilk plandaki Modül 2 hedefleri) ayrı bir iş olarak duruyor; klinik doğrulama ve
   referans değer testleri gerektirir.
 - Kullanıcı kabul testi (gerçek hekimler ve eğitim sorumlusuyla) yapılmadı.

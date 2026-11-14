@@ -15,7 +15,7 @@ materyalleri ve üyelik yönetimi. Arayüz dili Türkçedir.
 | Sayfa | Eğitim sorumlusu (admin) | Hekim |
 |---|---|---|
 | `/dashboard` | Sıradaki iş (süren ders, bekleyen başvuru, yayındaki sınav) ve klinik göstergeleri | Sıradaki iş (yoklama, sınav, zorunlu materyal) ve kişisel göstergeler |
-| `/attendance` | Ders başlatma, projektör ekranı (15 sn'de değişen kod + QR), canlı liste, mazeret, raporlar ve CSV | QR okutarak ya da projektördeki kodu girerek katılım (yalnızca 1.–4. yıl asistanlar; uzman ve öğretim üyeleri yoklamaya tabi değil); kişisel geçmiş |
+| `/attendance` | Ders başlatma, projektör ekranı (30 sn'de değişen kod), canlı liste, mazeret, raporlar ve CSV | Projektördeki kodu elle girerek katılım (yalnızca 1.–4. yıl asistanlar; uzman ve öğretim üyeleri yoklamaya tabi değil); kişisel geçmiş |
 | `/quizzes` | CSV ile sınav hazırlama, önizleme, yayınlama/kapatma, görsel yükleme, sonuç analitiği, soru arşivi | Süreli sınav (yanıtlar sunucuya kaydedilir), karne, gelişim grafiği |
 | `/materials` | PDF / video / görsel yükleme, hedef kıdem, zorunlu okuma, okunma raporu | Filigranlı görüntüleme, ilerleme takibi, izin varsa indirme |
 | `/calculators` | Planlanan hesaplayıcılar için klinik protokol notu | Planlanan hesaplayıcılar ve protokol notları (**hesaplama henüz yok**) |

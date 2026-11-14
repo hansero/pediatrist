@@ -345,46 +345,6 @@
   max-width: 14rem;
 }
 
-/* Yoklamada uygulama içi QR okuyucu (F11.2) */
-.qr-scanner {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-
-.qr-scanner-start {
-  min-height: 3rem;
-  padding-inline: var(--space-6);
-}
-
-.qr-scanner-frame {
-  width: 100%;
-  max-width: 22rem;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  background: #000;
-}
-
-.qr-scanner-frame video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.qr-scanner-status {
-  margin: 0;
-  color: var(--text-secondary);
-}
-
-.qr-scanner-divider {
-  margin: 0;
-  font-size: 0.86rem;
-  color: var(--text-muted);
-}
-
 .setup-steps {
   padding-left: var(--space-5);
   color: var(--text-secondary);
@@ -557,16 +517,23 @@
 }
 
 .projector-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  /* Yalnızca elle girilen kod (QR yok, D28): kod ortada ve olabildiğince büyük. */
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  flex: 1;
   gap: var(--space-7);
+  text-align: center;
 }
 
 .projector-code-block {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-3);
+  width: 100%;
+  max-width: 100%;
 }
 
 .projector-label {
@@ -578,11 +545,13 @@
 .projector-code {
   /* Tek satır: salonun arkasından okunurken kod bölünmemeli. */
   white-space: nowrap;
-  font-size: clamp(2.5rem, 6vw, 7.5rem);
+  font-size: clamp(3rem, 11vw, 12rem);
   font-weight: 800;
   line-height: 1;
   color: var(--clinical-primary);
   letter-spacing: 0.18em;
+  /* Harf aralığı son harften sonra da boşluk bırakır; ortalamada denge için aynı girinti başa. */
+  text-indent: 0.18em;
 }
 
 .projector-rotation {
@@ -591,6 +560,7 @@
 }
 
 .projector-progress {
+  width: min(100%, 48rem);
   height: 10px;
   border-radius: 999px;
   background: var(--clinical-primary);
@@ -609,18 +579,7 @@
   }
 }
 
-.projector-qr {
-  width: 100%;
-  max-width: 480px;
-  height: auto;
-  justify-self: center;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: #fff;
-}
-
 .projector-help {
-  grid-column: 1 / -1;
   font-size: clamp(0.95rem, 1.5vw, 1.4rem);
   color: var(--text-secondary);
 }
@@ -633,12 +592,6 @@
   gap: var(--space-3);
   flex: 1;
   text-align: center;
-}
-
-@media (max-width: 960px) {
-  .projector-body {
-    grid-template-columns: 1fr;
-  }
 }
 
 .history-stats {

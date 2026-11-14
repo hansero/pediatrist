@@ -105,12 +105,12 @@ describe("yardımcılar", () => {
     );
   });
 
-  it("Permissions-Policy: kamera yalnızca kendi kökene (QR okutma); passkey izinleri kapalı (D23)", () => {
+  it("Permissions-Policy: kamera (QR yok, D28) ve passkey izinleri (D23) kapalı", () => {
     const policy = buildSecurityHeaders({ isDev: false, useEmulators: false }).find(
       (h) => h.key === "Permissions-Policy"
     )!.value;
     const entries = policy.split(", ");
-    expect(entries).toContain("camera=(self)");
+    expect(entries).toContain("camera=()");
     expect(entries).toContain("microphone=()");
     expect(entries).toContain("publickey-credentials-create=()");
     expect(entries).toContain("publickey-credentials-get=()");

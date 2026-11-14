@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ATTENDANCE_INELIGIBLE_MESSAGE, isAttendanceEligible } from "@shared/constants";
 import { useClinicSession } from "@/lib/auth/ClinicSessionContext";
 
-/** Ders yoklaması (F4.3): eğitim sorumlusu dersi yönetir, hekim QR okutarak ya da kodu girerek katılır (F11.2). */
+/** Ders yoklaması (F4.3): eğitim sorumlusu dersi yönetir, hekim projektördeki kodu girerek katılır (D28). */
 export default function AttendancePage() {
   const { session } = useClinicSession();
   if (!session) return null;
@@ -35,7 +35,7 @@ export default function AttendancePage() {
         description={
           isAdmin
             ? "Dersi başlatın, projektör ekranını yansıtın ve katılımı canlı izleyin."
-            : "Açık derse projektördeki QR kodu okutarak ya da kodu girerek katılın."
+            : "Açık derse projektördeki kodu girerek katılın."
         }
       />
       {isAdmin ? (

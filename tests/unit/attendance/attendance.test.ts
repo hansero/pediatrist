@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { buildRoster } from "@/components/attendance/admin/AdminAttendance";
-import { checkInUrl, parseCheckInLink } from "@/lib/attendance/checkInLink";
 import { isLectureOpen, type Lecture } from "@/lib/attendance/live";
 
 const doctor = (uid: string, fullName: string, residencyYear: number | null = 2) => ({
@@ -45,49 +44,6 @@ describe("buildRoster (canlı katılım listesi)", () => {
       [{ uid: "x", fullName: "Eski Üye", title: "Dr.", residencyYear: 2, status: "present", verifiedAtMs: 1 }]
     );
     expect(rows[0]).toMatchObject({ name: "Dr. Eski Üye" });
-  });
-});
-
-describe("checkInUrl (projektör QR'ı)", () => {
-  it("dersi ve kodu sorgu parametresi olarak taşır, köken korunur", () => {
-    const url = new URL(checkInUrl("https://pediatrist.web.app", "ders/1", "K9P4X2"));
-    expect(url.origin).toBe("https://pediatrist.web.app");
-    expect(url.pathname).toBe("/attendance");
-    expect(url.searchParams.get("s")).toBe("ders/1");
-    expect(url.searchParams.get("c")).toBe("K9P4X2");
-  });
-});
-
-describe("parseCheckInLink (uygulama içi QR okutma, F11.2)", () => {
-  const origin = "https://pediatrist.web.app";
-  it("projektörün ürettiği bağlantıyla gidiş-dönüş; kod büyük harfe çevrilir", () => {
-    expect(parseCheckInLink(checkInUrl(origin, "ders-1", "K9P4X2"), origin)).toEqual({
-      ok: true,
-      sessionId: "ders-1",
-      code: "K9P4X2",
-    });
-    expect(parseCheckInLink(`${origin}/attendance/?s=d&c=k9p4x2`, origin)).toEqual({
-      ok: true,
-      sessionId: "d",
-      code: "K9P4X2",
-    });
-  });
-  it("başka site, başka sayfa ve bağlantı olmayan metin yoklama koduna dönüşmez", () => {
-    expect(parseCheckInLink("https://kotu.example/attendance?s=d&c=K9P4X2", origin)).toEqual({
-      ok: false,
-      reason: "foreign",
-    });
-    expect(parseCheckInLink(`${origin}/materials?s=d&c=K9P4X2`, origin)).toEqual({ ok: false, reason: "foreign" });
-    expect(parseCheckInLink("http://pediatrist.web.app/attendance?s=d&c=K9P4X2", origin)).toMatchObject({
-      reason: "foreign",
-    });
-    expect(parseCheckInLink("K9P4X2", origin)).toEqual({ ok: false, reason: "not-url" });
-    expect(parseCheckInLink("", origin)).toEqual({ ok: false, reason: "not-url" });
-  });
-  it("ders veya kod eksik ya da kod alfabe/uzunluk dışında → bad-code", () => {
-    for (const q of ["?c=K9P4X2", "?s=d", "?s=d&c=K9P4X0", "?s=d&c=K9P4X", "?s=d&c=K9P4X22", "?s=%20&c=K9P4X2"]) {
-      expect(parseCheckInLink(`${origin}/attendance${q}`, origin)).toEqual({ ok: false, reason: "bad-code" });
-    }
   });
 });
 
@@ -139,5 +95,14 @@ describe("isAttendanceEligible (D24: yoklamayı yalnızca 1.–4. yıl asistan v
     expect(isAttendanceEligible({ role: "user", title: "Asistan Dr.", residencyYear: null })).toBe(false);
     expect(isAttendanceEligible({ role: "user", title: "Asistan Dr.", residencyYear: 5 })).toBe(false);
     expect(isAttendanceEligible({ role: "user", title: "Asistan Dr.", residencyYear: undefined })).toBe(false);
+  });
+});
+
+describe("projektör kodu aralığı (D28)", () => {
+  it("kod 30 saniyede bir değişir; hekim ipucu aynı sabitten", async () => {
+    const { ATTENDANCE_SLOT_MS } = await import("@shared/constants");
+    const { CODE_HINT } = await import("@/components/attendance/DoctorCheckIn");
+    expect(ATTENDANCE_SLOT_MS).toBe(30_000);
+    expect(CODE_HINT).toBe("Kod 30 saniyede bir yenilenir; ekrandaki güncel kodu girin.");
   });
 });

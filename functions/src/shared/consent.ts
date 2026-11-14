@@ -7,14 +7,14 @@
  * Yayından önce kurumun KVKK sorumlusu/hukuk birimi metni onaylamalıdır (REVISION_PLAN F10.2, F9.1).
  * Metin değişirse `version` artırılır; oturum açan her üyeden yeni sürüm için onay istenir (`acceptConsent`, F9.1).
  */
-export const KVKK_NOTICE_VERSION = "1.1";
+export const KVKK_NOTICE_VERSION = "1.2";
 /**
  * Metin kurumun KVKK sorumlusu / hukuk birimi tarafından ONAYLANDI mı? (F9.1). `false` iken `/kvkk` sayfası ve
  * onay ekranı metnin taslak olduğunu açıkça söyler. Onay METNE verilir: metin değişirse sürüm artırılır ve bu
  * değer yeniden `false` yapılır. Yalnızca yazılı onay alındıktan sonra `true` yapın (DEPLOY kontrol listesi).
  */
 export const KVKK_NOTICE_APPROVED: boolean = false;
-export const KVKK_NOTICE_EFFECTIVE_DATE = "2026-11-13";
+export const KVKK_NOTICE_EFFECTIVE_DATE = "2026-11-14";
 
 export interface NoticeSection {
   heading: string;
@@ -30,7 +30,6 @@ export const KVKK_NOTICE_SECTIONS: NoticeSection[] = [
       "Mesleki bilgi: asistanlar için kıdem yılı, platformdaki rolünüz ve üyelik durumunuz.",
       "Hesap güvenliği: şifre (yalnızca kimlik doğrulama hizmetinde, geri döndürülemez biçimde), iki aşamalı doğrulama kaydı, oturum zamanları.",
       "Eğitim kayıtları: ders yoklama kayıtları (zaman, yöntem, mazeret notu), sınav girişimleri, yanıtları ve puanları, eğitim materyali okuma ilerlemesi.",
-      "Kamera: yoklamada QR kodu okutmak için açtığınız kamera görüntüsü yalnızca kendi cihazınızda işlenir; kaydedilmez ve hiçbir yere gönderilmez.",
       "Güvenlik kayıtları: yetki değişiklikleri ve güvenlikle ilgili işlemlerin denetim kayıtları.",
     ],
   },

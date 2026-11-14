@@ -121,7 +121,7 @@ Manuel duman testi (smoke test):
 - Giriş › iki aşamalı doğrulama kodu › Genel bakış açılıyor.
 - Yönetim paneli › Denetim kayıtları listeleniyor; Ayrıntı'da "ağ kimliği" var (bölüm 2).
 - Bir PDF materyal yükleyip hekim hesabıyla açın (Storage CORS).
-- Ders başlatıp projektör ekranını açın; telefondan "QR kodu okut" ile katılın (kamera izni HTTPS ister).
+- Ders başlatıp projektör ekranını açın; telefondan projektördeki kodu girerek katılın.
 - Kısa bir sınav yayınlayıp hekim hesabıyla çözün; karne ve sonuçlar görünüyor.
 - Tarayıcı konsolunda içerik güvenlik politikası (CSP) ihlali yok.
 

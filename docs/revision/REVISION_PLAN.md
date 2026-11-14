@@ -102,6 +102,8 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F11.6 | Hedef kitlede "Uzman" | M | ✅ | Madde 6 (D26) |
 | F11.7 | Admin materyal süzgeci | S | ✅ | Madde 5 |
 | F11.8 | Belgeler, izlenebilirlik, tam doğrulama | S | ✅ | Hepsi |
+| **F12** | **Kullanıcı revizyonları (2026-11-14)** | | | |
+| F12.1 | Yoklamada yalnızca elle kod; kod 30 sn'de bir değişir | S | ✅ | D28 (D27'nin yerine) |
 
 ---
 
@@ -109,14 +111,14 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
-- **Tarih:** 2026-11-13
-- **Son tamamlanan adım:** F11.8. **F11 fazı tamamlandı (F11.1–F11.8 ✅)**: yoklama cihazı kaldırıldı (D23), uygulama içi QR okuyucu (D27), ders kategorisi kaldırıldı, yoklamayı yalnızca 1–4. yıl asistan verir (D24), materyal etiketleri (D25), hedef kitlede "Uzman" (D26), admin materyal süzgeci. Testler: unit 271, rules 58, functions 109, e2e 117 (+3 bilinçli atlanan).
+- **Tarih:** 2026-11-14
+- **Son tamamlanan adım:** F12.1 (yoklamada yalnızca elle kod, 30 sn'de bir değişir; QR tamamen kaldırıldı, D28). F11 (2026-11-13) tamamdı.
 - **Devam eden adım:** —
 - **Sıradaki iş:** Planlı kod işi yok. Kullanıcı tarafında:
-  1. Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`; `functions/.env.<id>` içindeki `WEBAUTHN_*` satırlarını silin; kurallar/indeksler ve functions yeniden dağıtılır (kullanılmayan `materials (category, createdAt)` indeksini CLI silmek için sorar).
-  2. KVKK metni 1.1'e çıktı: her üyeden yeniden onay istenir; hukuk onayı hâlâ bekliyor (`KVKK_NOTICE_APPROVED`).
-  3. UAT: önce B1 (gerçek telefonda kamera, HTTPS), B7, D4; ardından önceki ⚠ senaryolar. `TRACEABILITY.md` › "Açık kalanlar".
-  - Yeni istek gelirse: §1'e F12.x satırı ekle, aynı ritüelle ilerle.
+  1. Staging zaten kuruluysa: `npx tsx scripts/remove-attendance-device-data.ts --project <id>` (kuru çalışma) → `--yes`; `functions/.env.<id>` içindeki `WEBAUTHN_*` satırlarını silin; kurallar/indeksler, functions ve arayüz yeniden dağıtılır.
+  2. KVKK metni 1.2: her üyeden yeniden onay istenir; hukuk onayı hâlâ bekliyor (`KVKK_NOTICE_APPROVED`).
+  3. UAT: önce B1 (telefondan kod girişi), B2 (arka sıradan okunabilirlik, 30 sn), B7, D4; ardından önceki ⚠ senaryolar. `TRACEABILITY.md` › "Açık kalanlar".
+  - Yeni istek gelirse: §1'e F12.x / F13.x satırı ekle, aynı ritüelle ilerle.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -154,7 +156,8 @@ Bu kararlar bütün adımlar için geçerlidir. Değiştirmek için kullanıcı 
 | D24 | **Yoklamayı yalnızca admin yönetir; yalnızca 1–4. yıl asistan verir** (kullanıcı kararı 2026-11-13). Başlatma, bitirme, projektör ve mazeret admin'e özel. Yoklama veren üye: `role == "user"`, ünvan `Asistan Dr.`, `residencyYear ∈ 1–4`. `expectedAttendees` ve D22 "katılmadı" kayıtları yalnızca bu üyeler içindir. Tek kaynak `isAttendanceEligible` (shared), sunucuda `guards.ts › requireAttendee`. | Uzman/öğretim üyeleri yoklamaya tabi değil | Evet |
 | D25 | **Materyal sınıflaması serbest etikettir** (kullanıcı kararı 2026-11-13: birden çok etiket). 0–8 etiket, her biri ≤ 40 karakter; kırpılır, iç boşluklar teke iner, `tr` küçük harfe göre tekrarsız. `MATERIAL_CATEGORIES` kaldırılır; eski `category` alanı okunurken tek etiket sayılır. Öneriler mevcut materyallerden türetilir (ayrı koleksiyon yok). | Sabit liste klinik ihtiyaca uymuyor | Evet |
 | D26 | **Materyal hedef kitlesi = `targetYears` (1–4) + `targetSpecialists`** (kullanıcı kararı 2026-11-13). En az biri dolu. "Uzman" yalnızca ünvanı `Uzm. Dr.` olan üyedir; Doç./Prof. hedef kitle dışında kalır, varsayılan süzgeçleri "Bütün kıdemler". Görünürlük kurallarda kısıtlanmaz (süzgeç ve rapor içindir). | Uzmanlara özel içerik | Evet |
-| D27 | **QR okuma cihazda, `jsqr` ile** (kullanıcı kararı 2026-11-13: kamera izni "QR kodu okut" düğmesiyle istenir). Kamera görüntüsü kaydedilmez, gönderilmez; çözümleme ana iş parçacığında (CSP değişmez). `BarcodeDetector` kullanılmaz: tek kod yolu, e2e'de sınanan yolla aynı. | Uygulama içinden yoklama; KVKK | Evet |
+| D27 | ~~**QR okuma cihazda, `jsqr` ile** (kullanıcı kararı 2026-11-13: kamera izni "QR kodu okut" düğmesiyle istenir). Kamera görüntüsü kaydedilmez, gönderilmez; çözümleme ana iş parçacığında (CSP değişmez). `BarcodeDetector` kullanılmaz: tek kod yolu, e2e'de sınanan yolla aynı.~~ **D28 ile değişti (2026-11-14).** | Uygulama içinden yoklama; KVKK | Evet |
+| D28 | **Yoklamada QR yok; kod yalnızca elle girilir ve 30 saniyede bir değişir** (D27'nin yerine; kullanıcı kararı 2026-11-14). Uygulama içi okuyucu, projektördeki QR görseli ve `?s=&c=` bağlantısıyla kodun dolu gelmesi kaldırıldı; `jsqr` silindi; `Permissions-Policy: camera=()`; KVKK metninden kamera maddesi çıktı (sürüm 1.2). `ATTENDANCE_SLOT_MS = 30_000`; sunucu bir önceki pencereyi de kabul eder (kod en çok ~60 sn geçerli). | Kamera yalnızca HTTPS'de açılır; kullanıcı tek ve basit yol istedi. Ödünleşim: kodun iletilme penceresi ~30 sn → ~60 sn (S2, farklı ağ işareti sürüyor). | Evet |
 
 ---
 
@@ -1681,6 +1684,21 @@ Kullanıcının 7 maddelik isteği. Plan: oturumdaki onaylı plan dosyası; kara
   - `STAGING_CHECKLIST.md`: B7 (eski passkey verisinin temizliği), E8 (gerçek telefonda kamera, HTTPS). `Plan.MD`, README, DEPLOY güncel.
   - Tam e2e'de bulunan: `e2e/registration.spec.ts` aydınlatma metni sürümünü sabit "1.0" bekliyordu → `KVKK_NOTICE_VERSION`; kamera maddesi ve "Cihaz bilgisi"nin yokluğu da doğrulanıyor.
   - **Doğrulandı:** lint (0 uyarı), format, typecheck (Next + functions + testler), no-mock, unit 271, rules 58, functions 109, e2e **117 + 3 bilinçli atlanan** (tam paket 115 + düzeltilen 2 spec yeniden koşuldu), `npm run build`, `npm --prefix functions run build`.
+
+---
+
+### F12 — Kullanıcı revizyonları (2026-11-14)
+
+#### F12.1 Yoklamada yalnızca elle kod; kod 30 sn'de bir değişir (S)
+- **✅ Uygulanan (D28):**
+  - `ATTENDANCE_SLOT_MS` 15 → **30 sn**. Sunucu kodu değişmedi (pencere ve bir önceki pencere sabitten); projektör yenilenmesi sunucunun `msUntilRotation`'ından.
+  - Silinenler: `QrScanner.tsx`, `src/lib/attendance/checkInLink.ts`, projektördeki QR görseli (`qrcode` paketi TOTP kurulumu için kaldı), hekim ekranında `?s=&c=` ile dolu gelen kod, kamera hata mesajları, `.qr-scanner*` stilleri, `jsqr` bağımlılığı, `e2e/fixtures/camera.ts`.
+  - Hekim ekranı: yalnızca kod alanı; ipucu sabitten (`CODE_HINT`: "Kod 30 saniyede bir yenilenir…"). Projektör: kod ortada ve büyük (`clamp(3rem, 11vw, 12rem)`), "Pediatrist › Ders Yoklaması ekranına bu kodu girin." Ekran görüntüsüyle kontrol edildi.
+  - `Permissions-Policy: camera=()`. KVKK metni 1.2 (kamera maddesi çıktı; yeniden onay istenir).
+  - Metinler: yoklama sayfası, başlatma kartı, hekim dashboard'u "projektördeki kodu girerek".
+  - **Testler:** e2e ana akış artık kodu elle yazar (küçük harfle; eski QR bağlantısının kodu doldurmadığı ve projektörde görsel olmadığı da doğrulanır); süresi geçmiş kod testi 30 sn'lik yenilemeye göre (poll 40 sn, test 180 sn); QR e2e'leri silindi. unit: 30 sn ve ipucu; `camera=()`; çözücü ve kamera testleri silindi. KVKK e2e'si "Kamera" ve "Cihaz bilgisi" maddelerinin yokluğunu doğrular. functions pencere testi sabitten türediği için değişmeden 30 sn'yi sınar.
+  - Belgeler: TRACEABILITY (§10 madde 2 değişti, C2/S2/kullanılabilirlik satırları), UAT B1 (telefondan kod girişi), B2/B3, STAGING E8 silindi, README, DEPLOY, `Plan.MD`.
+  - **Doğrulandı:** lint (0 uyarı), format, typecheck, no-mock, unit 267, rules 58, functions 109, e2e **113 + 3 bilinçli atlanan** (tam paket; QR'ın 4 e2e'si silindi), `npm run build`, `npm --prefix functions run build`.
 
 ---
 

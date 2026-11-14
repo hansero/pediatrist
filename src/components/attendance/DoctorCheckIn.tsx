@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { ATTENDANCE_CODE_LENGTH } from "@shared/constants";
+import React, { useRef, useState } from "react";
+import { ATTENDANCE_CODE_LENGTH, ATTENDANCE_SLOT_MS } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -10,35 +10,20 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
-import { parseCheckInLink } from "@/lib/attendance/checkInLink";
 import { isLectureOpen, useLiveLecture, useMyRecord } from "@/lib/attendance/live";
 import type { ClinicMemberSession } from "@/lib/auth/types";
 import { verifyRealTimeAttendance } from "@/lib/firebase/callables";
-import { QrScanner } from "./QrScanner";
 
 const timeFormat = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
-/**
- * Telefonun kendi kamerasıyla okutulan projektör QR'ı bu sayfayı `?s=<ders>&c=<kod>` ile açar (F4.3).
- * Ders eşleşirse kod önceden doldurulur; gönderim yine bir dokunuşla yapılır (adresle mutasyon yok).
- */
-function codeFromLink(sessionId: string): string {
-  if (typeof window === "undefined") return "";
-  const link = parseCheckInLink(window.location.href, window.location.origin);
-  return link.ok && link.sessionId === sessionId ? link.code : "";
-}
-
-/** Yoklama alındıktan sonra adresteki eski kodu temizler (yenilemede/geri tuşunda tekrar dolmasın). */
-function clearLinkParams() {
-  if (typeof window === "undefined" || !window.location.search) return;
-  window.history.replaceState(window.history.state, "", window.location.pathname);
-}
+/** Kod alanının ipucu: yenilenme aralığı ortak sabitten (D28). */
+export const CODE_HINT = `Kod ${ATTENDANCE_SLOT_MS / 1000} saniyede bir yenilenir; ekrandaki güncel kodu girin.`;
 
 /**
- * Hekim yoklaması (F4.3 çekirdeği; kişisel geçmiş F4.4; uygulama içi QR okutma F11.2).
- * Canlı ders Firestore'dan dinlenir; kod MFA'lı oturumla SUNUCUDA doğrulanır (cihaz bağlama yok, D23) ve
- * ekrandaki "katıldınız" bilgisi kendi kaydı dinlenerek gösterilir (iyimser başarı yok).
- * İki yol: "QR kodu okut" (okununca hemen gönderilir) ya da projektördeki kodu elle girme.
+ * Hekim yoklaması (F4.3 çekirdeği; kişisel geçmiş F4.4).
+ * Canlı ders Firestore'dan dinlenir; hekim projektördeki kodu ELLE girer (QR yok, D28) ve kod MFA'lı oturumla
+ * SUNUCUDA doğrulanır (cihaz bağlama yok, D23). "Katıldınız" bilgisi kendi kaydı dinlenerek gösterilir
+ * (iyimser başarı yok).
  */
 export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
   const live = useLiveLecture();
@@ -49,18 +34,6 @@ export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
   const checkIn = useAsyncAction((sessionId: string, value: string) =>
     verifyRealTimeAttendance({ sessionId, code: value.trim() })
   );
-
-  const lectureId = lecture?.id ?? null;
-  useEffect(() => {
-    if (!lectureId) return;
-    const fromLink = codeFromLink(lectureId);
-    if (fromLink) setCode(fromLink);
-  }, [lectureId]);
-
-  const present = record.status === "ready" && record.data?.status === "present";
-  useEffect(() => {
-    if (present) clearLinkParams();
-  }, [present]);
 
   if (live.status === "loading") return <p className="page-header-subtitle">Canlı ders kontrol ediliyor…</p>;
   if (live.status === "error") return <Alert tone="critical">{live.error}</Alert>;
@@ -83,12 +56,6 @@ export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
     await checkIn.run(lecture.id, code);
   }
 
-  function onScanned(scanned: string) {
-    if (!lecture) return;
-    setCode(scanned);
-    void checkIn.run(lecture.id, scanned);
-  }
-
   return (
     <Card
       title={lecture.title}
@@ -109,11 +76,7 @@ export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
             <StatusChip tone="warning">Bu derste mazeretli olarak işaretlisiniz; katılırsanız güncellenir.</StatusChip>
           )}
           {checkIn.error && <Alert tone="critical">{checkIn.error}</Alert>}
-          <QrScanner sessionId={lecture.id} onCode={onScanned} disabled={checkIn.pending} />
-          <p className="qr-scanner-divider" aria-hidden="true">
-            veya kodu elle girin
-          </p>
-          <Field label="Projektördeki kod" hint="Kod 15 saniyede bir yenilenir; ekrandaki güncel kodu girin." required>
+          <Field label="Projektördeki kod" hint={CODE_HINT} required>
             {(p) => (
               <input
                 {...p}

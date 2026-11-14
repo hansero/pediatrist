@@ -109,10 +109,10 @@ export function buildSecurityHeaders(options: SecurityHeaderOptions): HeaderEntr
     { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
     {
       key: "Permissions-Policy",
-      // camera: yoklamada QR okutma (F11.2); wake lock + fullscreen: F4.3 projektör.
+      // camera kapalı: yoklamada QR okutma kaldırıldı, kod elle girilir (D28). wake lock + fullscreen: F4.3 projektör.
       // publickey-credentials kapalı: yoklama cihazı (passkey) kaldırıldı (D23), TOTP MFA WebAuthn kullanmaz.
       value: [
-        "camera=(self)",
+        "camera=()",
         "microphone=()",
         "geolocation=()",
         "payment=()",

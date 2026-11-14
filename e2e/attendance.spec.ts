@@ -1,19 +1,17 @@
 import { readFileSync } from "node:fs";
 import type { Browser, Download, Locator, Page } from "@playwright/test";
 import { ACCOUNTS, loginAs } from "./fixtures/auth";
-import { checkInUrl } from "../src/lib/attendance/checkInLink";
-import { cameraRequests, denyCamera, installFakeCamera, showQrOnCamera } from "./fixtures/camera";
 import { closeLiveLectures, countAuditLogs } from "./fixtures/emulator";
 import { expect, expectNoHorizontalOverflow, guardedContext, test } from "./fixtures/test";
 
 /**
  * F4.3: gerçek yoklama akışı (sahte veri yok). Admin dersi başlatır → projektör kodu sunucudan gelir →
- * hekim QR bağlantısıyla açar ve kodla katılır (cihaz bağlama yok, D23) → admin listesi canlı güncellenir →
+ * hekim projektördeki kodu elle girer (QR yok, D28; cihaz bağlama yok, D23) → admin listesi canlı güncellenir →
  * mazeret girilir → ders bitirilir → projektör ve hekim ekranı kapanışı görür.
  */
 const DOCTOR_EMAIL = "asistan3@pediatrist.test";
 
-test("ders başlat → projektör kodu → hekim QR bağlantısıyla katılır → canlı liste → mazeret → dersi bitir", async ({
+test("ders başlat → projektör kodu → hekim kodu elle girerek katılır → canlı liste → mazeret → dersi bitir", async ({
   browser,
 }, testInfo) => {
   test.setTimeout(90_000);
@@ -41,21 +39,26 @@ test("ders başlat → projektör kodu → hekim QR bağlantısıyla katılır �
   // Hekim ekranı yenilenmeden canlı dersi görür.
   await expect(doctor.getByRole("region", { name: title })).toBeVisible();
 
-  // Projektör: kod sunucudan gelir, QR gösterilir.
+  // Projektör: kod sunucudan gelir; QR yok (D28).
   const projectorHref = await liveCard.getByRole("link", { name: "Projektör ekranını aç" }).getAttribute("href");
   const sessionId = decodeURIComponent(String(projectorHref).split("/").pop()!);
   const projector = await adminCtx.newPage();
   await projector.goto(String(projectorHref));
   const codeEl = projector.getByTestId("projector-code");
   await expect(codeEl).toHaveText(/^[A-Z0-9]{6}$/);
-  await expect(projector.getByRole("img", { name: /QR kod/ })).toBeVisible();
+  await expect(projector.locator(".projector img")).toHaveCount(0);
+  await expect(projector.getByText("Pediatrist › Ders Yoklaması ekranına bu kodu girin.")).toBeVisible();
   const code = (await codeEl.textContent())!.trim();
   // Kod tek satırda ve kırpılmadan sığmalı (salonun arkasından okunur).
   expect(await codeEl.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
 
-  // Hekim: QR'daki bağlantıyla gelir (telefonun kendi kamerası; kod önceden dolu) ve tek dokunuşla katılır.
+  // Eski QR bağlantısı (`?s=&c=`) artık kodu doldurmaz (D28); okuyucu düğmesi yok. Hekim kodu elle yazar.
   await doctor.goto(`/attendance?s=${encodeURIComponent(sessionId)}&c=${code}`);
-  await expect(doctor.getByLabel("Projektördeki kod")).toHaveValue(code);
+  const codeInput = doctor.getByLabel("Projektördeki kod");
+  await expect(codeInput).toHaveValue("");
+  await expect(doctor.getByRole("button", { name: "QR kodu okut" })).toHaveCount(0);
+  await expect(doctor.getByText("Kod 30 saniyede bir yenilenir; ekrandaki güncel kodu girin.")).toBeVisible();
+  await codeInput.fill(code.toLowerCase());
   await doctor.getByRole("button", { name: "Yoklamaya katıl" }).click();
   await expect(doctor.getByRole("status").filter({ hasText: "Yoklamanız alındı" })).toBeVisible();
 
@@ -302,7 +305,8 @@ async function startLectureWithProjector(browser: Browser, title: string) {
 test("yanlış kod ve süresi geçmiş kod reddedilir, kayıt yazılmaz; güncel kodla katılır (F4.6)", async ({
   browser,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  // Kod 30 sn'de bir değişir (D28): iki yenilemeyi beklemek ~60 sn sürer.
+  test.setTimeout(180_000);
   await closeLiveLectures();
   const lecture = await startLectureWithProjector(browser, `E2E kod dersi ${testInfo.project.name} ${Date.now()}`);
 
@@ -323,9 +327,9 @@ test("yanlış kod ve süresi geçmiş kod reddedilir, kayıt yazılmaz; güncel
   await expect.poll(rejected).toBe(1);
 
   // 2) Eski kod: projektör iki kez yenilendikten sonra ilk kod artık geçmez (yalnızca bir önceki pencere kabul).
-  await expect.poll(lecture.currentCode, { timeout: 20_000 }).not.toBe(firstCode);
+  await expect.poll(lecture.currentCode, { timeout: 40_000 }).not.toBe(firstCode);
   const secondCode = await lecture.currentCode();
-  await expect.poll(lecture.currentCode, { timeout: 20_000 }).not.toBe(secondCode);
+  await expect.poll(lecture.currentCode, { timeout: 40_000 }).not.toBe(secondCode);
   await codeInput.fill(firstCode);
   await submit.click();
   await expect.poll(rejected).toBe(2);
@@ -337,74 +341,6 @@ test("yanlış kod ve süresi geçmiş kod reddedilir, kayıt yazılmaz; güncel
   await submit.click();
   await expect(doctor.getByRole("status").filter({ hasText: "Yoklamanız alındı" })).toBeVisible();
   await expect(lecture.admin.getByTestId("present-count")).toHaveText(/^1 \/ \d+$/);
-
-  await doctorCtx.close();
-  await lecture.end();
-});
-
-// --- F11.2: uygulama içi QR okutma -----------------------------------------------------------------
-
-test("QR kodu okut: kamera yalnızca düğmeyle açılır; yabancı QR reddedilir; projektör QR'ı okununca yoklama hemen alınır (F11.2)", async ({
-  browser,
-  baseURL,
-}, testInfo) => {
-  test.setTimeout(120_000);
-  await closeLiveLectures();
-  const lecture = await startLectureWithProjector(browser, `E2E QR dersi ${testInfo.project.name} ${Date.now()}`);
-
-  const doctorCtx = await guardedContext(await browser.newContext());
-  await installFakeCamera(doctorCtx);
-  const doctor = await doctorCtx.newPage();
-  await loginAs(doctor, "asistan1@pediatrist.test");
-  await doctor.goto("/attendance");
-  await expect(doctor.getByRole("region", { name: lecture.title })).toBeVisible();
-  // Sayfa açılınca kamera istenmez (izin isteği yalnızca düğmeyle).
-  expect(await cameraRequests(doctor)).toBe(0);
-
-  // Önce başka bir QR (ör. ürün etiketi): kod sayılmaz, kamera açık kalır.
-  await showQrOnCamera(doctor, "https://example.com/urun/123");
-  await doctor.getByRole("button", { name: "QR kodu okut" }).click();
-  await expect(doctor.getByRole("status").filter({ hasText: "Bu bir Pediatrist yoklama kodu değil." })).toBeVisible();
-  await expect(doctor.getByLabel("Kamera görüntüsü")).toBeVisible();
-  expect(await cameraRequests(doctor)).toBe(1);
-  await expect(lecture.admin.getByTestId("present-count")).toHaveText(/^0 \/ \d+$/);
-
-  // Projektördeki güncel QR: okununca kamera kapanır ve yoklama düğmeye basmadan gönderilir.
-  await showQrOnCamera(doctor, checkInUrl(baseURL!, lecture.sessionId, await lecture.currentCode()));
-  await expect(doctor.getByRole("status").filter({ hasText: "Yoklamanız alındı" })).toBeVisible();
-  await expect(doctor.getByLabel("Kamera görüntüsü")).toHaveCount(0);
-  await expect(lecture.admin.getByTestId("present-count")).toHaveText(/^1 \/ \d+$/);
-  await expectNoHorizontalOverflow(doctor);
-
-  await doctorCtx.close();
-  await lecture.end();
-});
-
-test("kamera izni verilmezse Türkçe açıklama çıkar ve elle kodla katılım çalışır (F11.2)", async ({
-  browser,
-}, testInfo) => {
-  test.setTimeout(120_000);
-  await closeLiveLectures();
-  const lecture = await startLectureWithProjector(browser, `E2E izin dersi ${testInfo.project.name} ${Date.now()}`);
-
-  // Kullanıcı izin isteğini reddeder (tarayıcı NotAllowedError döner). Not: başsız Chromium'da kamera aygıtı
-  // olmadığı için gerçek API burada NotFoundError verir; izin reddi bu yüzden enjekte edilir.
-  const doctorCtx = await guardedContext(await browser.newContext());
-  await denyCamera(doctorCtx);
-  const doctor = await doctorCtx.newPage();
-  await loginAs(doctor, "asistan1@pediatrist.test");
-  await doctor.goto("/attendance");
-  await doctor.getByRole("button", { name: "QR kodu okut" }).click();
-  await expect(
-    doctor.getByRole("alert").filter({
-      hasText: "Kamera izni verilmedi. Tarayıcı ayarlarından kamera izni verin ya da kodu elle girin.",
-    })
-  ).toBeVisible();
-  await expect(doctor.getByRole("button", { name: "QR kodu okut" })).toBeVisible();
-
-  await doctor.getByLabel("Projektördeki kod").fill(await lecture.currentCode());
-  await doctor.getByRole("button", { name: "Yoklamaya katıl" }).click();
-  await expect(doctor.getByRole("status").filter({ hasText: "Yoklamanız alındı" })).toBeVisible();
 
   await doctorCtx.close();
   await lecture.end();
@@ -427,6 +363,5 @@ test("uzman hesabında ders yoklaması yok: menüde görünmez, sayfa açıklama
 
   await page.goto("/attendance");
   await expect(page.getByText("Ders yoklaması yalnızca 1.–4. yıl asistan hekimler içindir.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "QR kodu okut" })).toHaveCount(0);
   await expect(page.getByLabel("Projektördeki kod")).toHaveCount(0);
 });

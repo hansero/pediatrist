@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AppError, APP_ERROR_MESSAGES, cameraErrorMessage, toAppError, toUserMessage } from "@/lib/errors";
+import { AppError, APP_ERROR_MESSAGES, toAppError, toUserMessage } from "@/lib/errors";
 
 const firebaseError = (code: string, message: string, details?: unknown) =>
   Object.assign(new Error(message), { code, details });
@@ -51,18 +51,6 @@ describe("Firebase Auth hataları", () => {
     expect(toUserMessage(authErr("auth/invalid-credential"))).toBe("E-posta adresi veya şifre hatalı.");
     // Bilinmeyen kodda Firebase'in teknik mesajı gösterilmez
     expect(toUserMessage(authErr("auth/internal-error"))).toBe(APP_ERROR_MESSAGES.internal);
-  });
-});
-
-describe("kamera hataları (F11.2: QR okutma)", () => {
-  it("izin reddi, kamera yok ve kamera meşgul ayrı ve çözüm gösteren Türkçe mesaj; bilinmeyen hata genel mesaj", () => {
-    const dom = (name: string) => new DOMException("x", name);
-    expect(cameraErrorMessage(dom("NotAllowedError"))).toContain("Kamera izni verilmedi");
-    expect(cameraErrorMessage(dom("NotAllowedError"))).toContain("kodu elle girin");
-    expect(cameraErrorMessage(dom("NotFoundError"))).toContain("kamera bulunamadı");
-    expect(cameraErrorMessage(dom("NotReadableError"))).toContain("başka bir uygulamada açık");
-    expect(cameraErrorMessage(new Error("boom"))).toBe("Kamera açılamadı. Tekrar deneyin ya da kodu elle girin.");
-    expect(cameraErrorMessage(undefined)).toContain("Kamera açılamadı");
   });
 });
 

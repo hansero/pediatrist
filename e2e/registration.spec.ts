@@ -98,9 +98,9 @@ test("aydınlatma metni: sürümlü, veri sorumlusu yapılandırmadan; kayıt fo
   await page.goto("/kvkk");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Kişisel Verilerin Korunması Aydınlatma Metni");
   await expect(page.getByText(`Sürüm ${KVKK_NOTICE_VERSION}`)).toBeVisible();
-  // F11.1 (D23): cihaz maddesi yerine kamera maddesi (QR okutma; görüntü cihazda kalır).
-  await expect(page.getByText(/kamera görüntüsü yalnızca kendi cihazınızda işlenir/)).toBeVisible();
+  // D23 / D28: yoklamada cihaz bağlama ve kamera yok; metinde bu maddeler bulunmaz.
   await expect(page.getByText(/Cihaz bilgisi/)).toHaveCount(0);
+  await expect(page.getByText(/Kamera/)).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Veri sorumlusu" })).toContainText("Pediatrist Yerel Test Ortamı");
   await expect(page.getByRole("region", { name: "Haklarınız (KVKK md. 11)" })).toBeVisible();
 });
