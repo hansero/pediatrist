@@ -114,7 +114,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F14.1 | Ortak katman: `validateQuizQuestion`, CSV `rows`, "Soru N" mesajları, `editedInPreview`, `quiz_media` yalnızca create | S | ✅ | (yeni talep) |
 | F14.2 | İstemci durum modeli: `questionForm`, `uniqueQuizMediaPath`, düzenlenebilir `useCsvQuestions` | M | ✅ | (yeni talep) |
 | F14.3 | Arayüz: soru kartı düzenleyici, görsel seçici (yükle/seç), sekme koruması | L | ✅ | (yeni talep) |
-| F14.4 | e2e, UAT senaryosu, belgeler | M | 🟨 | (yeni talep) |
+| F14.4 | e2e, UAT senaryosu, belgeler | M | ✅ | (yeni talep) |
 
 ---
 
@@ -125,8 +125,8 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 - **Tarih:** 2026-11-14
 - **Son tamamlanan adım:** F13.5 (dış #19 collectionGroup kuralı, #3 CORS şablonu, belgeler). **F13 (dış denetim düzeltmeleri) tamam:** F13.1 (#5, #6), F13.2 (#7, #10), F13.3 (#8, #11), F13.4 (#13, #14, #18), F13.5 (#19, #3). Bulgu bulgu hüküm: `EXTERNAL_AUDIT_2026-11-14.md`; kanıt: TRACEABILITY §11.
 - **Doğrulama:** lint, format, typecheck, no-mock, unit 282, rules 58, functions 109 yeşil; adım adım ilgili e2e'ler yeşil (attendance+csp 20, quiz-exam+quiz-timeout, materials-viewer+session+admin-panel+privacy+auth 26). **Tam e2e paketi: 115 geçti + 5 bilinçli atlanan** (önceki 3 + yeni iki F13.3 gerçek saat testinin telefon kopyası; masaüstünde koşarlar). `npm run build` (e2e sunucusu) ve `npm --prefix functions run build` yeşil.
-- **Devam eden adım:** F14 (yeni kullanıcı talebi, D29): sınav önizlemesinde soru düzenleme ve görsel ekleme. Plan §5 F14'te.
-- **Sıradaki iş:** F14.4'ü bitir: UAT C6 ve TRACEABILITY §12 yazıldı; kalan yalnızca tam e2e sonucunu (`npm run test:e2e`) kaydetmek ve adımı ✅ yapmak. `e2e/quiz-preview-edit.spec.ts` iki ekran boyutunda yeşil. F14.1–F14.3 ✅. F14 dışında kullanıcı tarafında bekleyenler:
+- **Devam eden adım:** —
+- **Sıradaki iş:** F14 tamamlandı (D29; sınav önizlemesinde düzenleme ve görsel ekleme). UAT'ta C6 senaryosu denenmeli. F14 dışında kullanıcı tarafında bekleyenler:
   1. Staging: eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), `storage-cors.example.json` → `cors.json` → kovaya uygula (DEPLOY 1.1.7), canlı reCAPTCHA ile CSP kontrolü (STAGING C5).
   2. KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`).
   3. UAT: önce ⚠ senaryolar; yeni: E4.2 (MFA kurmamış üyenin onay akışı).
@@ -1811,6 +1811,12 @@ Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştır�
 - Regresyon: `quiz-admin.spec.ts`, `quiz-exam.spec.ts`, seed.
 - `UAT_SCENARIOS.md`'ye senaryo; §1, §2 güncellemesi.
 - **Doğrulama:** §4 kabul kapıları; e2e'de ilgili spec'ler, sonunda tam paket.
+
+- **✅ Uygulanan F14.4:**
+  - `e2e/quiz-preview-edit.spec.ts` (iki ekran boyutu): hatalı satırı "Soruya git" ile düzeltme; yükleyerek görsel ekleme; aynı adın `-2` alması; SVG reddi; yüklü görsellerden seçme; seçenek ekleme ve doğru işaretleme; doğru seçeneğin metnini düzenleme; Enter'ın kaydetmemesi; sıra değiştirme; onaylı çıkarma; sekme değişiminde korunma; Firestore'da `questions_public` ve cevap anahtarının önizlemeyle aynı olması; denetim kaydında `editedInPreview: true`; düzenleme modunda axe ve yatay taşma denetimi.
+  - Yeni e2e yardımcıları: `readDocumentDeep`, `auditMetadata` (`e2e/fixtures/emulator.ts`).
+  - Belgeler: `UAT_SCENARIOS.md` C6 eklendi, C1 güncellendi; `TRACEABILITY.md` §12.
+  - **Doğrulama:** lint, format, typecheck ve sahte veri bekçisi temiz. Unit 301, rules 59, functions 110. **Tam e2e: 117 geçti + 5 bilinçli atlanan** (önceki 115 + yeni spec × 2). Functions ve Next derlemeleri e2e komutunun içinde yeşil.
 
 ---
 
