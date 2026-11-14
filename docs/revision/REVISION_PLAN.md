@@ -123,8 +123,8 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-14
-- **Son tamamlanan adım:** F13.5 (dış #19 collectionGroup kuralı, #3 CORS şablonu, belgeler). **F13 (dış denetim düzeltmeleri) tamam:** F13.1 (#5, #6), F13.2 (#7, #10), F13.3 (#8, #11), F13.4 (#13, #14, #18), F13.5 (#19, #3). Bulgu bulgu hüküm: `EXTERNAL_AUDIT_2026-11-14.md`; kanıt: TRACEABILITY §11.
-- **Doğrulama:** lint, format, typecheck, no-mock, unit 282, rules 58, functions 109 yeşil; adım adım ilgili e2e'ler yeşil (attendance+csp 20, quiz-exam+quiz-timeout, materials-viewer+session+admin-panel+privacy+auth 26). **Tam e2e paketi: 115 geçti + 5 bilinçli atlanan** (önceki 3 + yeni iki F13.3 gerçek saat testinin telefon kopyası; masaüstünde koşarlar). `npm run build` (e2e sunucusu) ve `npm --prefix functions run build` yeşil.
+- **Son tamamlanan adım:** F14.4. **F14 (sınav önizlemesinde soru düzenleme ve görsel ekleme, D29) tamam:** F14.1 ortak katman ve `quiz_media` üzerine yazma yasağı, F14.2 durum modeli, F14.3 arayüz, F14.4 e2e ve belgeler. Kanıt: TRACEABILITY §12. Önceki F13 durumu değişmedi.
+- **Doğrulama:** lint, format, typecheck, no-mock temiz; unit 301, rules 59, functions 110. **Tam e2e: 117 geçti + 5 bilinçli atlanan.** Functions ve Next derlemeleri yeşil.
 - **Devam eden adım:** —
 - **Sıradaki iş:** F14 tamamlandı (D29; sınav önizlemesinde düzenleme ve görsel ekleme). UAT'ta C6 senaryosu denenmeli. F14 dışında kullanıcı tarafında bekleyenler:
   1. Staging: eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), `storage-cors.example.json` → `cors.json` → kovaya uygula (DEPLOY 1.1.7), canlı reCAPTCHA ile CSP kontrolü (STAGING C5).
