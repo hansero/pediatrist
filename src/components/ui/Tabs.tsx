@@ -8,6 +8,8 @@ export interface TabItem {
   label: ReactNode;
   content: ReactNode;
   disabled?: boolean;
+  /** Bu panel gizliyken de DOM'da kalsın (ör. kaydedilmemiş form, F14). Genel `keepMounted`'ı tek panele uygular. */
+  keepMounted?: boolean;
 }
 
 export interface TabsProps {
@@ -109,7 +111,7 @@ export function Tabs({ label, items, value, defaultValue, onChange, keepMounted 
             tabIndex={0}
             className="ui-tabpanel"
           >
-            {(isSelected || keepMounted) && item.content}
+            {(isSelected || keepMounted || item.keepMounted) && item.content}
           </div>
         );
       })}

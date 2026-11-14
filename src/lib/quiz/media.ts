@@ -116,3 +116,28 @@ export function useStorageUrl(path: string | null | undefined): StorageUrlState 
   }, [path]);
   return state;
 }
+
+/**
+ * Görseli alınmamış bir adla yükler ve yolunu döndürür (F14 önizleme). Arada başka bir yönetici aynı adı
+ * yüklediyse Storage kuralı (D29, yalnızca yeni dosya) reddeder: liste tazelenir, ad gerçekten alınmışsa
+ * bir sonraki ekle BİR KEZ yeniden denenir. Tür ve boyut önceden `quizMediaProblem` ile denetlenmiş olmalı.
+ */
+export async function uploadQuizMediaUnique(
+  file: File,
+  taken: ReadonlySet<string>,
+  onProgress: (fraction: number) => void
+): Promise<string> {
+  const path = uniqueQuizMediaPath(file.name, file.type, taken);
+  try {
+    await uploadQuizMedia(file, path, onProgress);
+    return path;
+  } catch (err) {
+    if ((err as { code?: string })?.code !== "storage/unauthorized") throw err;
+    const fresh = new Set(await listQuizMedia());
+    if (!fresh.has(path)) throw err;
+    const retry = uniqueQuizMediaPath(file.name, file.type, fresh);
+    onProgress(0);
+    await uploadQuizMedia(file, retry, onProgress);
+    return retry;
+  }
+}

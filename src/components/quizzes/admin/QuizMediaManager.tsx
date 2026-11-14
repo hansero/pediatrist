@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { QUIZ_MEDIA_UPLOAD } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +10,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { toUserMessage } from "@/lib/errors";
-import { listQuizMedia, quizMediaPath, quizMediaProblem, uploadQuizMedia } from "@/lib/quiz/media";
+import { quizMediaPath, quizMediaProblem, uploadQuizMedia } from "@/lib/quiz/media";
+import { useQuizMediaLibrary } from "@/lib/quiz/useQuizMediaLibrary";
 import { QuizImage } from "../QuestionPreview";
 
 interface PendingFile {
@@ -24,27 +25,17 @@ interface PendingFile {
 
 /**
  * Sınav görselleri (F5.2): `quiz_media/` altına toplu yükleme (ilerleme çubuğuyla). Aynı adlı görsel
- * ÜZERİNE YAZILMAZ: yayındaki bir sınavın görseli sessizce değişmesin. Yüklenen yol CSV'nin 2. sütununa yazılır.
+ * ÜZERİNE YAZILMAZ (Storage kuralı da yasaklar, D29): yayındaki bir sınavın görseli sessizce değişmesin. Yüklenen
+ * yol CSV'nin 2. sütununa yazılır ya da görsel "Yeni sınav" önizlemesinde soru kartından seçilir (F14).
  */
 export function QuizMediaManager() {
   const toast = useToast();
   const inputId = useId();
-  const [existing, setExisting] = useState<string[] | null>(null);
-  const [listError, setListError] = useState("");
+  const library = useQuizMediaLibrary();
+  const existing = library.paths;
+  const listError = library.error;
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
-
-  async function refresh() {
-    try {
-      setListError("");
-      setExisting(await listQuizMedia());
-    } catch (err) {
-      setListError(toUserMessage(err));
-    }
-  }
-  useEffect(() => {
-    void refresh();
-  }, []);
 
   function pick(files: FileList | null) {
     const taken = new Set(existing ?? []);
@@ -83,7 +74,7 @@ export function QuizMediaManager() {
     }
     setUploading(false);
     if (ok) toast.show(`${ok} görsel yüklendi.`, { tone: "success" });
-    await refresh();
+    await library.refresh();
   }
 
   const readyCount = pending.filter((p) => p.state === "ready").length;
@@ -174,7 +165,7 @@ export function QuizMediaManager() {
           ]}
           rows={existing ?? []}
           rowKey={(p) => p}
-          loading={existing === null && !listError}
+          loading={library.loading}
           empty={<EmptyState title="Henüz görsel yok" />}
         />
       </Card>

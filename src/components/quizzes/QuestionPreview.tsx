@@ -40,18 +40,19 @@ export interface PreviewQuestion {
   caseContent: string;
   imageUrl: string;
   questionText: string;
-  questionType: QuestionType;
+  /** Önizleme düzenleyicisinde (F14) CSV'den gelen geçersiz bir tip de olabilir. */
+  questionType: QuestionType | string;
   maxLength: number;
   optionsArray: string[];
   correctAnswers?: string[];
   feedbackText?: string;
 }
 
-/**
- * Sorunun hekimin göreceği biçimde önizlemesi (admin). Cevap anahtarı ve öğrenme notu yalnızca `showKey`
- * açıkken gösterilir; doğru seçenek renge ek olarak metinle ("Doğru") işaretlenir.
- */
-export function QuestionPreview({
+/** Tip etiketi; geçersiz tipte açık uyarı metni. */
+export const previewTypeLabel = (t: string) => TYPE_LABEL[t as QuestionType] ?? "Tip geçersiz";
+
+/** Sorunun gövdesi (vaka, görsel, soru, seçenekler, isteğe bağlı cevap anahtarı); başlıksız. */
+export function QuestionPreviewBody({
   question,
   number,
   showKey,
@@ -62,24 +63,19 @@ export function QuestionPreview({
 }) {
   const isText = question.questionType === "Text Input";
   const correct = new Set((question.correctAnswers ?? []).map((a) => a.trim().toLocaleLowerCase("tr")));
-  const headingId = `preview-q-${number}`;
   return (
-    <article className="question-preview" aria-labelledby={headingId}>
-      <header className="question-preview-header">
-        <h3 id={headingId}>Soru {number}</h3>
-        <StatusChip>{TYPE_LABEL[question.questionType]}</StatusChip>
-      </header>
+    <>
       <p className="question-case">{question.caseContent}</p>
       {question.imageUrl && <QuizImage path={question.imageUrl} alt={`Soru ${number} görseli`} />}
       <p className="question-text">{question.questionText}</p>
       {isText ? (
-        <p className="page-header-subtitle">Açık uçlu yanıt (en fazla {question.maxLength} karakter).</p>
+        <p className="page-header-subtitle">Açık uçlu yanıt (en fazla {question.maxLength || "?"} karakter).</p>
       ) : (
         <ul className="question-options">
-          {question.optionsArray.map((o) => {
+          {question.optionsArray.map((o, i) => {
             const isCorrect = showKey && correct.has(o.trim().toLocaleLowerCase("tr"));
             return (
-              <li key={o} className={isCorrect ? "is-correct" : undefined}>
+              <li key={`${i}-${o}`} className={isCorrect ? "is-correct" : undefined}>
                 {o}
                 {isCorrect && (
                   <>
@@ -106,6 +102,31 @@ export function QuestionPreview({
           )}
         </div>
       )}
+    </>
+  );
+}
+
+/**
+ * Sorunun hekimin göreceği biçimde önizlemesi (admin). Cevap anahtarı ve öğrenme notu yalnızca `showKey`
+ * açıkken gösterilir; doğru seçenek renge ek olarak metinle ("Doğru") işaretlenir.
+ */
+export function QuestionPreview({
+  question,
+  number,
+  showKey,
+}: {
+  question: PreviewQuestion;
+  number: number;
+  showKey: boolean;
+}) {
+  const headingId = `preview-q-${number}`;
+  return (
+    <article className="question-preview" aria-labelledby={headingId}>
+      <header className="question-preview-header">
+        <h3 id={headingId}>Soru {number}</h3>
+        <StatusChip>{previewTypeLabel(question.questionType)}</StatusChip>
+      </header>
+      <QuestionPreviewBody question={question} number={number} showKey={showKey} />
     </article>
   );
 }

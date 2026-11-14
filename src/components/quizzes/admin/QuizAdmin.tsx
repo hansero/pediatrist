@@ -22,7 +22,8 @@ export function QuizAdmin() {
       onChange={setTab}
       items={[
         { id: "list", label: "Sınavlar", content: <QuizList onCreate={() => setTab("new")} /> },
-        { id: "new", label: "Yeni sınav", content: <QuizImport onSaved={() => setTab("list")} /> },
+        // Önizlemedeki kaydedilmemiş düzenlemeler sekme değişince kaybolmasın (F14).
+        { id: "new", label: "Yeni sınav", content: <QuizImport onSaved={() => setTab("list")} />, keepMounted: true },
         { id: "results", label: "Sonuçlar", content: <QuizResults /> },
         { id: "doctors", label: "Hekimler", content: <DoctorProgress /> },
         { id: "media", label: "Görseller", content: <QuizMediaManager /> },

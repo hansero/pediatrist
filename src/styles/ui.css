@@ -759,6 +759,129 @@
   margin: 0;
 }
 
+/* --- Önizleme düzenleyicisi (F14) ------------------------------------------------------------- */
+
+.question-edit-card[data-invalid] {
+  border-color: var(--status-critical);
+  border-left-width: 4px;
+}
+
+.question-edit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.question-edit-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.question-edit-issues {
+  display: grid;
+  gap: var(--space-1);
+  padding-left: 1.2rem;
+}
+
+.question-edit-form {
+  display: grid;
+  gap: var(--space-3);
+  border-top: 1px dashed var(--border-subtle);
+  padding-top: var(--space-3);
+}
+
+.option-edit-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.option-edit-row--text {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* Dar ekranda seçenek metni kendi satırında tam genişlik: "Doğru" ve "Kaldır" üstte. */
+@media (max-width: 480px) {
+  .option-edit-row:not(.option-edit-row--text) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "correct remove" "text text";
+    row-gap: var(--space-1);
+  }
+  .option-edit-row:not(.option-edit-row--text) > .option-edit-correct {
+    grid-area: correct;
+  }
+  .option-edit-row:not(.option-edit-row--text) > input {
+    grid-area: text;
+  }
+  .option-edit-row:not(.option-edit-row--text) > .btn {
+    grid-area: remove;
+  }
+}
+
+.option-edit-correct {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.option-edit-correct input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--clinical-primary);
+}
+
+.csv-preview-title {
+  margin: 0;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.media-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+
+.media-pick-item {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.media-pick-item:has(input:checked) {
+  border-color: var(--clinical-primary);
+  box-shadow: 0 0 0 1px var(--clinical-primary);
+}
+
+.media-pick-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.media-pick-choice code {
+  overflow-wrap: anywhere;
+  font-size: 0.78rem;
+}
+
+.media-pick-item .quiz-thumb img,
+.media-pick-item .quiz-thumb .quiz-figure-placeholder {
+  width: 100%;
+  height: 96px;
+  max-height: 96px;
+}
+
 .upload-list {
   list-style: none;
   padding: 0;

@@ -180,3 +180,56 @@ export async function findDocIds(collectionId: string, field: string, value: str
   const rows = (await res.json()) as Array<{ document?: { name: string } }>;
   return rows.flatMap((r) => (r.document ? [r.document.name.split("/").pop()!] : []));
 }
+
+type FullValue = FirestoreValue & {
+  doubleValue?: number;
+  timestampValue?: string;
+  arrayValue?: { values?: FullValue[] };
+  mapValue?: { fields?: Record<string, FullValue> };
+};
+
+function decodeValue(v: FullValue): unknown {
+  if (v.arrayValue) return (v.arrayValue.values ?? []).map(decodeValue);
+  if (v.mapValue) return decodeFields(v.mapValue.fields ?? {});
+  if (v.integerValue !== undefined) return Number(v.integerValue);
+  if (v.doubleValue !== undefined) return v.doubleValue;
+  if (v.timestampValue !== undefined) return v.timestampValue;
+  return v.stringValue ?? v.booleanValue ?? null;
+}
+
+const decodeFields = (fields: Record<string, FullValue>) =>
+  Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, decodeValue(v)]));
+
+/** Dokümanı dizi ve iç içe alanlarıyla birlikte okur (F14: soru seçenekleri, cevap anahtarı). */
+export async function readDocumentDeep(path: string): Promise<Record<string, unknown> | null> {
+  const res = await fetch(`${BASE}/${path}`, { headers: { Authorization: "Bearer owner" } });
+  if (res.status === 404) return null;
+  const doc = (await res.json()) as { fields?: Record<string, FullValue> };
+  return decodeFields(doc.fields ?? {});
+}
+
+/** Bir kaynak için belirli eylemdeki ilk denetim kaydının `metadata` alanı. */
+export async function auditMetadata(action: string, resourceId: string): Promise<Record<string, unknown> | null> {
+  const res = await fetch(`${BASE}:runQuery`, {
+    method: "POST",
+    headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "audit_logs" }],
+        where: {
+          compositeFilter: {
+            op: "AND",
+            filters: [
+              { fieldFilter: { field: { fieldPath: "action" }, op: "EQUAL", value: { stringValue: action } } },
+              { fieldFilter: { field: { fieldPath: "resourceId" }, op: "EQUAL", value: { stringValue: resourceId } } },
+            ],
+          },
+        },
+        limit: 1,
+      },
+    }),
+  });
+  const rows = (await res.json()) as Array<{ document?: { fields: Record<string, FullValue> } }>;
+  const fields = rows[0]?.document?.fields;
+  return fields ? ((decodeFields(fields).metadata as Record<string, unknown>) ?? null) : null;
+}

@@ -113,7 +113,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F14** | **Sınav önizlemesinde soru düzenleme ve görsel ekleme** (kullanıcı talebi, 2026-11-14; D29) | | | |
 | F14.1 | Ortak katman: `validateQuizQuestion`, CSV `rows`, "Soru N" mesajları, `editedInPreview`, `quiz_media` yalnızca create | S | ✅ | (yeni talep) |
 | F14.2 | İstemci durum modeli: `questionForm`, `uniqueQuizMediaPath`, düzenlenebilir `useCsvQuestions` | M | ✅ | (yeni talep) |
-| F14.3 | Arayüz: soru kartı düzenleyici, görsel seçici (yükle/seç), sekme koruması | L | ⬜ | (yeni talep) |
+| F14.3 | Arayüz: soru kartı düzenleyici, görsel seçici (yükle/seç), sekme koruması | L | ✅ | (yeni talep) |
 | F14.4 | e2e, UAT senaryosu, belgeler | M | ⬜ | (yeni talep) |
 
 ---
@@ -126,7 +126,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 - **Son tamamlanan adım:** F13.5 (dış #19 collectionGroup kuralı, #3 CORS şablonu, belgeler). **F13 (dış denetim düzeltmeleri) tamam:** F13.1 (#5, #6), F13.2 (#7, #10), F13.3 (#8, #11), F13.4 (#13, #14, #18), F13.5 (#19, #3). Bulgu bulgu hüküm: `EXTERNAL_AUDIT_2026-11-14.md`; kanıt: TRACEABILITY §11.
 - **Doğrulama:** lint, format, typecheck, no-mock, unit 282, rules 58, functions 109 yeşil; adım adım ilgili e2e'ler yeşil (attendance+csp 20, quiz-exam+quiz-timeout, materials-viewer+session+admin-panel+privacy+auth 26). **Tam e2e paketi: 115 geçti + 5 bilinçli atlanan** (önceki 3 + yeni iki F13.3 gerçek saat testinin telefon kopyası; masaüstünde koşarlar). `npm run build` (e2e sunucusu) ve `npm --prefix functions run build` yeşil.
 - **Devam eden adım:** F14 (yeni kullanıcı talebi, D29): sınav önizlemesinde soru düzenleme ve görsel ekleme. Plan §5 F14'te.
-- **Sıradaki iş:** F14.3 (arayüz: `QuestionEditorCard`, `QuestionImagePicker`, `useQuizMediaLibrary`, `Tabs` öğe bazında `keepMounted`, `QuizImport` çıkış uyarısı). F14.1–F14.2 ✅. F14 dışında kullanıcı tarafında bekleyenler:
+- **Sıradaki iş:** F14.4 (UAT senaryosu, TRACEABILITY notu, tam doğrulama: build + tam e2e). `e2e/quiz-preview-edit.spec.ts` yazıldı ve iki ekran boyutunda yeşil. F14.1–F14.3 ✅. F14 dışında kullanıcı tarafında bekleyenler:
   1. Staging: eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), `storage-cors.example.json` → `cors.json` → kovaya uygula (DEPLOY 1.1.7), canlı reCAPTCHA ile CSP kontrolü (STAGING C5).
   2. KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`).
   3. UAT: önce ⚠ senaryolar; yeni: E4.2 (MFA kurmamış üyenin onay akışı).
@@ -1795,6 +1795,16 @@ Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştır�
 - `QuestionImagePicker` (Dialog + Tabs): bilgisayardan yükle (tür/boyut denetimi, benzersiz ad, ilerleme, yükleme bitince bağlanır; ad yarışında bir kez yeniden dener) | yüklü görsellerden seç (süzme, 24'erli sayfa).
 - `useQuizMediaLibrary` (Görseller sekmesi ve seçici ortak).
 - `Tabs` öğe bazında `keepMounted`; "Yeni sınav" sekmesi açık tutulur. `beforeunload` uyarısı; düzenlenmiş önizlemede yeni CSV seçimi onay ister.
+
+- **✅ Uygulanan F14.3 (sapmalar ve eklemeler):**
+  - Bileşenler: `EditableQuestionList` (düzenleme durumu, odak, `aria-live` duyuruları, görsel seçici, çıkarma onayı), `QuestionEditorCard`, `QuestionImagePicker`; `QuestionPreview` → yeniden kullanılabilir `QuestionPreviewBody` (geçersiz tipte "Tip geçersiz").
+  - Ortak: `useQuizMediaLibrary` (Görseller sekmesi de kullanıyor), `uploadQuizMediaUnique` (ad yarışında bir kez yeniden dener).
+  - Soru silme düğmesi **"Çıkar"** ("Soru N: sınavdan çıkar"): seçenek ve görsel "Kaldır" düğmeleriyle karışmasın.
+  - Düzenleme alanları `<form>` değil (dış "Yeni sınav" formunun içinde); tek satırlık alan, radyo ve onay kutusunda Enter yakalanır, taslak yanlışlıkla kaydedilmez (e2e'de denetlenir).
+  - Seçeneklerde olmayan doğru cevap (CSV hatası) kartta uyarıyla gösterilir: "Seçenek olarak ekle" / "Kaldır".
+  - Ekran görüntüsüyle bulunup düzeltilenler: dar ekranda seçenek metni tam genişlik kendi satırına; görsel listesi yüklenirken "Yükle ve ekle"nin neden kapalı olduğu yazılır.
+  - e2e'deki axe denetiminin yakaladığı hata: "Bitti" düğmesinin erişilebilir adı görünen metni içermiyordu (`label-content-name-mismatch`) → "Soru N: bitti, düzenlemeyi kapat".
+  - `Tabs`: öğe bazında `keepMounted` (+1 birim testi). Unit 301.
 
 #### F14.4 Testler ve belgeler (M)
 - `e2e/quiz-preview-edit.spec.ts` (iki ekran boyutu): hatalı satırı önizlemede düzeltme; yükleyerek ve seçerek görsel ekleme (aynı ad → `-2`, SVG reddi); cevap yapısı değişikliği; sıra ve silme; sekme değiştirince düzenlemelerin korunması; kayıttan sonra Firestore'da sıra, görsel, seçenek ve doğru cevapların doğrulanması; denetim kaydında `editedInPreview`; axe.

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { Tabs } from "@/components/ui/Tabs";
@@ -58,5 +59,30 @@ describe("Tabs", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Rapor" }));
     expect(onChange).toHaveBeenCalledWith("d");
     expect(screen.getByRole("tab", { name: "Geçmiş" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("öğe bazında keepMounted: yalnızca o panel gizliyken de DOM'da kalır, durumu korunur (F14)", () => {
+    function Counter() {
+      const [n, setN] = React.useState(0);
+      return <button onClick={() => setN(n + 1)}>Sayaç {n}</button>;
+    }
+    render(
+      <Tabs
+        label="Stüdyo"
+        items={[
+          { id: "yeni", label: "Yeni", content: <Counter />, keepMounted: true },
+          { id: "liste", label: "Liste", content: <p>Liste içerik</p> },
+          { id: "arsiv", label: "Arşiv", content: <p>Arşiv içerik</p> },
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sayaç 0" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Liste" }));
+    expect(screen.queryByText("Arşiv içerik")).toBeNull();
+    expect(screen.getByText("Sayaç 1", { selector: "button" }).closest("[role=tabpanel]")?.hasAttribute("hidden")).toBe(
+      true
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Yeni" }));
+    expect(screen.getByRole("button", { name: "Sayaç 1" })).toBeTruthy();
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { DEFAULT_REVEAL_POLICY, LIMITS } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +22,9 @@ import { useCsvQuestions } from "./useCsvQuestions";
 /**
  * Yeni sınav (F5.2): CSV → ortak doğrulayıcı → önizleme → `saveQuizDraft`. Taslak hekimlere görünmez; yayın
  * "Sınavlar" sekmesinden yapılır. Başarı yalnızca sunucu yanıtından sonra gösterilir.
+ *
+ * F14 (D29): önizlemede sorular düzenlenir, görsel eklenir, sıra değişir; değişiklikler yereldir. Kaydedilmemiş
+ * değişiklik varken sayfadan çıkış uyarı verir; sekme değişince durum korunur (`QuizAdmin` → `keepMounted`).
  */
 export function QuizImport({ onSaved }: { onSaved: () => void }) {
   const toast = useToast();
@@ -34,6 +37,14 @@ export function QuizImport({ onSaved }: { onSaved: () => void }) {
   });
   const [errors, setErrors] = useState<SettingsErrors & { title?: string }>({});
   const save = useAsyncAction(saveQuizDraft);
+
+  const dirty = csv.dirty;
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,6 +59,7 @@ export function QuizImport({ onSaved }: { onSaved: () => void }) {
       revealPolicy: settings.revealPolicy,
       sourceFileName: csv.fileName,
       questions: csv.questions,
+      editedInPreview: csv.editedInPreview,
     });
     if (res) {
       toast.show(`"${title.trim()}" taslak olarak kaydedildi (${res.questionCount} soru).`, { tone: "success" });
@@ -60,11 +72,11 @@ export function QuizImport({ onSaved }: { onSaved: () => void }) {
   return (
     <Card
       title="Yeni sınav"
-      description="CSV'yi yükleyin, önizleyin ve taslak olarak kaydedin. Taslak, siz yayınlayana kadar hekimlere görünmez."
+      description="CSV'yi yükleyin; önizlemede soruları düzenleyip görsel ekleyebilir, sonra taslak olarak kaydedebilirsiniz. Taslak, siz yayınlayana kadar hekimlere görünmez."
     >
       <form className="auth-stack" onSubmit={onSubmit} noValidate>
         {save.error && <Alert tone="critical">{save.error}</Alert>}
-        <CsvQuestionsPanel csv={csv} />
+        <CsvQuestionsPanel csv={csv} editable />
         <Field label="Sınav başlığı" error={errors.title} required>
           {(p) => (
             <input
@@ -83,9 +95,11 @@ export function QuizImport({ onSaved }: { onSaved: () => void }) {
           </Button>
           {!csv.ready && (
             <span className="page-header-subtitle">
-              {csv.questions.length === 0 && csv.errors.length === 0
-                ? "Önce geçerli bir CSV seçin."
-                : "Hatalar giderilmeden kaydedilemez."}
+              {!csv.fileName
+                ? "Önce bir CSV seçin."
+                : csv.mediaCheck === "checking"
+                  ? "Görseller denetleniyor…"
+                  : "Hatalar giderilmeden kaydedilemez."}
             </span>
           )}
         </div>
