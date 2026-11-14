@@ -23,7 +23,7 @@ Kurulumu yapan: ……………………… Tarih: ……………… Proje kiml
 | A8  | App Check: web uygulaması reCAPTCHA Enterprise ile kayıtlı; Firestore ve Storage'da zorlama açık                 | App Check › API'ler sekmesinde "Zorunlu"                       | ☐   |        |
 | A9  | Web API anahtarına HTTP yönlendiren kısıtlaması (yalnızca uygulamanın alan adı)                                  | Başka kökenden anahtarla istek reddedilir                      | ☐   |        |
 | A10 | Storage varsayılan kovası; kuralların Firestore'a erişim izni onaylandı                                          | Kural dağıtımı uyarısız biter; materyal okunur                 | ☐   |        |
-| A11 | Storage CORS: uygulama kökeni için `GET` (1.1)                                                                   | Hekim hesabıyla PDF materyal açılır                            | ☐   |        |
+| A11 | Storage CORS: uygulama kökeni için `GET` (1.1; şablon `storage-cors.example.json`)                               | Hekim hesabıyla PDF materyal açılır                            | ☐   |        |
 | A12 | Kovada geçici silme (soft delete) veya nesne sürümleme açık (5)                                                  | Kova ayarlarında görünür                                       | ☐   |        |
 
 ## B. Yapılandırma

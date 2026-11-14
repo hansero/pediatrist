@@ -163,6 +163,31 @@ Denetim bulgusu değil; kullanıcının 7 maddelik isteği. Kararlar `REVISION_P
 | 6. Hedef kıdemde "Uzman" | ✅ | F11.6, D26 | `tests/unit/materials/labels.test.ts › "materyal hedef kitlesi (D26, F11.6)"`; `functions/test/materials.test.ts › "hedef kitle 'Uzman'…"`; `e2e/materials-viewer.spec.ts › "uzman hesabı: varsayılan süzgeç 'Uzman (benim)'…"` | Yalnızca Uzm. Dr. (kullanıcı kararı). |
 | 7. Yoklamayı admin yönetir, yalnızca 1–4. yıl asistan verir | ✅ | F11.4, D24 | `functions/test/attendance.test.ts › "D24: …"` (3 test); `functions/test/members.test.ts › "kıdem yılı yalnızca asistanlarda (D24)"`; `e2e/attendance.spec.ts › "uzman hesabında ders yoklaması yok…"` | Uzm./Doç./Prof. kayıt olabilir; yoklamaya tabi değildir. |
 
+## 11. Dış denetim (F13, 2026-11-14)
+
+Kullanıcının yaptırdığı dış denetimin 19 bulgusu. Bulgu bulgu hüküm ve gerekçe:
+[`EXTERNAL_AUDIT_2026-11-14.md`](EXTERNAL_AUDIT_2026-11-14.md). ✘ = bulgu kodla doğrulanamadı (yanlış veya eski
+bilgi); düzeltme yapılmadı.
+
+| # | Bulgu | Durum | Adım | Kanıt | Not |
+| --- | --- | --- | --- | --- | --- |
+| 5 | Onay ekranı ↔ MFA kilitlenmesi | ✅ 🔎 | F13.1 | `tests/unit/auth/SessionGuard.test.tsx › "F13.1: MFA zorunlu ve kurulmamışsa onay ekranı yerine güvenlik sayfası açılır…"`; `tests/unit/sessionDecision.test.ts › "needsConsent…"` | Gerçek TOTP emülatörde yok (D5): UAT E4.2. |
+| 6 | CSP `connect-src` reCAPTCHA | ✅ 🔎 | F13.1 | `tests/unit/securityHeaders.test.ts › "App Check (reCAPTCHA Enterprise) çalışabilir…"` | Gerçek reCAPTCHA yalnızca staging'de: STAGING C5. |
+| 7 | Süre dolunca yoklama ekranı açık kalıyor | ✅ | F13.2 | `tests/unit/attendance/DoctorCheckIn.test.tsx › "süre dolunca kod formu kapanır…"` | Sunucu zaten reddediyordu; arayüz düzeltmesi. |
+| 10 | Cihaz saati kayması | ✅ | F13.2 | `tests/unit/attendance/ProjectorKiosk.test.tsx › "bilgisayarın saati 10 dk ileriyken…"`; `tests/unit/clock.test.ts`; `functions/test/attendance.test.ts` (`serverNowMs`) | Projektörde sunucu saati; hekim telefonu NTP. |
+| 8 | Süre bitiminde teslim hatası; bekleyen ara kayıt | ✅ | F13.3 | `e2e/quiz-timeout.spec.ts › "F13.3: süre bitiminde teslim ağ hatası alırsa 'Tekrar dene'…"` | 8a'daki veri kaybı iddiası doğrulanamadı; bekleyen kayıt yine de iptal edilir. |
+| 11 | Süresi dolmuş girişime dönüş | ✅ (kozmetik) | F13.3 | `e2e/quiz-timeout.spec.ts › "F13.3: süresi dolmuş girişime dönülünce soru ekranı açılmadan sonuç gelir"` | Bulgudaki sunucu hatası iddiası yanlıştı. |
+| 13 | Materyal ilerlemesi eşzamanlı kayıt | ✅ | F13.4 | `tests/unit/materials/doctor.test.ts › "düzenli kayıt sürerken 'Tamamlandı': saniyeler kaybolmaz…"` | Asıl etki: okuma süresi eksik sayılıyordu. |
+| 14 | Oturum bağlamı yarışı; faktör listesi | ✅ | F13.4 | `tests/unit/auth/ClinicSessionContext.test.tsx` (2 test); `tests/unit/auth/AccountSecurityPage.test.tsx › "F13.4: … kaldırılan yöntem listeden hemen düşer…"` | |
+| 18 | Denetim kaydı süzgeci yarışı | ✅ | F13.4 | `tests/unit/admin/AuditLog.test.tsx › "geç dönen eski süzgeç yanıtı…"` | |
+| 19 | Kullanılmayan collectionGroup kuralı | ✅ | F13.5 | `tests/rules/firestore.test.ts › "F13.5: okunma raporu materyal başına okunur; collectionGroup('progress') kimseye açık değil"` | |
+| 3 | Storage CORS | ✅ 🔎 | F13.5 | `storage-cors.example.json`; `scripts/verify-staging.mjs` (A11) | Kovaya uygulama sizin tarafınızda (DEPLOY 1.1.7). |
+| 1, 2, 4, 16 | Tuz, TOTP, IAM/ilk admin, KVKK onayı | — | — | `DEPLOY.md` §1–2; devir notu | Operasyon/hukuk adımı. 2'deki `requireMfa:false` önerisi D20'ye aykırı; 4'teki `bootstrapFirstAdmin` yok. |
+| 9 | IP başına kayıt sınırı | ✘ | — | `functions/src/rateLimit.ts` | Böyle bir sabit yok; sınır üye başına. |
+| 15 | 500 yazım sınırı | ✘ | — | Firestore sürüm notları (24 Mart 2023) | Sınır kaldırıldı; parçalama D22 atomikliğini bozar. |
+| 12 | Hesaplayıcı motoru | — | — | D8 | Ürün kararı. |
+| 17 | Kart başına dinleyici | ⬜ | — | — | Klinik ölçeğinde ertelendi. |
+
 ---
 
 ## Açık kalanlar
@@ -178,6 +203,8 @@ engel değil; canlıya çıkmadan önce her biri için karar verilmelidir.
    e-posta, Authenticator, gerçek telefondan kod girişi, ders salonu, Storage'dan PDF).
 3. **KVKK aydınlatma metninin hukuk onayı**, yurt dışı aktarım dayanağı ve saklama süreleri.
 4. **Yedek, alarm ve bütçe uyarılarının** kurulması ve bir geri yükleme tatbikatı.
+5. **Dış denetim (F13) gerçek ortam kontrolleri:** canlı reCAPTCHA ile CSP ihlali yok (STAGING C5), Storage CORS
+   (DEPLOY 1.1.7) ve MFA kurmamış üyenin onay akışı (UAT E4.2).
 
 ### Bilinçli olarak yapılmayanlar (karar gerektirir)
 

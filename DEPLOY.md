@@ -41,15 +41,20 @@ Bu belge canlı (ve staging) ortamın kurulması ve işletilmesi içindir. Yerel
    kısıtlaması ekleyin (yalnızca uygulamanın alan adı).
 6. **Storage:** varsayılan kovayı oluşturun. Storage kuralları üyeliği Firestore'dan okur; ilk kural
    dağıtımında CLI'nin sorduğu "Storage'ın Firestore'a erişim izni"ni onaylayın.
-7. **Storage CORS** (PDF görüntüleyici dosyayı tarayıcıdan `fetch` ile okur; bu olmadan PDF açılmaz):
+7. **Storage CORS** (PDF görüntüleyici dosyayı tarayıcıdan `fetch` ile okur; bu olmadan PDF açılmaz). Şablon
+   depoda: `storage-cors.example.json`. Kopyalayıp `UYGULAMA-ALAN-ADI` yerine uygulamanın alan adını yazın
+   (staging ve canlı ayrı alan adlarıysa ikisini de listeye ekleyin):
 
-   ```json
-   [{ "origin": ["https://<uygulama-alan-adı>"], "method": ["GET"], "maxAgeSeconds": 3600 }]
+   ```bash
+   cp storage-cors.example.json cors.json
    ```
 
    ```bash
    gsutil cors set cors.json gs://<kova-adı>
    ```
+
+   Doğrulama: `gsutil cors get gs://<kova-adı>` alan adını gösterir;
+   `node scripts/verify-staging.mjs --origin https://<alan-adı>` A11 maddesi geçer.
 
 ### 1.2 Ortam değişkenleri
 

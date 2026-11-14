@@ -280,8 +280,10 @@ describe("materyal okuma ilerlemesi", () => {
     await assertSucceeds(as(resident).collection("materials").where("status", "==", "published").get());
   });
 
-  it("admin bütün materyallerin ilerlemesini tek sorguda (collectionGroup) okur; asistan okuyamaz", async () => {
-    await assertSucceeds(as(admin).collectionGroup("progress").get());
+  it("F13.5: okunma raporu materyal başına okunur; collectionGroup('progress') kimseye açık değil", async () => {
+    await assertSucceeds(as(admin).collection("materials/m1/progress").get());
+    await assertFails(as(resident).collection("materials/m1/progress").get());
+    await assertFails(as(admin).collectionGroup("progress").get());
     await assertFails(as(resident).collectionGroup("progress").get());
   });
 });

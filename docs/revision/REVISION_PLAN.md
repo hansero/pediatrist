@@ -109,7 +109,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F13.2 | Yoklama: süre dolunca ekran güncellenir; projektörde sunucu saati | S | ✅ | Dış #7, #10 |
 | F13.3 | Sınav: süre bitiminde teslim hatasında "Tekrar dene"; süresi geçmiş girişim | S | ✅ | Dış #8, #11 |
 | F13.4 | Küçük yarış durumları (materyal ilerlemesi, oturum bağlamı, faktör listesi, denetim kaydı) | S | ✅ | Dış #13, #14, #18 |
-| F13.5 | Kullanılmayan collectionGroup kuralı; `cors.json` şablonu; belgeler | S | ⬜ | Dış #19, #3 |
+| F13.5 | Kullanılmayan collectionGroup kuralı; `cors.json` şablonu; belgeler | S | ✅ | Dış #19, #3 |
 
 ---
 
@@ -118,10 +118,16 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-14
-- **Son tamamlanan adım:** F13.4 (dış #13, #14, #18 yarış durumları). Önceki: F13.1 (#5, #6), F13.2 (#7, #10), F13.3 (#8, #11). Dış denetimin bulgu bulgu değerlendirmesi: `EXTERNAL_AUDIT_2026-11-14.md`.
+- **Son tamamlanan adım:** F13.5 (dış #19 collectionGroup kuralı, #3 CORS şablonu, belgeler). **F13 (dış denetim düzeltmeleri) tamam:** F13.1 (#5, #6), F13.2 (#7, #10), F13.3 (#8, #11), F13.4 (#13, #14, #18), F13.5 (#19, #3). Bulgu bulgu hüküm: `EXTERNAL_AUDIT_2026-11-14.md`; kanıt: TRACEABILITY §11.
+- **Doğrulama:** lint, format, typecheck, no-mock, unit 282, rules 58, functions 109 yeşil; adım adım ilgili e2e'ler yeşil (attendance+csp 20, quiz-exam+quiz-timeout, materials-viewer+session+admin-panel+privacy+auth 26). **Tam e2e paketi bu commit sırasında çalışıyordu; sonucu bir sonraki commit'te buraya yazılır.**
 - **Devam eden adım:** —
-- **Sıradaki iş:** F13.5 (§1 tablosu ve §5 F13). Ardından tam doğrulama (rules, functions, e2e dahil) ve TRACEABILITY'ye dış denetim bölümü.
-  - Kullanıcı tarafında bekleyenler değişmedi: staging'de eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`), UAT (önce ⚠ senaryolar; yeni: E4.2).
+- **Sıradaki iş:** Planlı kod işi yok. Kullanıcı tarafında:
+  1. Staging: eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), `storage-cors.example.json` → `cors.json` → kovaya uygula (DEPLOY 1.1.7), canlı reCAPTCHA ile CSP kontrolü (STAGING C5).
+  2. KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`).
+  3. UAT: önce ⚠ senaryolar; yeni: E4.2 (MFA kurmamış üyenin onay akışı).
+  - Dış denetimden bilinçli olarak yapılmayanlar (gerekçe `EXTERNAL_AUDIT_2026-11-14.md`): #1, #2, #4, #16 (operasyon/hukuk), #9, #15 (yanlış bulgu), #12 (D8), #17 (ertelendi).
+  - Yeni istek gelirse: §1'e F14.x satırı ekle, aynı ritüelle ilerle.
+- **Not (e2e):** `npm run test:e2e -- <playwright argümanı>` argümanı Playwright'a değil `firebase emulators:exec`'e geçirir (hata: `unknown option`). Argüman gerekiyorsa: `npm --prefix functions run build && node scripts/firebase.mjs emulators:exec --only auth,firestore,storage,functions --project demo-pediatrist "npm run seed && npx playwright test <argümanlar>"`. Testler ortak hesapları paylaştığı için `--workers` artırılmaz.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
 
@@ -1735,6 +1741,13 @@ Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştır�
   - **Faktör listesi (dış #14b):** yöntem kaldırılınca liste yeniden okunur (yalnızca MFA zorunlu değilken ve birden çok yöntem varken görülüyordu).
   - **Denetim kayıtları (dış #18):** yalnızca son isteğin yanıtı tabloya yazılır; süzgeç değişince uçuştaki "daha fazla" sayfası da eklenmez.
   - **Testler:** `createProgressSaver` (eşzamanlı kayıt, başarısız saniyelerin yeniden gönderimi), `ClinicSessionContext` (çıkış sırasında bekleyen token; sırasız iki profil), güvenlik sayfası (kaldırılan yöntem listeden düşer), `AuditLog` (geç dönen eski süzgeç). Bileşen testlerinin üçü düzeltme olmadan başarısız olduğu doğrulandı. e2e `materials-viewer`, `session`, `admin-panel`, `privacy`, `auth` 26/26.
+
+#### F13.5 Kural yüzeyi, CORS şablonu, belgeler (S)
+- **✅ Uygulanan:**
+  - **collectionGroup kuralı (dış #19):** `{path=**}/progress/{uid}` kaldırıldı. Uygulama kodu collectionGroup kullanmıyordu; okunma raporu materyal başına alt koleksiyonu okur. Joker eşleşme ileride eklenecek her `progress` koleksiyonunu da açardı. Kural testi tersine çevrildi: admin materyal başına okur, collectionGroup kimseye açık değil.
+  - **CORS (dış #3):** `storage-cors.example.json` şablonu (yer tutuculu; doğrudan `cors.json` adıyla yanlışlıkla uygulanmasın diye `.example`; yerel kopya `.gitignore`'da). `DEPLOY.md` 1.1.7 ve STAGING A11 şablona yönlendirir; doğrulama `verify-staging --origin`.
+  - **Belgeler:** `EXTERNAL_AUDIT_2026-11-14.md` (19 bulgunun hükmü), TRACEABILITY §11 (dış denetim → adım → kanıt) ve "Açık kalanlar" 5. madde.
+  - **Doğrulandı (F13 tamamı):** lint (0 uyarı), format, typecheck, no-mock, unit 282, rules 58, functions 109, e2e tam paket (bkz. devir notu), `npm run build`, `npm --prefix functions run build`.
 
 ---
 

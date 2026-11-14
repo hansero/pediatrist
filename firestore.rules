@@ -135,10 +135,8 @@ service cloud.firestore {
       }
     }
 
-    // Admin okunma raporu: bütün materyallerin ilerleme kayıtları (collectionGroup sorgusu).
-    match /{path=**}/progress/{uid} {
-      allow read: if isAdmin();
-    }
+    // Not (F13.5): `{path=**}/progress` collectionGroup kuralı kaldırıldı. Okunma raporu materyal başına alt
+    // koleksiyonu okur (yukarıdaki kural); joker eşleşme ileride eklenecek her `progress` koleksiyonunu da açardı.
 
     // ===================================================================================
     // Modül 2: Hesaplayıcı protokol notları

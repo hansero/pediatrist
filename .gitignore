@@ -28,3 +28,6 @@ next-env.d.ts
 test-results/
 playwright-report/
 coverage/
+
+# Storage CORS: yerel kopya (şablon: storage-cors.example.json, DEPLOY 1.1.7)
+cors.json
