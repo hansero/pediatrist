@@ -107,7 +107,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | **F13** | **Dış denetim düzeltmeleri (2026-11-14)** — değerlendirme: [`EXTERNAL_AUDIT_2026-11-14.md`](EXTERNAL_AUDIT_2026-11-14.md) | | | |
 | F13.1 | Onay ↔ MFA kilitlenmesi; CSP'de reCAPTCHA `connect-src` | S | ✅ | Dış #5, #6 |
 | F13.2 | Yoklama: süre dolunca ekran güncellenir; projektörde sunucu saati | S | ✅ | Dış #7, #10 |
-| F13.3 | Sınav: süre bitiminde teslim hatasında "Tekrar dene"; süresi geçmiş girişim | S | ⬜ | Dış #8, #11 |
+| F13.3 | Sınav: süre bitiminde teslim hatasında "Tekrar dene"; süresi geçmiş girişim | S | ✅ | Dış #8, #11 |
 | F13.4 | Küçük yarış durumları (materyal ilerlemesi, oturum bağlamı, faktör listesi, denetim kaydı) | S | ⬜ | Dış #13, #14, #18 |
 | F13.5 | Kullanılmayan collectionGroup kuralı; `cors.json` şablonu; belgeler | S | ⬜ | Dış #19, #3 |
 
@@ -118,9 +118,9 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-14
-- **Son tamamlanan adım:** F13.2 (dış #7 süre dolunca yoklama ekranı, #10 projektörde sunucu saati). Önceki: F13.1 (#5 onay ↔ MFA kilitlenmesi, #6 CSP reCAPTCHA). Dış denetimin bulgu bulgu değerlendirmesi: `EXTERNAL_AUDIT_2026-11-14.md`.
+- **Son tamamlanan adım:** F13.3 (dış #8 sınavda "Tekrar dene", #11 süresi geçmiş girişim). Önceki: F13.1 (#5, #6), F13.2 (#7, #10). Dış denetimin bulgu bulgu değerlendirmesi: `EXTERNAL_AUDIT_2026-11-14.md`.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F13.3 → F13.5 (§1 tablosu ve §5 F13). Ardından tam doğrulama (rules, functions, e2e dahil) ve TRACEABILITY'ye dış denetim bölümü.
+- **Sıradaki iş:** F13.4 → F13.5 (§1 tablosu ve §5 F13). Ardından tam doğrulama (rules, functions, e2e dahil) ve TRACEABILITY'ye dış denetim bölümü.
   - Kullanıcı tarafında bekleyenler değişmedi: staging'de eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`), UAT (önce ⚠ senaryolar; yeni: E4.2).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
@@ -1720,6 +1720,13 @@ Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştır�
   - **Projektör saati (dış #10):** `getProjectorCode` yanıtına `serverNowMs` eklendi. Projektör saat farkını hesaplar ve dersin açık olup olmadığını sunucu saatine göre değerlendirir. Kod döngüsü yerel saate değil dersin `live` durumuna göre başlar; böylece saati ileri olan bilgisayar ilk yanıtta farkı öğrenir. Hekim telefonunda saat düzeltmesi yok (NTP; sunucu karar veriyor).
   - Saat farkı hesabı tek yerde: `src/lib/clock.ts` (`withClockOffset`); sınav ekranı da bunu kullanır.
   - **Testler:** `clock.test.ts`; `DoctorCheckIn.test.tsx` (süre dolunca form kapanır); `ProjectorKiosk.test.tsx` (10 dk ileri saatle kod görünür; `failed-precondition` → kapandı). İki bileşen testi düzeltme olmadan başarısız olduğu doğrulandı. functions: `serverNowMs` sunucu saatiyle uyumlu. e2e `attendance` + `csp` 20/20.
+
+#### F13.3 Sınav: süre bitiminde yeniden deneme; süresi geçmiş girişim (S)
+- **✅ Uygulanan:**
+  - **Tekrar dene (dış #8b):** süre bitimindeki otomatik teslim ağ hatası alırsa uyarıda "Tekrar dene" düğmesi çıkar (önceden bütün düğmeler `disabled={expired}` idi; yalnızca zamanlayıcının kaydedilmiş taslağı puanlaması kalıyordu ve son ≤ 3 sn'lik yanıt kaybolabiliyordu). Tolerans (30 sn) içinde teslim edilen yanıtlar puanlanır; sonrasında sunucu kaydedilmiş yanıtları puanlar.
+  - **Bekleyen ara kayıt (dış #8a):** veri kaybı yoktu (teslim bütün yanıtları taşır; taslak ve teslim transaction'la `in_progress` ön koşulunu sınar). Yine de teslim başlarken bekleyen ara kayıt iptal edilir; teslim başarısız olursa değişiklikler yeniden kaydedilir.
+  - **Süresi geçmiş girişim (dış #11):** bulgudaki `deadline-exceeded` iddiası yanlıştı. Kozmetik düzeltme: `startQuizAttempt` yanıtında süre sunucu saatine göre dolmuşsa soru ekranı açılmadan kaydedilmiş yanıtlarla teslim edilir ve karne gösterilir. Panel düğmesi "Sonucu gör" olur. Zamanlayıcı az önce teslim ettiyse (`failed-precondition`) hata gösterilmez; panel puanı kendi kaydından gösterir.
+  - **Testler (e2e, gerçek saat):** "teslim ağ hatası → Tekrar dene → karne" ve "sınavdan ayrıl → süre dolar → yenile → soru ekranı olmadan karne". `quiz-exam` + `quiz-timeout` yeşil (seri; paralel çalıştırma ortak hesaplar yüzünden bilinçli olarak desteklenmez, `workers: 1`).
 
 ---
 

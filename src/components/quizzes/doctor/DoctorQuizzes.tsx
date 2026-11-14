@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import type { ClinicMemberSession } from "@/lib/auth/types";
-import { getAttemptReport, startQuizAttempt } from "@/lib/firebase/callables";
+import { getAttemptReport, startQuizAttempt, submitQuizAttempt } from "@/lib/firebase/callables";
 import { REVEAL_POLICY_LABEL } from "@/lib/quiz/admin";
 import { resumableAttempt, useMyAttempts, usePublishedQuiz, type MyAttempt } from "@/lib/quiz/doctor";
 import { QuizExam, type SubmitResponse } from "../exam/QuizExam";
@@ -19,6 +19,7 @@ import { AttemptReport, type ReportData } from "../report/AttemptReport";
 import { ScoreTrend } from "../ScoreTrend";
 import { summarizeScores } from "@/lib/quiz/analytics";
 import { withClockOffset } from "@/lib/clock";
+import { toAppError } from "@/lib/errors";
 
 type StartResponse = CallableResponse<"startQuizAttempt">;
 const dateTime = new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" });
@@ -42,6 +43,18 @@ export function DoctorQuizzes({ session }: { session: ClinicMemberSession }) {
   const begin = useAsyncAction(async (quizId: string) => {
     // Saat farkı: sunucu saati − istek ortasındaki cihaz saati (cihaz saati yanlışsa geri sayım düzelir).
     const { result: start, offsetMs: clockOffsetMs } = await withClockOffset(() => startQuizAttempt({ quizId }));
+    if (start.resumed && start.deadlineMs <= start.serverNowMs) {
+      // Süresi (sunucu saatine göre) dolmuş girişim: soru ekranı açılmadan kaydedilmiş yanıtlarla teslim edilir
+      // (F13.3). Sınav ekranı da açılır açılmaz aynısını yapardı; ekran bir an görünüp kaybolmaz.
+      try {
+        const result = await submitQuizAttempt({ quizId, responses: start.savedResponses, tabSwitchCount: 0 });
+        setView({ kind: "report", title: start.quizTitle, report: { ...result, timedOut: true } });
+      } catch (err) {
+        // Zamanlayıcı az önce teslim ettiyse (zaten teslim edildi): panel kendi kaydını dinlediği için puanı gösterir.
+        if (toAppError(err).code !== "failed-precondition") throw err;
+      }
+      return start;
+    }
     setView({ kind: "exam", quizId, start, clockOffsetMs });
     return start;
   });
@@ -159,18 +172,32 @@ export function DoctorQuizzes({ session }: { session: ClinicMemberSession }) {
                     </div>
                   </>
                 )}
-                {mine?.status === "in_progress" && (
-                  <div className="ui-actions">
-                    <Button onClick={() => void begin.run(quiz.id)} loading={begin.pending} loadingText="Açılıyor…">
-                      Sınava devam et
-                    </Button>
-                    {mine.deadlineMs && (
+                {mine?.status === "in_progress" &&
+                  (mine.deadlineMs !== null && mine.deadlineMs <= Date.now() ? (
+                    <div className="ui-actions">
+                      <Button
+                        onClick={() => void begin.run(quiz.id)}
+                        loading={begin.pending}
+                        loadingText="Sonuçlandırılıyor…"
+                      >
+                        Sonucu gör
+                      </Button>
                       <span className="page-header-subtitle">
-                        Süre {dateTime.format(mine.deadlineMs)} itibarıyla dolar.
+                        Süreniz {dateTime.format(mine.deadlineMs)} itibarıyla doldu; kaydedilmiş yanıtlarınız puanlanır.
                       </span>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  ) : (
+                    <div className="ui-actions">
+                      <Button onClick={() => void begin.run(quiz.id)} loading={begin.pending} loadingText="Açılıyor…">
+                        Sınava devam et
+                      </Button>
+                      {mine.deadlineMs && (
+                        <span className="page-header-subtitle">
+                          Süre {dateTime.format(mine.deadlineMs)} itibarıyla dolar.
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 {mine?.status === "submitted" && (
                   <div className="ui-actions">
                     <span>

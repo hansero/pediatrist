@@ -136,28 +136,42 @@ export function QuizExam({
       if (submittingRef.current) return;
       submittingRef.current = true;
       setSubmitting(true);
+      // Teslim bütün yanıtları taşır; bekleyen ara kayıt artık gereksiz (F13.3). Teslim başarısız olursa
+      // değişiklikler yeniden kaydedilmek üzere işaretlenir.
+      const wasDirty = dirty.current;
+      dirty.current = false;
       try {
         const res = await submitQuizAttempt({
           quizId,
           responses: responsesRef.current,
           tabSwitchCount: tabSwitches.current,
         });
-        dirty.current = false;
         onSubmitted(res, timedOut);
+      } catch (err) {
+        if (wasDirty) {
+          dirty.current = true;
+          if (!timedOut) void saveNow().catch(() => undefined);
+        }
+        throw err;
       } finally {
         submittingRef.current = false;
         setSubmitting(false);
       }
     },
-    [quizId, onSubmitted]
+    [quizId, onSubmitted, saveNow]
   );
+
+  /** Süre bitiminde teslim; ağ hatasında hekim "Tekrar dene" ile yeniden dener (F13.3). */
+  const autoSubmit = useCallback(() => {
+    setAutoSubmitError("");
+    submitOnce(true).catch((err: unknown) => setAutoSubmitError(toUserMessage(err)));
+  }, [submitOnce]);
 
   const onExpire = useCallback(() => {
     setExpired(true);
     setConfirmSubmit(false);
-    setAutoSubmitError("");
-    submitOnce(true).catch((err: unknown) => setAutoSubmitError(toUserMessage(err)));
-  }, [submitOnce]);
+    autoSubmit();
+  }, [autoSubmit]);
 
   const answeredCount = questions.filter((q) => isAnswered(responses[q.questionId])).length;
   const unanswered = questions.length - answeredCount;
@@ -200,9 +214,21 @@ export function QuizExam({
 
       {expired && (
         <Alert tone={autoSubmitError ? "critical" : "warning"} title="Süre doldu">
-          {autoSubmitError
-            ? `Teslim edilemedi: ${autoSubmitError} Süre içinde kaydedilen yanıtlarınız puanlanacak.`
-            : "Yanıtlarınız teslim ediliyor…"}
+          {autoSubmitError ? (
+            <>
+              <p>
+                Teslim edilemedi: {autoSubmitError} Tekrar deneyebilirsiniz; teslim edilemezse süre içinde kaydedilen
+                yanıtlarınız puanlanır.
+              </p>
+              <div className="ui-actions">
+                <Button size="sm" onClick={autoSubmit} loading={submitting} loadingText="Teslim ediliyor…">
+                  Tekrar dene
+                </Button>
+              </div>
+            </>
+          ) : (
+            "Yanıtlarınız teslim ediliyor…"
+          )}
         </Alert>
       )}
 
