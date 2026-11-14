@@ -32,6 +32,23 @@ export function quizMediaPath(fileName: string, contentType: string): string {
   return path;
 }
 
+/**
+ * `quizMediaPath` ama alınmış adlardan kaçınır: `ad.png` → `ad-2.png`, `ad-3.png`… (F14). Önizlemede
+ * yüklenen görselin adını kullanıcı seçmez; çakışmada yüklemeyi reddetmek yerine yeni ad verilir. Var olan
+ * görselin üzerine yazmak Storage kuralıyla da yasaktır (D29).
+ */
+export function uniqueQuizMediaPath(fileName: string, contentType: string, taken: ReadonlySet<string>): string {
+  const first = quizMediaPath(fileName, contentType);
+  if (!taken.has(first)) return first;
+  const dot = first.lastIndexOf(".");
+  const stem = first.slice(0, dot);
+  const ext = first.slice(dot);
+  for (let n = 2; ; n++) {
+    const candidate = `${stem}-${n}${ext}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+}
+
 /** Yüklemeden önce istemci denetimi (sunucu kuralı da aynısını uygular). `null` = geçerli. */
 export function quizMediaProblem(file: { type: string; size: number }): string | null {
   if (!(QUIZ_MEDIA_UPLOAD.contentTypes as readonly string[]).includes(file.type)) {

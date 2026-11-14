@@ -112,7 +112,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F13.5 | Kullanılmayan collectionGroup kuralı; `cors.json` şablonu; belgeler | S | ✅ | Dış #19, #3 |
 | **F14** | **Sınav önizlemesinde soru düzenleme ve görsel ekleme** (kullanıcı talebi, 2026-11-14; D29) | | | |
 | F14.1 | Ortak katman: `validateQuizQuestion`, CSV `rows`, "Soru N" mesajları, `editedInPreview`, `quiz_media` yalnızca create | S | ✅ | (yeni talep) |
-| F14.2 | İstemci durum modeli: `questionForm`, `uniqueQuizMediaPath`, düzenlenebilir `useCsvQuestions` | M | ⬜ | (yeni talep) |
+| F14.2 | İstemci durum modeli: `questionForm`, `uniqueQuizMediaPath`, düzenlenebilir `useCsvQuestions` | M | ✅ | (yeni talep) |
 | F14.3 | Arayüz: soru kartı düzenleyici, görsel seçici (yükle/seç), sekme koruması | L | ⬜ | (yeni talep) |
 | F14.4 | e2e, UAT senaryosu, belgeler | M | ⬜ | (yeni talep) |
 
@@ -126,7 +126,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 - **Son tamamlanan adım:** F13.5 (dış #19 collectionGroup kuralı, #3 CORS şablonu, belgeler). **F13 (dış denetim düzeltmeleri) tamam:** F13.1 (#5, #6), F13.2 (#7, #10), F13.3 (#8, #11), F13.4 (#13, #14, #18), F13.5 (#19, #3). Bulgu bulgu hüküm: `EXTERNAL_AUDIT_2026-11-14.md`; kanıt: TRACEABILITY §11.
 - **Doğrulama:** lint, format, typecheck, no-mock, unit 282, rules 58, functions 109 yeşil; adım adım ilgili e2e'ler yeşil (attendance+csp 20, quiz-exam+quiz-timeout, materials-viewer+session+admin-panel+privacy+auth 26). **Tam e2e paketi: 115 geçti + 5 bilinçli atlanan** (önceki 3 + yeni iki F13.3 gerçek saat testinin telefon kopyası; masaüstünde koşarlar). `npm run build` (e2e sunucusu) ve `npm --prefix functions run build` yeşil.
 - **Devam eden adım:** F14 (yeni kullanıcı talebi, D29): sınav önizlemesinde soru düzenleme ve görsel ekleme. Plan §5 F14'te.
-- **Sıradaki iş:** F14.2 (istemci durum modeli: `src/lib/quiz/questionForm.ts`, `uniqueQuizMediaPath`, düzenlenebilir `useCsvQuestions`). F14.1 ✅. F14 dışında kullanıcı tarafında bekleyenler:
+- **Sıradaki iş:** F14.3 (arayüz: `QuestionEditorCard`, `QuestionImagePicker`, `useQuizMediaLibrary`, `Tabs` öğe bazında `keepMounted`, `QuizImport` çıkış uyarısı). F14.1–F14.2 ✅. F14 dışında kullanıcı tarafında bekleyenler:
   1. Staging: eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), `storage-cors.example.json` → `cors.json` → kovaya uygula (DEPLOY 1.1.7), canlı reCAPTCHA ile CSP kontrolü (STAGING C5).
   2. KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`).
   3. UAT: önce ⚠ senaryolar; yeni: E4.2 (MFA kurmamış üyenin onay akışı).
@@ -1780,6 +1780,14 @@ Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştır�
 - `src/lib/quiz/media.ts → uniqueQuizMediaPath` (`-2`, `-3` ekleri).
 - `useCsvQuestions` genişler: kalıcı anahtarlı `items`, `update/setImage/move/remove/markMediaUploaded`, `dirty`, `editedInPreview`; `ready` = soru sayısı sınırda, hata yok, görsel denetimi bitti, eksik görsel yok, devam eden yükleme yok.
 - Testler: form gidiş-dönüşü, seçenek metni değişince doğru cevabın izlemesi, tip geçişleri, benzersiz yol; hook (hatalı satırın düzeltilmesi, taşıma/silme, eksik görselin seçimle giderilmesi).
+
+- **✅ Uygulanan F14.2 (sapmalar ve eklemeler):**
+  - `QuestionForm`'a `orphanAnswers` eklendi: seçenekli soruda seçeneklerde olmayan doğru cevap (CSV hatası) kaybolmaz, doğrulayıcı "Seçeneklerde bulunmuyor" demeye devam eder; arayüz "kaldır" veya "seçenek yap" sunar (`dropOrphan`, `orphanToOption`).
+  - Formdan geçen soruda doğru cevaplar seçenek sırasıyla yazılır (CSV'deki sıra korunmaz). Puanlama küme eşitliğiyle yapıldığı için anlamı değişmez; birim testinde açıkça yazılı.
+  - Bozuk JSON hücreli satır: şemanın üretmediği hata "CSV'ye özgü" sayılır ve satır düzenlenene ya da "Bitti" ile onaylanana kadar gösterilir (`confirm`).
+  - **Plandan sapma:** `uploadsInFlight` sayacı eklenmedi. Görsel seçici kalıcı bir diyalog; yükleme sürerken kapatılamadığı için kayıt düğmesine ulaşılamaz.
+  - `countProblem`: soru sayısı `LIMITS.quizQuestions` dışındaysa açık mesaj. `retryMediaCheck`: görsel listesi alınamadıysa yeniden dener.
+  - Testler: unit +14 (`questionForm.test.ts` 8, `useCsvQuestions.test.tsx` 6). Unit 300.
 
 #### F14.3 Arayüz (L)
 - `CsvQuestionsPanel editable`: yalnızca `QuizImport`; `EditDraftDialog` bugünkü gibi salt okunur. Hata tablosu ve "Satır N" eksik görsel uyarısı korunur; düzenlenebilir modda "Soruya git".
