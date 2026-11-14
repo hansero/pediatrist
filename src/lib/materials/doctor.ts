@@ -7,7 +7,7 @@ import { COLLECTIONS } from "@shared/types";
 import { useFirestoreSnapshot, type LiveState } from "@/hooks/useFirestoreSnapshot";
 import { notConfiguredError } from "@/lib/errors";
 import { initPediatristFirebase } from "@/lib/firebase/client";
-import { toMaterialView, type MaterialView } from "./admin";
+import { matchesMaterialSearch, toMaterialView, type MaterialView } from "./admin";
 import { createSaveQueue } from "@/lib/saveQueue";
 
 /**
@@ -178,10 +178,13 @@ export function parseYearFilter(raw: string): YearFilter {
   return (RESIDENCY_YEARS as readonly number[]).includes(year) ? year : "all";
 }
 
-/** Hekim süzgeci: kıdem/kitle ve etiket (`label`: `"all"` ya da `labelKey`). */
+/**
+ * Hekim süzgeci: kıdem/kitle, etiket (`label`: `"all"` ya da `labelKey`) ve arama (F15.1; başlık, açıklama,
+ * etiket). Ölçütler birlikte (VE) uygulanır.
+ */
 export function filterMaterials(
   list: readonly MaterialView[],
-  { year, label }: { year: YearFilter; label: string }
+  { year, label, search = "" }: { year: YearFilter; label: string; search?: string }
 ): MaterialView[] {
-  return list.filter((m) => matchesAudience(m, year) && hasLabel(m, label));
+  return list.filter((m) => matchesAudience(m, year) && hasLabel(m, label) && matchesMaterialSearch(m, search));
 }

@@ -292,12 +292,13 @@ Sonuç: ☐ G ☐ K ☐ A — Not:
 
 ### D2. ⚠ Görüntüleme — hekim (bilgisayar ve telefon)
 
+0. Süzgeçteki "Ara" kutusuna bir materyalin başlığından, açıklamasından veya etiketinden bir kelime yazın (büyük/küçük harfle de deneyin); kıdem ve etiket süzgeciyle birlikte kullanın; "Süzgeci temizle"ye basın.
 1. Materyali açın; sayfaları çevirin (düğmeler ve klavye ok tuşları).
 2. Sayfanın üzerindeki filigrana bakın; bir ekran görüntüsü alın.
 3. Son sayfaya gelmeden "Tamamlandı olarak işaretle"yi deneyin; sonra son sayfaya gidip işaretleyin.
 4. İndirme izni olan ve olmayan birer materyali karşılaştırın.
 
-**Beklenen:** PDF açılıyor (açılmıyorsa Storage CORS eksiktir). Filigranda **kendi** adınız, e-postanız ve saat
+**Beklenen:** Arama, kıdem ve etiket süzgeciyle birlikte daralıyor; sonuç sayısı yazıyor; "Süzgeci temizle" kendi kıdeminize dönüyor. PDF açılıyor (açılmıyorsa Storage CORS eksiktir). Filigranda **kendi** adınız, e-postanız ve saat
 var ve ekran görüntüsünde de görünüyor. Son sayfayı görmeden tamamlandı işaretlenemiyor. "İndir" yalnızca izin
 verilen materyalde var.
 

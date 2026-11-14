@@ -115,6 +115,8 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F14.2 | İstemci durum modeli: `questionForm`, `uniqueQuizMediaPath`, düzenlenebilir `useCsvQuestions` | M | ✅ | (yeni talep) |
 | F14.3 | Arayüz: soru kartı düzenleyici, görsel seçici (yükle/seç), sekme koruması | L | ✅ | (yeni talep) |
 | F14.4 | e2e, UAT senaryosu, belgeler | M | ✅ | (yeni talep) |
+| **F15** | **Kullanıcı talebi (2026-11-14)** | | | |
+| F15.1 | Hekim materyal listesinde arama (admin aramasıyla aynı mantık, mevcut süzgeçlere ek) | S | ✅ | (yeni talep) |
 
 ---
 
@@ -123,15 +125,15 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-14
-- **Son tamamlanan adım:** F14.4. **F14 (sınav önizlemesinde soru düzenleme ve görsel ekleme, D29) tamam:** F14.1 ortak katman ve `quiz_media` üzerine yazma yasağı, F14.2 durum modeli, F14.3 arayüz, F14.4 e2e ve belgeler. Kanıt: TRACEABILITY §12. Önceki F13 durumu değişmedi.
+- **Son tamamlanan adım:** F15.1 (hekim materyal araması). Öncesinde F14 (sınav önizlemesinde düzenleme ve görsel ekleme, D29) tamamlandı: F14.1 ortak katman ve `quiz_media` üzerine yazma yasağı, F14.2 durum modeli, F14.3 arayüz, F14.4 e2e ve belgeler. Kanıt: TRACEABILITY §12.
 - **Doğrulama:** lint, format, typecheck, no-mock temiz; unit 301, rules 59, functions 110. **Tam e2e: 117 geçti + 5 bilinçli atlanan.** Functions ve Next derlemeleri yeşil.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F14 tamamlandı (D29; sınav önizlemesinde düzenleme ve görsel ekleme). UAT'ta C6 senaryosu denenmeli. F14 dışında kullanıcı tarafında bekleyenler:
+- **Sıradaki iş:** Planlı kod işi yok. UAT'ta C6 (sınav önizlemesi) ve D2 (materyal araması dahil) denenmeli. F14 dışında kullanıcı tarafında bekleyenler:
   1. Staging: eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), `storage-cors.example.json` → `cors.json` → kovaya uygula (DEPLOY 1.1.7), canlı reCAPTCHA ile CSP kontrolü (STAGING C5).
   2. KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`).
   3. UAT: önce ⚠ senaryolar; yeni: E4.2 (MFA kurmamış üyenin onay akışı).
   - Dış denetimden bilinçli olarak yapılmayanlar (gerekçe `EXTERNAL_AUDIT_2026-11-14.md`): #1, #2, #4, #16 (operasyon/hukuk), #9, #15 (yanlış bulgu), #12 (D8), #17 (ertelendi).
-  - Yeni istek gelirse: §1'e F15.x satırı ekle, aynı ritüelle ilerle.
+  - Yeni istek gelirse: §1'e F16.x satırı ekle, aynı ritüelle ilerle.
 - **Not (e2e):** `npm run test:e2e -- <playwright argümanı>` argümanı Playwright'a değil `firebase emulators:exec`'e geçirir (hata: `unknown option`). Argüman gerekiyorsa: `npm --prefix functions run build && node scripts/firebase.mjs emulators:exec --only auth,firestore,storage,functions --project demo-pediatrist "npm run seed && npx playwright test <argümanlar>"`. Testler ortak hesapları paylaştığı için `--workers` artırılmaz.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
@@ -1817,6 +1819,18 @@ Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştır�
   - Yeni e2e yardımcıları: `readDocumentDeep`, `auditMetadata` (`e2e/fixtures/emulator.ts`).
   - Belgeler: `UAT_SCENARIOS.md` C6 eklendi, C1 güncellendi; `TRACEABILITY.md` §12.
   - **Doğrulama:** lint, format, typecheck ve sahte veri bekçisi temiz. Unit 301, rules 59, functions 110. **Tam e2e: 117 geçti + 5 bilinçli atlanan** (önceki 115 + yeni spec × 2). Functions ve Next derlemeleri e2e komutunun içinde yeşil.
+
+### F15 — Kullanıcı talebi (2026-11-14)
+
+#### F15.1 Hekim materyal araması (S)
+- **İstek:** Hekim tarafındaki Eğitim Materyalleri'nde arama çubuğu; uygunsa admin aramasının mantığı; mevcut süzgeçlere ek.
+- **✅ Uygulanan:**
+  - Ortak eşleşme `matchesMaterialSearch` (`src/lib/materials/admin.ts`): başlık, açıklama, etiket; Türkçe büyük/küçük harf duyarsız; boş arama her şeyi geçirir. Admin süzgeci (`filterAdminMaterials`) aynı fonksiyonu kullanır, davranışı değişmedi (mevcut birim testleri).
+  - **Fark (bilinçli):** admin dosya adında da arar, hekim aramaz. Hekim kartında dosya adı görünmediği için görünmeyen bir nedenle eşleşme olmasın.
+  - `filterMaterials` (hekim) `search` alır; kıdem ve etiketle birlikte (VE). Parametre isteğe bağlı: eski çağrılar aynı sonucu verir.
+  - Arayüz (`DoctorMaterials`): süzgeç kartında ilk alan "Ara" (`role="search"`, admin'le aynı ad "Materyal süzgeci"). Altında sonuç sayısı (`aria-live`, "N / M materyal gösteriliyor") ve "Süzgeci temizle". Bu düğme hekimin varsayılanına (kendi kıdemi) döner, "Bütün kıdemler"e değil. Boş sonuçta aranan kelimeyle mesaj gösterilir.
+  - Ek düzeltme: boş durum metni eskiden "Bütün kıdemler" seçiliyken etiket süzgeci her şeyi elediğinde de "Henüz yayında materyal yok" diyordu; artık yalnızca gerçekten materyal yokken böyle diyor.
+  - Testler: unit +1 (arama; Türkçe harf; dosya adında aranmaması; kıdem ve etiketle VE; geriye uyum). e2e `materials-viewer.spec.ts` (iki ekran boyutu): "ŞOK" araması, sonuç sayısı, boş sonuç mesajı, "Süzgeci temizle"nin kendi kıdemine dönmesi. Unit 302; materials-viewer, materials-admin ve a11y e2e yeşil.
 
 ---
 

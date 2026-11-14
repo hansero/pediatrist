@@ -35,7 +35,21 @@ test("hekim kendi kıdemini görür; PDF'i filigranlı açar, son sayfada tamaml
   await expect(list.getByRole("heading", { name: SEPSIS })).toHaveCount(0);
   await page.getByLabel("Etiket").selectOption("all");
   await expect(list.getByRole("heading", { name: SEPSIS })).toBeVisible();
+  // Arama (F15.1): başlık/açıklama/etiket, Türkçe harf duyarsız; diğer süzgeçlerle birlikte; sonuç sayısı duyurulur.
+  const search = page.getByRole("search", { name: "Materyal süzgeci" }).getByLabel("Ara");
+  await search.fill("ŞOK");
+  await expect(list.getByRole("heading", { name: SEPSIS })).toBeVisible();
+  await expect(list.getByRole("heading", { name: PRETERM })).toHaveCount(0);
+  await expect(page.getByTestId("material-filter-count")).toContainText("1 /");
+  await search.fill("böyle bir materyal yok");
+  await expect(page.getByText('"böyle bir materyal yok" için materyal yok')).toBeVisible();
+  await page.getByRole("button", { name: "Süzgeci temizle" }).click();
+  await expect(search).toHaveValue("");
+  await expect(page.getByLabel("Kıdem")).toHaveValue(doctor.year.split(".")[0]);
+  await expect(list.getByRole("heading", { name: SEPSIS })).toBeVisible();
   await expectNoHorizontalOverflow(page);
+  // Sonraki adımlar iki materyali de açar: bütün kıdemler.
+  await page.getByLabel("Kıdem").selectOption("all");
 
   // PDF: pdf.js ile canvas'a çizilir (CSP bekçisi ihlal yakalar); ekran okuyucu için sayfa metni var.
   await page.getByRole("button", { name: `${SEPSIS}: aç` }).click();

@@ -87,16 +87,30 @@ export interface AdminMaterialFilter {
 
 export const EMPTY_ADMIN_MATERIAL_FILTER: AdminMaterialFilter = { search: "", label: "all", target: "all" };
 
+/**
+ * Materyal metin araması (admin F11.7, hekim F15.1): başlık, açıklama ve etiketlerde; Türkçe büyük/küçük harf
+ * duyarsız, baştaki/sondaki boşluk yok sayılır, boş arama her şeyi geçirir. `includeFileName`: admin dosya adında
+ * da arar (hekim kartında dosya adı görünmediği için hekimde aranmaz: görünmeyen bir nedenle eşleşme olmasın).
+ */
+export function matchesMaterialSearch(
+  m: Pick<MaterialView, "title" | "description" | "labels" | "storagePath">,
+  search: string,
+  { includeFileName = false }: { includeFileName?: boolean } = {}
+): boolean {
+  const term = search.trim().toLocaleLowerCase("tr");
+  if (!term) return true;
+  const fields = [m.title ?? "", m.description ?? "", ...(m.labels ?? [])];
+  if (includeFileName) fields.push(m.storagePath?.split("/").pop() ?? "");
+  return fields.some((t) => t.toLocaleLowerCase("tr").includes(term));
+}
+
 /** Admin materyal süzgeci (F11.7): üç ölçüt birlikte uygulanır (VE). */
 export function filterAdminMaterials(list: readonly MaterialView[], filter: AdminMaterialFilter): MaterialView[] {
-  const term = filter.search.trim().toLocaleLowerCase("tr");
-  const fileName = (m: MaterialView) => m.storagePath.split("/").pop() ?? "";
   return list.filter(
     (m) =>
       hasLabel(m, filter.label) &&
       matchesAudience(m, filter.target) &&
-      (!term ||
-        [m.title, m.description, fileName(m), ...m.labels].some((t) => t.toLocaleLowerCase("tr").includes(term)))
+      matchesMaterialSearch(m, filter.search, { includeFileName: true })
   );
 }
 

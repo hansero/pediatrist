@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { canComplete, createProgressSaver, filterMaterials, MAX_SECONDS, mergeProgress } from "@/lib/materials/doctor";
+import {
+  canComplete,
+  createProgressSaver,
+  filterMaterials,
+  MAX_SECONDS,
+  mergeProgress,
+  type YearFilter,
+} from "@/lib/materials/doctor";
 import { watermarkText } from "@/components/materials/viewer/watermark";
 import type { MaterialView } from "@/lib/materials/admin";
 import { labelKey } from "@shared/materials";
@@ -42,6 +49,30 @@ describe("okuma ilerlemesi (F6.3)", () => {
     expect(filterMaterials(list, { year: 3, label: labelKey("Neonatoloji") })).toEqual([]);
     const spec = { id: "s", targetYears: [], targetSpecialists: true, labels: [] } as unknown as MaterialView;
     expect(filterMaterials([...list, spec], { year: "specialist", label: "all" }).map((x) => x.id)).toEqual(["s"]);
+  });
+
+  it("arama (F15.1): başlık, açıklama ve etiket; Türkçe harf duyarsız; dosya adında aranmaz; diğer süzgeçlerle VE", () => {
+    const m = (id: string, title: string, description: string, labels: string[], targetYears: number[], file: string) =>
+      ({ id, title, description, labels, targetYears, storagePath: `materials/${id}/${file}` }) as MaterialView;
+    const list = [
+      m("a", "Kawasaki Hastalığı", "Tanı ve IVIG", ["Kardiyoloji"], [3], "kawasaki.pdf"),
+      m("b", "Sepsis", "İlk saat yönetimi", ["Çocuk Acil"], [1, 2, 3], "gizli-anahtar.pdf"),
+      m("c", "Preterm", "Doğumhanede ilk dakika", ["Neonatoloji"], [1], "preterm.pdf"),
+    ];
+    const ids = (search: string, year: YearFilter = "all", label = "all") =>
+      filterMaterials(list, { year, label, search }).map((x) => x.id);
+    expect(ids("")).toEqual(["a", "b", "c"]);
+    expect(ids("   ")).toEqual(["a", "b", "c"]);
+    expect(ids("KAWASAKİ")).toEqual(["a"]);
+    expect(ids("ilk")).toEqual(["b", "c"]);
+    expect(ids("İLK SAAT")).toEqual(["b"]);
+    expect(ids("çocuk acil")).toEqual(["b"]);
+    expect(ids("gizli-anahtar")).toEqual([]);
+    expect(ids("ilk", 1)).toEqual(["b", "c"]);
+    expect(ids("ilk", 3)).toEqual(["b"]);
+    expect(ids("ilk", "all", labelKey("Neonatoloji"))).toEqual(["c"]);
+    // Arama verilmezse eski davranış (geriye dönük uyum).
+    expect(filterMaterials(list, { year: 3, label: "all" }).map((x) => x.id)).toEqual(["a", "b"]);
   });
 
   it("filigran: ad, e-posta, zaman", () => {

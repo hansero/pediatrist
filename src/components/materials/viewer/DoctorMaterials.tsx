@@ -23,17 +23,28 @@ import { MaterialViewer } from "./MaterialViewer";
 
 /**
  * Hekim materyal listesi (F6.3). Varsayılan süzgeç hekimin kendi kıdemi; Uzm. Dr. için "Uzman" (D26); Doç./Prof.
- * için tümü. Etiket süzgeci
- * yayındaki materyallerin etiketlerinden (D25). Her kartta kendi okuma durumu. Görüntüleyici aynı sayfada açılır.
+ * için tümü. Etiket süzgeci yayındaki materyallerin etiketlerinden (D25). Arama (F15.1) admin aramasıyla aynı
+ * mantık: başlık, açıklama ve etikette, Türkçe harf duyarsız, diğer süzgeçlerle birlikte. Her kartta kendi okuma
+ * durumu. Görüntüleyici aynı sayfada açılır.
  */
 export function DoctorMaterials({ session }: { session: ClinicMemberSession }) {
   const materials = usePublishedMaterials();
   const mine = materialAudienceOf(session);
   const [year, setYear] = useState<YearFilter>(mine ?? "all");
   const [label, setLabel] = useState("all");
+  const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const labels = distinctLabels(materials.data ?? []);
-  const list = filterMaterials(materials.data ?? [], { year, label });
+  const all = materials.data ?? [];
+  const list = filterMaterials(all, { year, label, search });
+  const defaultYear: YearFilter = mine ?? "all";
+  const searching = search.trim() !== "";
+  const changed = searching || label !== "all" || year !== defaultYear;
+  function clearFilter() {
+    setSearch("");
+    setLabel("all");
+    setYear(defaultYear);
+  }
   const open = (materials.data ?? []).find((m) => m.id === openId) ?? null;
 
   // Ana sayfadan gelen bağlantı (`?materyal=<id>`): materyal yüklenince açılır; kapatınca parametre silinir.
@@ -68,7 +79,18 @@ export function DoctorMaterials({ session }: { session: ClinicMemberSession }) {
   return (
     <div className="attendance-admin">
       <Card title="Süzgeç">
-        <div className="report-filter">
+        <div className="report-filter" role="search" aria-label="Materyal süzgeci">
+          <Field label="Ara" hint="Başlık, açıklama veya etiket.">
+            {(p) => (
+              <input
+                {...p}
+                type="search"
+                className="form-input"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            )}
+          </Field>
           <Field label="Kıdem">
             {(p) => (
               <select
@@ -100,6 +122,20 @@ export function DoctorMaterials({ session }: { session: ClinicMemberSession }) {
             )}
           </Field>
         </div>
+        {materials.status === "ready" && all.length > 0 && (
+          <div className="ui-actions">
+            <p className="page-header-subtitle" aria-live="polite" data-testid="material-filter-count">
+              {list.length === all.length
+                ? `${all.length} materyal`
+                : `${list.length} / ${all.length} materyal gösteriliyor`}
+            </p>
+            {changed && (
+              <Button variant="secondary" size="sm" onClick={clearFilter}>
+                Süzgeci temizle
+              </Button>
+            )}
+          </div>
+        )}
       </Card>
 
       {materials.error && <Alert tone="critical">{materials.error}</Alert>}
@@ -107,8 +143,16 @@ export function DoctorMaterials({ session }: { session: ClinicMemberSession }) {
       {materials.status === "ready" && list.length === 0 && (
         <Card title="Materyal">
           <EmptyState
-            title="Bu süzgeçle materyal yok"
-            description={year === "all" ? "Henüz yayında materyal yok." : "Kıdem süzgecini 'Bütün kıdemler' yapın."}
+            title={searching ? `"${search.trim()}" için materyal yok` : "Bu süzgeçle materyal yok"}
+            description={
+              all.length === 0
+                ? "Henüz yayında materyal yok."
+                : searching
+                  ? "Farklı bir kelime deneyin ya da süzgeci temizleyin."
+                  : year === "all"
+                    ? "Etiket süzgecini 'Bütün etiketler' yapın."
+                    : "Kıdem süzgecini 'Bütün kıdemler' yapın."
+            }
           />
         </Card>
       )}
