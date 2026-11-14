@@ -31,6 +31,8 @@ async function startLive() {
   CALLABLES.startLectureSession.response.parse(res);
   const code = await getProjectorCode.run(callableRequest({ sessionId: res.sessionId }, asAdmin()));
   CALLABLES.getProjectorCode.response.parse(code);
+  // F13.2: projektör saat farkını sunucu saatinden hesaplar.
+  expect(Math.abs(code.serverNowMs - Date.now())).toBeLessThan(5_000);
   return { sessionId: res.sessionId, code: code.code };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useReducer, useRef, useState } from "react";
 import { ATTENDANCE_CODE_LENGTH, ATTENDANCE_SLOT_MS } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -27,8 +27,12 @@ export const CODE_HINT = `Kod ${ATTENDANCE_SLOT_MS / 1000} saniyede bir yenileni
  */
 export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
   const live = useLiveLecture();
-  const lecture = live.status === "ready" && isLectureOpen(live.data) ? live.data : null;
-  const record = useMyRecord(lecture?.id ?? null, session.uid);
+  const current = live.status === "ready" ? live.data : null;
+  // Süre dolunca ekran yeniden değerlendirilir (F13.2): zamanlayıcı dersi en geç birkaç dakika içinde kapatır,
+  // o arada form açık kalmaz. Geri sayım kendi state'ini tuttuğu için bu bileşen her saniye yeniden çizilmez.
+  const [, refresh] = useReducer((n: number) => n + 1, 0);
+  const lecture = isLectureOpen(current) ? current : null;
+  const record = useMyRecord(current?.id ?? null, session.uid);
   const [code, setCode] = useState("");
   const codeRef = useRef<HTMLInputElement>(null);
   const checkIn = useAsyncAction((sessionId: string, value: string) =>
@@ -37,6 +41,22 @@ export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
 
   if (live.status === "loading") return <p className="page-header-subtitle">Canlı ders kontrol ediliyor…</p>;
   if (live.status === "error") return <Alert tone="critical">{live.error}</Alert>;
+  const mine = record.status === "ready" ? record.data : null;
+
+  if (current && !lecture) {
+    return (
+      <Card title={current.title} description={current.lecturer}>
+        <EmptyState
+          title="Yoklama süresi doldu"
+          description={
+            mine?.status === "present"
+              ? "Bu derse katılımınız kaydedildi."
+              : "Bu dersin yoklaması kapandı; artık kod kabul edilmiyor."
+          }
+        />
+      </Card>
+    );
+  }
   if (!lecture) {
     return (
       <Card title="Ders yoklaması">
@@ -47,8 +67,6 @@ export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
       </Card>
     );
   }
-
-  const mine = record.status === "ready" ? record.data : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,7 +80,12 @@ export function DoctorCheckIn({ session }: { session: ClinicMemberSession }) {
       description={lecture.lecturer}
       actions={
         <span className="ui-actions">
-          <Countdown deadlineMs={lecture.endsAtMs} label="Yoklamanın kapanmasına kalan süre" warnAtSeconds={[60]} />
+          <Countdown
+            deadlineMs={lecture.endsAtMs}
+            label="Yoklamanın kapanmasına kalan süre"
+            warnAtSeconds={[60]}
+            onExpire={refresh}
+          />
         </span>
       }
     >

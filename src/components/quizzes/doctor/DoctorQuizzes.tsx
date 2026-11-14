@@ -18,6 +18,7 @@ import { QuizExam, type SubmitResponse } from "../exam/QuizExam";
 import { AttemptReport, type ReportData } from "../report/AttemptReport";
 import { ScoreTrend } from "../ScoreTrend";
 import { summarizeScores } from "@/lib/quiz/analytics";
+import { withClockOffset } from "@/lib/clock";
 
 type StartResponse = CallableResponse<"startQuizAttempt">;
 const dateTime = new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" });
@@ -39,11 +40,8 @@ export function DoctorQuizzes({ session }: { session: ClinicMemberSession }) {
   const autoResumed = useRef(false);
 
   const begin = useAsyncAction(async (quizId: string) => {
-    const sentAt = Date.now();
-    const start = await startQuizAttempt({ quizId });
-    const receivedAt = Date.now();
     // Saat farkı: sunucu saati − istek ortasındaki cihaz saati (cihaz saati yanlışsa geri sayım düzelir).
-    const clockOffsetMs = start.serverNowMs - Math.round((sentAt + receivedAt) / 2);
+    const { result: start, offsetMs: clockOffsetMs } = await withClockOffset(() => startQuizAttempt({ quizId }));
     setView({ kind: "exam", quizId, start, clockOffsetMs });
     return start;
   });

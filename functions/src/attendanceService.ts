@@ -225,6 +225,7 @@ export const getProjectorCode = defineCallable("getProjectorCode", "admin", asyn
     code: computeSlotCode(String(secretSnap.data()!.hmacSecret), data.sessionId, slot),
     msUntilRotation: ATTENDANCE_SLOT_MS - (nowMs % ATTENDANCE_SLOT_MS),
     endsAtMs: (session.endsAt as Timestamp).toMillis(),
+    serverNowMs: nowMs,
   };
 });
 

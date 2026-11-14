@@ -106,7 +106,7 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F12.1 | Yoklamada yalnızca elle kod; kod 30 sn'de bir değişir | S | ✅ | D28 (D27'nin yerine) |
 | **F13** | **Dış denetim düzeltmeleri (2026-11-14)** — değerlendirme: [`EXTERNAL_AUDIT_2026-11-14.md`](EXTERNAL_AUDIT_2026-11-14.md) | | | |
 | F13.1 | Onay ↔ MFA kilitlenmesi; CSP'de reCAPTCHA `connect-src` | S | ✅ | Dış #5, #6 |
-| F13.2 | Yoklama: süre dolunca ekran güncellenir; projektörde sunucu saati | S | ⬜ | Dış #7, #10 |
+| F13.2 | Yoklama: süre dolunca ekran güncellenir; projektörde sunucu saati | S | ✅ | Dış #7, #10 |
 | F13.3 | Sınav: süre bitiminde teslim hatasında "Tekrar dene"; süresi geçmiş girişim | S | ⬜ | Dış #8, #11 |
 | F13.4 | Küçük yarış durumları (materyal ilerlemesi, oturum bağlamı, faktör listesi, denetim kaydı) | S | ⬜ | Dış #13, #14, #18 |
 | F13.5 | Kullanılmayan collectionGroup kuralı; `cors.json` şablonu; belgeler | S | ⬜ | Dış #19, #3 |
@@ -118,9 +118,9 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 > Her oturum sonunda **üzerine yazılır**. Kısa ve tam olarak eyleme dönük olmalı.
 
 - **Tarih:** 2026-11-14
-- **Son tamamlanan adım:** F13.1 (dış denetim #5 onay ↔ MFA kilitlenmesi, #6 CSP reCAPTCHA). Dış denetimin bulgu bulgu değerlendirmesi: `EXTERNAL_AUDIT_2026-11-14.md`.
+- **Son tamamlanan adım:** F13.2 (dış #7 süre dolunca yoklama ekranı, #10 projektörde sunucu saati). Önceki: F13.1 (#5 onay ↔ MFA kilitlenmesi, #6 CSP reCAPTCHA). Dış denetimin bulgu bulgu değerlendirmesi: `EXTERNAL_AUDIT_2026-11-14.md`.
 - **Devam eden adım:** —
-- **Sıradaki iş:** F13.2 → F13.5 (§1 tablosu ve §5 F13). Ardından tam doğrulama (rules, functions, e2e dahil) ve TRACEABILITY'ye dış denetim bölümü.
+- **Sıradaki iş:** F13.3 → F13.5 (§1 tablosu ve §5 F13). Ardından tam doğrulama (rules, functions, e2e dahil) ve TRACEABILITY'ye dış denetim bölümü.
   - Kullanıcı tarafında bekleyenler değişmedi: staging'de eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`), UAT (önce ⚠ senaryolar; yeni: E4.2).
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
@@ -1713,6 +1713,13 @@ Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştır�
   - **Kilitlenme (dış #5):** MFA zorunlu ve kurulmamış üye yalnızca güvenlik sayfasına yönlendiriliyordu, ama `SessionGuard` önce onay ekranını gösteriyordu; `acceptConsent` (`member` → `requireActive`) MFA'lı oturum istediği için reddediliyordu. KVKK 1.2 ile her üyeden yeniden onay istendiğinden, MFA kurmamış her yeni onaylı üye takılırdı. Çözüm istemcide sıra: `needsConsent()` (`src/lib/auth/sessionDecision.ts`) MFA zorunlu ve kurulmamışken onayı erteler (layout'un yönlendirme koşuluyla aynı). Sunucu bekçisi değişmedi.
   - **CSP (dış #6):** `connect-src`'e `https://www.google.com/recaptcha/` (Google reCAPTCHA SSS'sindeki CSP listesi). Emülatör debug sağlayıcı kullandığı için yalnızca staging'de görülebilir → STAGING C5, DEPLOY 1.5 notu.
   - **Testler:** `needsConsent` birim testleri; `SessionGuard` kilitlenme senaryosu; mevcut onay testleri gerçekçi MFA'lı oturumla; `securityHeaders` reCAPTCHA `connect-src`. UAT E4.2 (⚠) eklendi.
+
+#### F13.2 Yoklama: süre dolumu ve projektör saati (S)
+- **✅ Uygulanan:**
+  - **Süre dolumu (dış #7):** `DoctorCheckIn` ve admin canlı ders kartı, `<Countdown onExpire>` ile süre dolduğunda yeniden çizilir (geri sayım kendi state'ini tuttuğu için üst bileşen her saniye çizilmiyordu). Hekim, zamanlayıcı dersi kapatana kadar (≤ 5 dk) kod formu yerine "Yoklama süresi doldu" görür; katıldıysa "Bu derse katılımınız kaydedildi." Sunucu süresi geçmiş kodu zaten reddediyordu; veri hatası yoktu.
+  - **Projektör saati (dış #10):** `getProjectorCode` yanıtına `serverNowMs` eklendi. Projektör saat farkını hesaplar ve dersin açık olup olmadığını sunucu saatine göre değerlendirir. Kod döngüsü yerel saate değil dersin `live` durumuna göre başlar; böylece saati ileri olan bilgisayar ilk yanıtta farkı öğrenir. Hekim telefonunda saat düzeltmesi yok (NTP; sunucu karar veriyor).
+  - Saat farkı hesabı tek yerde: `src/lib/clock.ts` (`withClockOffset`); sınav ekranı da bunu kullanır.
+  - **Testler:** `clock.test.ts`; `DoctorCheckIn.test.tsx` (süre dolunca form kapanır); `ProjectorKiosk.test.tsx` (10 dk ileri saatle kod görünür; `failed-precondition` → kapandı). İki bileşen testi düzeltme olmadan başarısız olduğu doğrulandı. functions: `serverNowMs` sunucu saatiyle uyumlu. e2e `attendance` + `csp` 20/20.
 
 ---
 

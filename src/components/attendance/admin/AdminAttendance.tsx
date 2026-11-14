@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useReducer, useState } from "react";
 import { LIMITS } from "@shared/constants";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -168,6 +168,8 @@ function StartLectureForm({ session }: { session: ClinicMemberSession }) {
 function LiveLecturePanel({ lecture }: { lecture: Lecture }) {
   const toast = useToast();
   const [confirmEnd, setConfirmEnd] = useState(false);
+  // Süre dolunca çip ve uyarı yeniden değerlendirilir (F13.2; geri sayım bu kartı her saniye yeniden çizmez).
+  const [, refresh] = useReducer((n: number) => n + 1, 0);
   const open = isLectureOpen(lecture);
 
   return (
@@ -196,6 +198,7 @@ function LiveLecturePanel({ lecture }: { lecture: Lecture }) {
                   deadlineMs={lecture.endsAtMs}
                   label="Yoklamanın kapanmasına kalan süre"
                   warnAtSeconds={[60]}
+                  onExpire={refresh}
                 />
               </dd>
             </div>

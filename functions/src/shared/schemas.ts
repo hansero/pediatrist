@@ -292,6 +292,8 @@ export const GetProjectorCodeResponse = z.object({
   code: z.string().length(ATTENDANCE_CODE_LENGTH),
   msUntilRotation: z.number(),
   endsAtMs: z.number(),
+  /** Sunucu saati (ms): projektör bilgisayarının saati kaymışsa dersin kapanış anı buna göre hesaplanır (F13.2). */
+  serverNowMs: z.number(),
 });
 
 export const VerifyRealTimeAttendanceRequest = z.object({

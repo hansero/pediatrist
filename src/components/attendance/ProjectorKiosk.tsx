@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { isLectureOpen, useLecture } from "@/lib/attendance/live";
 import { useIdleExempt } from "@/lib/auth/IdleContext";
+import { withClockOffset } from "@/lib/clock";
 import { toAppError } from "@/lib/errors";
 import { getProjectorCode } from "@/lib/firebase/callables";
 
@@ -22,6 +23,9 @@ const RETRY_MS = 5_000;
  * - `getProjectorCode` sunucunun bildirdiği yenilenme anında (`msUntilRotation`) yeniden çağrılır.
  * - Geçici ağ hatasında 5 sn sonra tekrar denenir; ders bittiyse durur.
  * - Ekran kilidi muafiyeti (`useIdleExempt`) ve Screen Wake Lock (destekleniyorsa) ile ekran açık kalır.
+ * - Ders salonu bilgisayarının saati kayabilir (F13.2): dersin kapanışı sunucu saatine göre değerlendirilir
+ *   (`serverNowMs` → saat farkı). Kod döngüsü yerel saate değil dersin `live` durumuna göre başlar; böylece
+ *   saati ileri olan bilgisayar da ilk yanıtta farkı öğrenir. Ders bittiyse sunucu `failed-precondition` döner.
  */
 export function ProjectorKiosk({ sessionId }: { sessionId: string }) {
   useIdleExempt();
@@ -29,22 +33,26 @@ export function ProjectorKiosk({ sessionId }: { sessionId: string }) {
   const [code, setCode] = useState<CodeState | null>(null);
   const [error, setError] = useState("");
   const [ended, setEnded] = useState(false);
+  /** Sunucu saati − bu bilgisayarın saati; ilk koddan önce bilinmez (o zamana kadar dersin durumuna güvenilir). */
+  const [offsetMs, setOffsetMs] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const wakeLockSupported = typeof navigator !== "undefined" && "wakeLock" in navigator;
 
-  const live = lecture.status === "ready" && isLectureOpen(lecture.data);
+  const statusLive = lecture.status === "ready" && lecture.data?.status === "live" && !ended;
+  const live = statusLive && (offsetMs === null || isLectureOpen(lecture.data, Date.now() + offsetMs));
 
   // Kod döngüsü
   useEffect(() => {
-    if (!live || ended) return;
+    if (!statusLive) return;
     let cancelled = false;
     let timer: number | undefined;
     const tick = async () => {
       try {
-        const res = await getProjectorCode({ sessionId });
+        const { result: res, offsetMs: offset } = await withClockOffset(() => getProjectorCode({ sessionId }));
         if (cancelled) return;
         setError("");
+        setOffsetMs(offset);
         setCode({ code: res.code, rotatesAtMs: Date.now() + res.msUntilRotation });
         timer = window.setTimeout(tick, res.msUntilRotation + 150);
       } catch (err) {
@@ -64,7 +72,7 @@ export function ProjectorKiosk({ sessionId }: { sessionId: string }) {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [sessionId, live, ended]);
+  }, [sessionId, statusLive]);
 
   // Ekranı açık tut (Screen Wake Lock); sekme yeniden görünür olunca kilit yeniden alınır.
   useEffect(() => {
