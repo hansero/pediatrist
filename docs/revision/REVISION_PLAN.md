@@ -110,6 +110,11 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 | F13.3 | Sınav: süre bitiminde teslim hatasında "Tekrar dene"; süresi geçmiş girişim | S | ✅ | Dış #8, #11 |
 | F13.4 | Küçük yarış durumları (materyal ilerlemesi, oturum bağlamı, faktör listesi, denetim kaydı) | S | ✅ | Dış #13, #14, #18 |
 | F13.5 | Kullanılmayan collectionGroup kuralı; `cors.json` şablonu; belgeler | S | ✅ | Dış #19, #3 |
+| **F14** | **Sınav önizlemesinde soru düzenleme ve görsel ekleme** (kullanıcı talebi, 2026-11-14; D29) | | | |
+| F14.1 | Ortak katman: `validateQuizQuestion`, CSV `rows`, "Soru N" mesajları, `editedInPreview`, `quiz_media` yalnızca create | S | ⬜ | (yeni talep) |
+| F14.2 | İstemci durum modeli: `questionForm`, `uniqueQuizMediaPath`, düzenlenebilir `useCsvQuestions` | M | ⬜ | (yeni talep) |
+| F14.3 | Arayüz: soru kartı düzenleyici, görsel seçici (yükle/seç), sekme koruması | L | ⬜ | (yeni talep) |
+| F14.4 | e2e, UAT senaryosu, belgeler | M | ⬜ | (yeni talep) |
 
 ---
 
@@ -120,13 +125,13 @@ Boyut: **S** küçük (tek oturumda rahat), **M** orta, **L** büyük (gerekirse
 - **Tarih:** 2026-11-14
 - **Son tamamlanan adım:** F13.5 (dış #19 collectionGroup kuralı, #3 CORS şablonu, belgeler). **F13 (dış denetim düzeltmeleri) tamam:** F13.1 (#5, #6), F13.2 (#7, #10), F13.3 (#8, #11), F13.4 (#13, #14, #18), F13.5 (#19, #3). Bulgu bulgu hüküm: `EXTERNAL_AUDIT_2026-11-14.md`; kanıt: TRACEABILITY §11.
 - **Doğrulama:** lint, format, typecheck, no-mock, unit 282, rules 58, functions 109 yeşil; adım adım ilgili e2e'ler yeşil (attendance+csp 20, quiz-exam+quiz-timeout, materials-viewer+session+admin-panel+privacy+auth 26). **Tam e2e paketi: 115 geçti + 5 bilinçli atlanan** (önceki 3 + yeni iki F13.3 gerçek saat testinin telefon kopyası; masaüstünde koşarlar). `npm run build` (e2e sunucusu) ve `npm --prefix functions run build` yeşil.
-- **Devam eden adım:** —
-- **Sıradaki iş:** Planlı kod işi yok. Kullanıcı tarafında:
+- **Devam eden adım:** F14 (yeni kullanıcı talebi, D29): sınav önizlemesinde soru düzenleme ve görsel ekleme. Plan §5 F14'te.
+- **Sıradaki iş:** F14.1'den başla. F14 dışında kullanıcı tarafında bekleyenler:
   1. Staging: eski cihaz verisinin temizliği (`scripts/remove-attendance-device-data.ts`), `storage-cors.example.json` → `cors.json` → kovaya uygula (DEPLOY 1.1.7), canlı reCAPTCHA ile CSP kontrolü (STAGING C5).
   2. KVKK 1.2 hukuk onayı (`KVKK_NOTICE_APPROVED`).
   3. UAT: önce ⚠ senaryolar; yeni: E4.2 (MFA kurmamış üyenin onay akışı).
   - Dış denetimden bilinçli olarak yapılmayanlar (gerekçe `EXTERNAL_AUDIT_2026-11-14.md`): #1, #2, #4, #16 (operasyon/hukuk), #9, #15 (yanlış bulgu), #12 (D8), #17 (ertelendi).
-  - Yeni istek gelirse: §1'e F14.x satırı ekle, aynı ritüelle ilerle.
+  - Yeni istek gelirse: §1'e F15.x satırı ekle, aynı ritüelle ilerle.
 - **Not (e2e):** `npm run test:e2e -- <playwright argümanı>` argümanı Playwright'a değil `firebase emulators:exec`'e geçirir (hata: `unknown option`). Argüman gerekiyorsa: `npm --prefix functions run build && node scripts/firebase.mjs emulators:exec --only auth,firestore,storage,functions --project demo-pediatrist "npm run seed && npx playwright test <argümanlar>"`. Testler ortak hesapları paylaştığı için `--workers` artırılmaz.
 - **Ortamı çalıştırma:** `npm run emulators` → `npm run seed` → `npm run dev`; testler: `npm run test:rules | test:functions | test:e2e`.
 - **Engeller / notlar:** Zaman aşımıyla kesilen e2e `next-server`'ı açık bırakabilir → önce `pkill -f next-server`. Bildirim bölgesi (`ToastProvider`) her sayfada `role="status"`/`role="alert"` taşır: e2e'de `getByRole("status")` metinle süzülmeli. Yeni e2e spec'leri `./fixtures/test`'ten import etmeli (CSP bekçisi); ek tarayıcı bağlamları `guardedContext()` ile. Yönetim paneli e2e yardımcıları `e2e/fixtures/admin.ts`'te: `createPendingMember`, `runMemberAction(admin, email, işlem, onay, sonuç)`.
@@ -167,6 +172,7 @@ Bu kararlar bütün adımlar için geçerlidir. Değiştirmek için kullanıcı 
 | D26 | **Materyal hedef kitlesi = `targetYears` (1–4) + `targetSpecialists`** (kullanıcı kararı 2026-11-13). En az biri dolu. "Uzman" yalnızca ünvanı `Uzm. Dr.` olan üyedir; Doç./Prof. hedef kitle dışında kalır, varsayılan süzgeçleri "Bütün kıdemler". Görünürlük kurallarda kısıtlanmaz (süzgeç ve rapor içindir). | Uzmanlara özel içerik | Evet |
 | D27 | ~~**QR okuma cihazda, `jsqr` ile** (kullanıcı kararı 2026-11-13: kamera izni "QR kodu okut" düğmesiyle istenir). Kamera görüntüsü kaydedilmez, gönderilmez; çözümleme ana iş parçacığında (CSP değişmez). `BarcodeDetector` kullanılmaz: tek kod yolu, e2e'de sınanan yolla aynı.~~ **D28 ile değişti (2026-11-14).** | Uygulama içinden yoklama; KVKK | Evet |
 | D28 | **Yoklamada QR yok; kod yalnızca elle girilir ve 30 saniyede bir değişir** (D27'nin yerine; kullanıcı kararı 2026-11-14). Uygulama içi okuyucu, projektördeki QR görseli ve `?s=&c=` bağlantısıyla kodun dolu gelmesi kaldırıldı; `jsqr` silindi; `Permissions-Policy: camera=()`; KVKK metninden kamera maddesi çıktı (sürüm 1.2). `ATTENDANCE_SLOT_MS = 30_000`; sunucu bir önceki pencereyi de kabul eder (kod en çok ~60 sn geçerli). | Kamera yalnızca HTTPS'de açılır; kullanıcı tek ve basit yol istedi. Ödünleşim: kodun iletilme penceresi ~30 sn → ~60 sn (S2, farklı ağ işareti sürüyor). | Evet |
+| D29 | **Sınav önizlemesinde düzenleme yalnızca "Yeni sınav" akışındadır** (kullanıcı kararı, 2026-11-14). Önizlemede soru başına görsel eklenir/değiştirilir/kaldırılır (bilgisayardan yükleme veya yüklü görsellerden seçme), metinler (1, 3, 9) ve cevap yapısı (4–8) değiştirilir, sıra değişir, soru silinir; hatalı CSV satırları önizlemede düzeltilebilir. Kaydedilmiş taslak yalnızca yeni CSV ile değiştirilir; yayındaki/kapalı sınav değişmez. Her değişiklik sunucuyla aynı `QuizQuestionInput` şemasıyla doğrulanır. **`quiz_media` Storage kuralında yalnızca oluşturulabilir** (üzerine yazma yasak). Önizlemede yüklenip kullanılmayan görseller silinmez; Görseller sekmesinde ve seçicide yeniden kullanılır. | Görsel ekleme iki adımlı ve kopuktu; yayındaki sınavın görseli sessizce değişmemeli | Evet |
 
 ---
 
@@ -1748,6 +1754,39 @@ Kullanıcının yaptırdığı dış denetimin 19 bulgusu kodla karşılaştır�
   - **CORS (dış #3):** `storage-cors.example.json` şablonu (yer tutuculu; doğrudan `cors.json` adıyla yanlışlıkla uygulanmasın diye `.example`; yerel kopya `.gitignore`'da). `DEPLOY.md` 1.1.7 ve STAGING A11 şablona yönlendirir; doğrulama `verify-staging --origin`.
   - **Belgeler:** `EXTERNAL_AUDIT_2026-11-14.md` (19 bulgunun hükmü), TRACEABILITY §11 (dış denetim → adım → kanıt) ve "Açık kalanlar" 5. madde.
   - **Doğrulandı (F13 tamamı):** lint (0 uyarı), format, typecheck, no-mock, unit 282, rules 58, functions 109, e2e tam paket 115 + 5 bilinçli atlanan, `npm run build`, `npm --prefix functions run build`.
+
+### F14 — Sınav önizlemesinde soru düzenleme ve görsel ekleme (kullanıcı talebi, 2026-11-14; D29)
+
+**Bağlam:** Görsel eklemek için Görseller sekmesinde yükleyip yolu CSV'ye yazmak ve CSV'yi yeniden yüklemek gerekiyordu. Önizleme salt okunurdu; tek hatalı satır dosyanın tamamını reddettiriyordu. Hedef: "Yeni sınav" önizlemesinde Eğitim Sorumlusu soru başına görsel ekleyebilsin, metinleri ve cevap yapısını değiştirebilsin, sırayı değiştirip soru silebilsin, hatalı satırları orada düzeltebilsin. Sunucu yazma yolu (`saveQuizDraft`) ve şeması değişmez; önizleme aynı ortak şemayı çalıştırır.
+
+**Kapsam dışı (bilinçli):** kaydedilmiş taslağın soru düzeyinde düzenlenmesi, önizlemede yeni soru ekleme, görsel açıklaması (alt metin) alanı, kullanılmayan görsellerin otomatik silinmesi.
+
+#### F14.1 Ortak katman, sunucu, kurallar (S)
+- `shared/quizQuestion.ts → validateQuizQuestion(draft)`: `{question | null, issues[{field,label,message}]}`; CSV ayrıştırıcısı ve önizleme düzenleyicisi bunu kullanır.
+- `shared/quizCsv.ts`: sonuca `rows` (geçerli ve hatalı her satırın ham taslağı + hataları). `questions`/`errors` aynen kalır (seed, taslak düzenleme diyaloğu etkilenmez). Bozuk JSON hücresi: `optionsArray: []`, `optionsRaw` korunur.
+- Sunucu mesajları "Satır N" → "Soru N" (`shared/issues.ts`, `assertMediaExists`): sıra değişebildiği için sunucu CSV satırını bilemez.
+- `SaveQuizDraftRequest.editedInPreview` (varsayılan `false`) → `QUIZ_DRAFT_CREATED_FROM_CSV` denetim metadata'sı.
+- `storage.rules`: `quiz_media` yalnızca `create` (üzerine yazma sunucuda da yasak). Kural testi: admin var olan görselin üzerine yazamaz.
+- Testler: `rows` (hatalı satır), `validateQuizQuestion` ile CSV ayrıştırıcısının aynı sonucu vermesi; functions mesaj beklentileri.
+
+#### F14.2 İstemci durum modeli (M)
+- `src/lib/quiz/questionForm.ts` (saf): `QuestionForm` (doğru cevap seçenek kimliğiyle izlenir), `formFromDraft`, `draftFromForm`, `changeQuestionType`.
+- `src/lib/quiz/media.ts → uniqueQuizMediaPath` (`-2`, `-3` ekleri).
+- `useCsvQuestions` genişler: kalıcı anahtarlı `items`, `update/setImage/move/remove/markMediaUploaded`, `dirty`, `editedInPreview`; `ready` = soru sayısı sınırda, hata yok, görsel denetimi bitti, eksik görsel yok, devam eden yükleme yok.
+- Testler: form gidiş-dönüşü, seçenek metni değişince doğru cevabın izlemesi, tip geçişleri, benzersiz yol; hook (hatalı satırın düzeltilmesi, taşıma/silme, eksik görselin seçimle giderilmesi).
+
+#### F14.3 Arayüz (L)
+- `CsvQuestionsPanel editable`: yalnızca `QuizImport`; `EditDraftDialog` bugünkü gibi salt okunur. Hata tablosu ve "Satır N" eksik görsel uyarısı korunur; düzenlenebilir modda "Soruya git".
+- `QuestionEditorCard`: önizleme + araç çubuğu (Düzenle, Görsel ekle/değiştir/kaldır, Yukarı, Aşağı, Kaldır — onaylı); düzenleme modunda `Field` alanları, anlık ortak şema doğrulaması; odak ve `aria-live` duyuruları.
+- `QuestionImagePicker` (Dialog + Tabs): bilgisayardan yükle (tür/boyut denetimi, benzersiz ad, ilerleme, yükleme bitince bağlanır; ad yarışında bir kez yeniden dener) | yüklü görsellerden seç (süzme, 24'erli sayfa).
+- `useQuizMediaLibrary` (Görseller sekmesi ve seçici ortak).
+- `Tabs` öğe bazında `keepMounted`; "Yeni sınav" sekmesi açık tutulur. `beforeunload` uyarısı; düzenlenmiş önizlemede yeni CSV seçimi onay ister.
+
+#### F14.4 Testler ve belgeler (M)
+- `e2e/quiz-preview-edit.spec.ts` (iki ekran boyutu): hatalı satırı önizlemede düzeltme; yükleyerek ve seçerek görsel ekleme (aynı ad → `-2`, SVG reddi); cevap yapısı değişikliği; sıra ve silme; sekme değiştirince düzenlemelerin korunması; kayıttan sonra Firestore'da sıra, görsel, seçenek ve doğru cevapların doğrulanması; denetim kaydında `editedInPreview`; axe.
+- Regresyon: `quiz-admin.spec.ts`, `quiz-exam.spec.ts`, seed.
+- `UAT_SCENARIOS.md`'ye senaryo; §1, §2 güncellemesi.
+- **Doğrulama:** §4 kabul kapıları; e2e'de ilgili spec'ler, sonunda tam paket.
 
 ---
 
